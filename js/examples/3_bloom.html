@@ -1,0 +1,388 @@
+﻿<html>
+
+<head>
+<title>Post-process bloom effect example</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<!--
+<script type="text/javascript" src="jquery-1.4.2.min.js"></script>
+-->
+<script type="text/javascript" src="stats.min.js"></script>
+<script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
+<script type="text/javascript" src="webgl-utils.js"></script>
+<script type="text/javascript" src="../o3gl2.js"></script>
+<script type="text/javascript" src="../shaders/phong.js"></script>
+<script type="text/javascript" src="../shaders/postprocess.js"></script>
+<script type="text/javascript" src="../utils/utils.js"></script>
+<script type="text/javascript" src="../utils/primitives.js"></script>
+
+
+<style type='text/css'>    
+	html, body {
+		width:  100%;
+		height: 100%;
+		margin: 0px;
+	}
+</style>
+<script id="vs" type="x-shader/x-vertex">
+attribute vec3 		aPosition;
+attribute vec2 		aTextureCoord;
+
+uniform mat4 		uMatrixMV;
+uniform mat4 		uMatrixP;
+
+varying vec2 		vTextureCoord;
+void main() {
+	vTextureCoord	= vec2(aTextureCoord.x, aTextureCoord.y);
+	gl_Position 	= uMatrixP * uMatrixMV * vec4(aPosition, 1.0);
+}
+</script>
+<script id="fs" type="x-shader/x-fragment">
+#ifdef GL_ES
+precision highp float;
+#endif
+uniform sampler2D 	uSampler0;
+varying vec2 	vTextureCoord;
+void main() {
+	gl_FragColor = texture2D(uSampler0, vTextureCoord);
+}
+</script>
+
+<script type="text/javascript">
+	var o3gl;
+	var angle = 0;
+	
+	// Referenced by the shader program variables
+	var viewport 			= {};
+	var matrixRotation 	= mat4.create();
+	var matrixM 		= mat4.create();
+	var matrixV 		= mat4.create();
+	var matrixMV 		= mat4.create();
+	var matrixP 		= mat4.create();
+	var matrixN 		= mat3.create();
+	
+	
+	var programDraw;
+	var programDefault;
+	var programConvolution;
+	var programBlend;
+	
+	var fbScene;	
+	var fbPass1;
+	var fbPass2;
+
+	var fbTextureScene;
+    var fbDepthScene;
+	var fbTexturePass1;
+	var fbTexturePass2;
+	
+	var textureDiffuse;
+	
+	var vboMesh;
+	var vboPlane;
+
+	var mesh;
+	var offscreenSurface;
+
+	var vbo = {
+		cube : {
+		}
+		,
+		teapot : {
+		}
+		,
+		plane : {
+		}
+	}
+	
+	
+	function init() {
+        var c = function() {
+        }
+        c.prototype = {
+            toString : function() {
+                return "c";
+            }
+        }
+
+		window.onresize();
+		// Initialize matrices
+		mat4.perspective(45, viewport.width / viewport.height, 0.1, 100.0, matrixP);
+		mat4.identity(matrixV);
+		mat4.translate(matrixV, [0,0,-5]);
+		mat4.identity(matrixM);
+		mat4.identity(matrixMV);
+		
+
+		var vertexShaderSource = document.getElementById("vs").textContent;
+		var fragmentShaderSource = document.getElementById("fs").textContent;
+		
+		// Create the programs
+		programDraw 		= o3gl.createProgram(o3gl.createShader(vertexShaderSource),o3gl.createShader(fragmentShaderSource));
+		programDefault 		= o3gl.createProgram(o3gl.createShader(Shaders.Default.Vertex),o3gl.createShader(Shaders.Default.Fragment));
+		programConvolution 	= o3gl.createProgram(o3gl.createShader(Shaders.Convolution.Vertex),o3gl.createShader(Shaders.Convolution.Fragment));
+		programBlend 		= o3gl.createProgram(o3gl.createShader(Shaders.BlendAdditive.Vertex),o3gl.createShader(Shaders.BlendAdditive.Fragment));
+		// Initialize mesh texture
+		var imageDiffuse 	= document.getElementById("specular");
+		
+		textureDiffuse 		= o3gl.createTexture().Image2D(imageDiffuse);
+
+		// Create framebuffers
+		fbTextureScene 		= o3gl.createTexture().FilterNearest().WrapClampToEdge().Image2D(viewport.width, viewport.height);
+		
+        fbDepthScene 		= o3gl.createRenderBuffer().Storage(viewport.width, viewport.height);
+		fbScene 			= o3gl.createFrameBuffer().Color(fbTextureScene).Depth(fbDepthScene);
+
+		fbTexturePass1 		= o3gl.createTexture().FilterLinear().WrapClampToEdge().Image2D(128, 128);
+		fbPass1 			= o3gl.createFrameBuffer().Color(fbTexturePass1);
+
+		fbTexturePass2 		= o3gl.createTexture().FilterLinear().WrapClampToEdge().Image2D(128, 128);
+		fbPass2 			= o3gl.createFrameBuffer().Color(fbTexturePass2);
+
+		// Create vertex buffer objects
+		var cube = new Cube();
+		vbo.cube.indexes = o3gl.createBuffer().Data(cube.indexes);
+		vbo.cube.positions = o3gl.createBuffer().Data(cube.positions);
+		vbo.cube.textureCoords = o3gl.createBuffer().Data(cube.textureCoords);
+		var plane = new Plane2D(); // Post-process plane
+		vbo.plane.positions = o3gl.createBuffer().Data(plane.positions);
+		vbo.plane.textureCoords = o3gl.createBuffer().Data(plane.textureCoords);
+		
+		/*
+		// Create buffers:
+		mesh = o3gl.iterator().modeTriangles().
+		elements(o3gl.createBuffer().Data(cube.indexes));
+		mesh.pointer("aPosition", o3gl.createBuffer().Data(cube.positions));
+		mesh.pointer("aTextureCoord", o3gl.createBuffer().Data(cube.textureCoords));
+		
+		// Create offsreen rendering surface
+		var plane = new Plane2D(); // Post-process plane
+		offscreenSurface = o3gl.iterator().modeTriangles();
+		offscreenSurface.pointer("aPosition", o3gl.createBuffer().Data(plane.positions));
+		offscreenSurface.pointer("aTextureCoord", o3gl.createBuffer().Data(plane.textureCoords));
+		*/
+
+		/*
+		var plane = new Plane2D(); // Post-process plane
+		offscreenSurface = o3gl.iterator().modeTriangles();
+		offscreenSurface.pointer("aPosition", o3gl.createBuffer().Data(plane.positions));
+		offscreenSurface.pointer("aTextureCoord", o3gl.createBuffer().Data(plane.textureCoords));
+		*/
+		
+		programConvolution.Use().
+			Set("aPosition",	vbo.plane.positions.pointer()).
+			Set("aTextureCoord",vbo.plane.textureCoords.pointer());
+
+	}
+	
+	function render() {
+		mat4.identity(matrixMV);
+		mat4.multiply(matrixM, matrixMV, matrixMV);
+		mat4.multiply(matrixV, matrixMV, matrixMV);
+		
+		/*
+		// o3gl default frame buffer settings
+		o3gl.defaultFrameBuffer().Bind().
+		DepthTest(true).DepthMask(true).
+		Viewport(viewport.x, viewport.y, viewport.width, viewport.height).
+		ClearColorBuffer(0.5, 0.0, 0.0, 1.0).
+		ClearDepthBuffer();
+		// Equal webgl native code:
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+		gl.enable(gl.DEPTH_TEST);
+		gl.depthMask(true);
+		gl.clearColor(0.5, 0.5, 0.5, 1.0);
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
+		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+		*/
+		
+		
+		fbScene.Bind().DepthTest(true).DepthMask(true).
+            Viewport(viewport.x, viewport.y, viewport.width, viewport.height).
+			ClearColorBuffer(0.0, 0.0, 0.0, 1.0).
+			ClearDepthBuffer();
+		
+		programDraw.
+			Set("uMatrixP", 	matrixP).
+			Set("uMatrixMV", 	matrixMV).
+			Set("uSampler0", 	textureDiffuse).		
+			Set("aPosition",	vbo.cube.positions.pointer()).
+			Set("aTextureCoord",vbo.cube.textureCoords.pointer()).
+			DrawTriangles(vbo.cube.indexes);
+			
+
+		fbPass1.Bind().Viewport(0, 0, 128, 128).DepthTest(false);
+		programConvolution.
+			Set("aPosition",	vbo.plane.positions.pointer()).
+			Set("aTextureCoord",vbo.plane.textureCoords.pointer()).					
+			Set("uStep", 1/128, 0).							
+			Set("uSampler0", fbTextureScene).	
+			DrawTriangles();
+		
+		fbPass2.Bind().Viewport(0, 0, 128, 128).DepthTest(false);
+		programConvolution.
+			Set("aPosition",	vbo.plane.positions.pointer()).
+			Set("aTextureCoord",vbo.plane.textureCoords.pointer()).					
+			Set("uStep", 0, 1/128).
+			Set("uSampler0", fbTexturePass1).		
+			DrawTriangles();
+
+		o3gl.defaultFrameBuffer().Bind().DepthTest(false).DepthMask(false).Viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+		programBlend.
+			Set("uSampler0", fbTexturePass2).		
+			Set("uSampler1", fbTextureScene).		
+			Set("aPosition",	vbo.plane.positions.pointer()).
+			Set("aTextureCoord",vbo.plane.textureCoords.pointer()).					
+			DrawTriangles();
+			
+		
+			
+		/*
+		// Program build different shaders from one source
+		// 
+		problems:
+		1) Saving state of the last array buffer in program object for draw call with default count parameters
+		2) Deffered initialization of the array buffer data inside Bind() method
+		3) 
+			
+		// Resource proxy and auxillary methods :
+		var program = o3gl.program()
+		var t = o3gl.texture().image2d();
+		var t2 = o3gl.texture().image2d();
+		var ab = o3gl.arraybuffer().data([]);		
+		var ib = o3gl.arraybuffer().data([]);		
+		var p = o3gl.program(source1, source2, source3).exclude();
+		
+		// Binding is 
+		// - program variables binding
+		// - primitive geometry configuration 
+		// - some preconfigured properties
+		// - viewport and framebuffer. program output is often coupled with frame buffer;
+		var drawSomeGeometry = o3gl.binding(program).
+		set("uP",1,0,0).
+		set("aV", ab.pointer())			// initialize ab here
+		set("sampler", t)				// 
+		set("samplerCube").
+		depth(depthbuffer).depthMask(true).depthTest(true).
+		color(texture1, texture2, texture3).
+		drawTriangles().elements(ib).first(0).count(5); // draw call only causes drawing invokation
+		
+		drawSomeGeometry.program().Set()
+		drawSomeGeometry.run();
+		drawSomeGeometry();
+
+		// Multiple bindings configuration in one place
+		var binding1 = o3gl.binding(program1);
+		var binding2 = o3gl.binding(program2);
+		o3gl.bindings(binding1,binding2).
+		Set("aPosition", o3gl.arraybuffer(plane.positions)).
+		Set("aTextureCoord", o3gl.arraybuffer(plane.textureCoords));
+		
+		program.
+		Set("uP",1,0,0).
+		Set("aV", ab.pointer()).			
+		Set("sampler", t).
+		Color(texture1).Depth(depthBuffer)
+		
+		*/
+		
+		
+		
+		
+		
+    }
+    
+    function update() {
+		angle += 0.01;
+		stats.begin();
+		render();
+		stats.end();
+		requestAnimFrame(update)
+    }
+
+    function webGLStart() {	
+		stats = new Stats();
+		stats.setMode(0); // 0: fps, 1: ms
+		// Align top-left
+		stats.domElement.style.position = 'absolute';
+		stats.domElement.style.left = '0px';
+		stats.domElement.style.top = '0px';
+
+		document.body.appendChild( stats.domElement );
+	
+        var canvas = document.getElementById("canvas");
+		var gl = WebGLUtils.setupWebGL(canvas);
+		o3gl = O3GL(gl);
+		init();
+        update();
+		
+		addMouseListener(function (dx, dy, lb, rb, mb) {
+			var r = mat4.create();
+			mat4.identity(r);
+			mat4.rotate(r, 0.05, [dy, dx, 0]);
+			mat4.multiply(r, matrixM, matrixM);
+		}) ;
+    }
+	
+	window.onresize = function() {
+		gl.canvas.width  = document.body.clientWidth;
+		gl.canvas.height = document.body.clientHeight;			
+		viewport.x 		= 0;
+		viewport.y 		= 0;
+		viewport.width 	= gl.canvas.width;
+		viewport.height = gl.canvas.height;
+		viewport.aspect = viewport.width / viewport.height;
+		mat4.perspective(45, viewport.aspect, 0.1, 100.0, matrixP);
+
+        if (fbTextureScene && fbDepthScene) {
+            fbTextureScene.Image2D(viewport.width, viewport.height);
+            fbDepthScene.Storage(viewport.width, viewport.height);
+        }
+    }
+	
+	function addMouseListener(listener) {
+		var x;
+		var y;
+		var isMouseDown = false;
+		addEventListener("mousemove", function(e) {
+			if (isMouseDown) {
+				listener(e.clientX - x, e.clientY - y);
+				x = e.clientX;
+				y = e.clientY;
+			}
+		}); 
+		
+		addEventListener("mousedown", function(e) {
+			isMouseDown = true;
+		}); 
+
+		addEventListener("mouseup", function(e) {
+			isMouseDown = false;
+		});
+	}
+	
+</script>
+
+
+</head>
+
+
+<body onload="webGLStart();" style="overflow: hidden">
+	<img id="diffuse" 	src = "texture/diffuse.png" 	hidden />
+	<img id="normal" 	src = "texture/normal.png" 	hidden />
+	<img id="specular" 	src = "texture/ao.png" 		hidden />
+	<img id="bump" 		src = "texture/bump.png" 		hidden />
+	<img id="ambient" 	src = "texture/full.png" 		hidden />
+	<img id="ao" 		src = "texture/ao.png" 		hidden />
+	
+	<img id="px" src = "textureCube/positive_x.png" hidden />	
+	<img id="nx" src = "textureCube/negative_x.png" hidden />	
+	<img id="py" src = "textureCube/positive_y.png" hidden />	
+	<img id="ny" src = "textureCube/negative_y.png" hidden />	
+	<img id="pz" src = "textureCube/positive_z.png" hidden />	
+	<img id="nz" src = "textureCube/negative_z.png" hidden />	
+	<div>
+		<canvas id="canvas" style="border: none; margin:0; padding:0; " width="300" height="300"></canvas>
+	</div>
+</body>
+
+</html>

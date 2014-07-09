@@ -1,0 +1,148 @@
+﻿<html>
+
+<head>
+<title>Learning WebGL &mdash; lesson 1</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+
+<script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
+<script type="text/javascript" src="../o3gl.js"></script>
+
+<script id="shader-fs" type="x-shader/x-fragment">
+
+    precision mediump float;
+
+    varying vec4 vColor;
+
+    void main(void) {
+        gl_FragColor = vColor;
+    }
+</script>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+	attribute vec3 aVertexPosition;
+    attribute vec4 aVertexColor;
+
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+
+    varying vec4 vColor;
+
+    void main(void) {
+        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+        vColor = aVertexColor;
+    }
+</script>
+
+
+<script type="text/javascript">
+
+    var gl;
+    function initGL(canvas) {
+        try {
+            gl = canvas.getContext("experimental-webgl");
+            gl.viewportWidth = canvas.width;
+            gl.viewportHeight = canvas.height;
+        } catch (e) {
+        }
+        if (!gl) {
+            alert("Could not initialise WebGL, sorry :-(");
+        }
+    }
+
+	var pMatrix 			= mat4.create();
+    var mvMatrixCube 		= mat4.create();
+    var mvMatrixTriangle 	= mat4.create();
+
+	
+    var shaderProgram;
+
+    function initShaders() {
+		shaderProgram = new Program(
+			new VertexShader(document.getElementById("shader-vs").textContent),
+			new FragmentShader(document.getElementById("shader-fs").textContent)
+		);
+		shaderProgram.
+		useProgram().
+		uniformMatrix4fv("uPMatrix", pMatrix).
+		attribute3f("aVertexPosition", triangleVertexPositionBuffer).
+		attribute4f("aVertexColor", triangleVertexColorBuffer).
+		uniformMatrix4fv("uMVMatrix", mvMatrixTriangle).
+		drawArraysTriangles(0, 3).
+		attribute3f("aVertexPosition",squareVertexPositionBuffer).
+		attribute4f("aVertexColor", squareVertexColorBuffer).
+		uniformMatrix4fv("uMVMatrix", mvMatrixCube).
+		drawArraysTriangleStrip(0, 4);
+    }
+
+	var triangleVertexPositionBuffer;
+    var squareVertexPositionBuffer;
+	var triangleVertexColorBuffer;
+	var squareVertexColorBuffer;
+	
+    function initBuffers() {
+		var vertices = [
+             0.0,  1.0,  0.0,
+            -1.0, -1.0,  0.0,
+             1.0, -1.0,  0.0
+        ];
+		triangleVertexPositionBuffer = new ArrayBuffer(vertices);
+		var colors = [
+            1.0, 0.0, 0.0, 1.0,
+            0.0, 1.0, 0.0, 1.0,
+            0.0, 0.0, 1.0, 1.0
+        ];
+		triangleVertexColorBuffer = new ArrayBuffer(colors);
+		vertices = [
+             1.0,  1.0,  0.0,
+            -1.0,  1.0,  0.0,
+             1.0, -1.0,  0.0,
+            -1.0, -1.0,  0.0
+        ];
+		squareVertexPositionBuffer = new ArrayBuffer(vertices);
+		colors = [];
+        for (var i=0; i < 4; i++) {
+            colors = colors.concat([0.5, 0.5, 1.0, 1.0]);
+        }
+		squareVertexColorBuffer = new ArrayBuffer(colors);
+    }
+
+    function drawScene() {
+        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+        mat4.identity(mvMatrixTriangle);
+        mat4.translate(mvMatrixTriangle, [-1.5, 0.0, -7.0]);
+        mat4.identity(mvMatrixCube);
+        mat4.translate(mvMatrixCube, [+1.5, 0.0, -7.0]);
+		
+		shaderProgram.run();
+    }
+
+    function webGLStart() {
+        var canvas = document.getElementById("lesson01-canvas");
+        initGL(canvas);
+        initBuffers();
+        initShaders();
+
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.enable(gl.DEPTH_TEST);
+
+        drawScene();
+    }
+</script>
+
+
+</head>
+
+
+<body onload="webGLStart();">
+    <a href="http://learningwebgl.com/blog/?p=28">&lt;&lt; Back to Lesson 1</a><br />
+
+    <canvas id="lesson01-canvas" style="border: none;" width="500" height="500"></canvas>
+
+    <br/>
+    <a href="http://learningwebgl.com/blog/?p=28">&lt;&lt; Back to Lesson 1</a><br />
+</body>
+
+</html>

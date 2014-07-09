@@ -1,0 +1,459 @@
+﻿<html>
+
+<head>
+<title>Post-process god rays example</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<!--
+<script type="text/javascript" src="jquery-1.4.2.min.js"></script>
+-->
+<script type="text/javascript" src="stats.min.js"></script>
+<script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
+<script type="text/javascript" src="webgl-utils.js"></script>
+<script type="text/javascript" src="../o3gl2.js"></script>
+<script type="text/javascript" src="../shaders/phong.js"></script>
+<script type="text/javascript" src="../shaders/postprocess.js"></script>
+<script type="text/javascript" src="../utils/utils.js"></script>
+<script type="text/javascript" src="../utils/primitives.js"></script>
+
+
+<style type='text/css'>    
+	html, body {
+		width:  100%;
+		height: 100%;
+		margin: 0px;
+	}
+</style>
+
+<script type="text/javascript">
+    var o3gl;	
+	var angle = 0;
+	
+	// Referenced by the shader program variables
+	var viewport 			= {};
+	var matrixM 		= mat4.create();
+	var matrixV 		= mat4.create();
+	var matrixMV 		= mat4.create();
+	var matrixP 		= mat4.create();
+	var matrixN 		= mat3.create();
+	var blurCenter		= [0.5, 0.5, 0.5, 0.5];
+	
+	var diffuse		= [0.0, 0.0, 0.0, 1.0];
+	var ambient		= [0.0, 0.0, 0.0, 1.0];
+	var specular	= [1.0, 1.0, 1.0, 1.0];
+	
+	var programPhong;
+	var programBlurRadial;
+	var programConvolution;
+	var programBlend;
+	var programFlush;
+		
+	var textureScene;
+	var textureEmissive;
+	var textureConvolutionPass1;
+	var textureConvolutionPass2;
+	var textureBlurRadial;
+	
+    var rbDepth;
+    var fbDefault;
+	var fbScene;
+	var fbEmissive;
+	var fbConvolutionPass1;
+	var fbConvolutionPass2;
+	var fbBlurRadial;
+	
+	function init() {
+		window.onresize();
+
+		// Initialize matrices
+		/*
+		mat4.perspective(45, viewport.width / viewport.height, 0.1, 100.0, matrixP);
+		mat4.identity(matrixV);
+		mat4.translate(matrixV, [0,0,-20]);
+		mat4.identity(matrixM);
+		*/
+		
+		// Initialize matrices
+		/*
+		mat4.perspective(45, viewport.width / viewport.height, 0.1, 100.0, matrixP);
+		mat4.identity(matrixV);
+		mat4.translate(matrixV, [0,0,-5]);
+		mat4.identity(matrixM);
+		*/
+		
+		//mat4.perspective(45, viewport.width / viewport.height, 0.1, 100.0, matrixP);
+		mat4.identity(matrixV);
+		mat4.translate(matrixV, [0,0,-15]);
+		mat4.identity(matrixM);
+		mat4.identity(matrixMV);
+		
+		
+		// Create mesh
+		var cube = new Cube();
+		vboCube = {
+			positions : 	o3gl.createBuffer().Data(cube.positions),
+			normals : 		o3gl.createBuffer().Data(cube.normals),				
+			tangents : 		o3gl.createBuffer().Data(cube.tangents),				
+			textureCoords : o3gl.createBuffer().Data(cube.textureCoords),				
+			indexes : 		o3gl.createBuffer().Data(cube.indexes)			
+		}
+
+		// Create offsreen rendering surface
+		var plane = new Plane2D(); // Post-process plane
+		vboPlane = {
+			positions : 	o3gl.createBuffer().Data(plane.positions),
+			textureCoords : o3gl.createBuffer().Data(plane.textureCoords)				
+		}
+		
+		programPhong = o3gl.
+			// Retain only essential shader variables and related code
+			sources(Shaders.Phong.Vertex, Shaders.Phong.Fragment). //short: sources(Shaders.Phong)
+			define(
+				"aPosition", 
+				"aNormal", 
+				"uMatrixV",
+				"uMatrixP",
+				"uMatrixM",
+				"uMatrixN",
+				"uMaterialDiffuse",
+				"uMaterialSpecular",
+				"uMaterialAmbient",
+				"uLightPosition"
+			).createProgram();
+			
+		programConvolution 	= o3gl.sources(Shaders.Convolution).createProgram();
+		programBlurRadial 	= o3gl.sources(Shaders.BlurRadial).createProgram();
+		programBlend 		= o3gl.sources(Shaders.BlendAdditive).createProgram();
+		programFlush 		= o3gl.sources(Shaders.Default).createProgram();
+
+		// Create frame buffer textures
+		var ppScale = 0.5;
+		textureScene 			= o3gl.createTexture().FilterNearest().WrapClampToEdge().Image2D(viewport.width, viewport.height);
+		textureEmissive			= o3gl.createTexture().FilterNearest().WrapClampToEdge().Image2D(viewport.width, viewport.height);
+		textureConvolutionPass1	= o3gl.createTexture().FilterNearest().WrapClampToEdge().Image2D(viewport.width * ppScale, viewport.height * ppScale);
+		textureConvolutionPass2	= o3gl.createTexture().FilterNearest().WrapClampToEdge().Image2D(viewport.width * ppScale, viewport.height * ppScale);
+		textureBlurRadial		= o3gl.createTexture().FilterNearest().WrapClampToEdge().Image2D(viewport.width * ppScale, viewport.height * ppScale);
+		
+		// Create offscreen buffers
+		rbDepth 				= o3gl.createRenderBuffer().Storage(viewport.width, viewport.height);
+		fbScene					= o3gl.createFrameBuffer().Color(textureScene).Depth(rbDepth);
+		fbEmissive				= o3gl.createFrameBuffer().Color(textureEmissive).Depth(rbDepth);
+		fbConvolutionPass1		= o3gl.createFrameBuffer().Color(textureConvolutionPass1);
+		fbConvolutionPass2		= o3gl.createFrameBuffer().Color(textureConvolutionPass2);
+		fbBlurRadial			= o3gl.createFrameBuffer().Color(textureBlurRadial);
+		fbDefault				= o3gl.defaultFrameBuffer();
+
+		
+		/*
+		useBufferTexture = new Program().
+		viewport(viewport).
+		enableDepthTest(true).
+		frameBuffer(new FrameBuffer().texture2D(textureMain).renderBuffer(bufferDepth)).
+		clearColor([0.0, 0.0, 0.0, 1.0]).clearColorBuffer().clearDepthBuffer();
+
+		useBufferTextureOcl = new Program().
+		frameBuffer(new FrameBuffer().texture2D(textureOcclusion).renderBuffer(bufferDepth)).
+		viewport(viewport).
+		clearColor([0.0, 0.0, 0.0, 1.0]).clearColorBuffer(). // do not clear depth buffer
+		enableDepthTest(true);
+		
+		initGeometry = Shaders.Phong.exclude(
+			"aDiffuse","aAmbient","aSpecular", 
+			"uSamplerCube",	
+			//"uMaterialDiffuse",
+			//"uMaterialSpecular",
+			//"uMaterialAmbient",
+			"uSamplerNormal",
+			"uSamplerDiffuse",
+			"uSamplerSpecular",			
+			"uSamplerAmbient"
+		).get().
+		useProgram().
+		attribute3f("aPosition", new ArrayBuffer(cube.positions)).
+		attribute3f("aNormal", new ArrayBuffer(cube.normals)).
+		uniformMatrix4fv("uMatrixV", 	matrixV). 		// View transformation
+		uniformMatrix4fv("uMatrixP", 	matrixP).		// Projection transformation
+		uniformf("uLightPosition", 		0.0, 0.0, 0.0);
+		
+		// Assign dynamic properties
+		drawGeometry = new Program(initGeometry).
+			uniformf("uMaterialDiffuse", 	diffuse).
+			uniformf("uMaterialSpecular", 	specular).
+			uniformf("uMaterialAmbient", 	ambient).
+			uniformMatrix4fv("uMatrixM", 	matrixM).
+			uniformMatrix3fv("uMatrixN", 	matrixN).
+			drawElementsTriangles(new ArrayBuffer(cube.indexes).typeUnsignedShort(1));
+				
+		var plane 				= new Plane2D(); // Post-process plane
+		var planePositions 		= new ArrayBuffer(plane.positions).typeFloat(2);
+		var planeTextureCoords 	= new ArrayBuffer(plane.textureCoords).typeFloat(2);
+		
+		
+		var blurSize = viewport.width / 2;
+		var blur = Shaders.Convolution.get().
+			useProgram().
+			attribute2f("aPosition", 	planePositions).
+			attribute2f("aTextureCoord", planeTextureCoords).
+			// First pass (horizontal)
+			uniformf("uStep", 1/blurSize, 0).							// Horizontal
+			uniformTexture("uSampler0", textureOcclusion).					// Source texture (our frame buffer)
+			frameBuffer(new FrameBuffer().texture2D(textureBlured)).			// Destination texture
+			drawArraysTriangles(0, 6).										// Render the first pass
+			// Second pass (vertical)
+			uniformf("uStep", 0, 1/blurSize * viewport.aspect).		// Vertical
+			uniformTexture("uSampler0", textureBlured).				// Source texture
+			drawArraysTriangles(0, 6);										// Render the second pass
+		
+		var godray = Shaders.BlurRadial.get().
+			useProgram().
+			attribute2f("aPosition", 	planePositions).
+			attribute2f("aTextureCoord", planeTextureCoords).
+			uniformTexture("uSampler0", textureBlured).				
+			uniformf("uCenter", blurCenter).				
+			frameBuffer(new FrameBuffer().texture2D(textureGodRay)).		
+			drawArraysTriangles(0, 6);
+
+		var blend = Shaders.BlendAdditive.get().
+			useProgram().
+			attribute2f("aPosition", 	planePositions).
+			attribute2f("aTextureCoord", planeTextureCoords).
+			uniformTexture("uSampler0", textureMain).
+			uniformTexture("uSampler1", textureGodRay).
+			frameBuffer(null).
+			drawArraysTriangles(0, 6);
+
+		var flush = new PostProcess().get().
+			useProgram().
+			attribute2f("aPosition", 	planePositions).
+			attribute2f("aTextureCoord", planeTextureCoords).
+			uniformTexture("uSampler0", textureGodRay).
+			frameBuffer(null).
+			drawArraysTriangles(0, 6);
+
+			
+		programPostProcess = new Program().			
+		enableDepthTest(false).
+		viewport(0, 0, viewport.width, viewport.height).
+		push(blur).
+		push(godray).
+//		push(flush);
+		push(blend);
+		*/
+	}
+	
+	function render() {		
+		// Update projection matrix
+		mat4.frustum(-1,1,-1/viewport.aspect,1/viewport.aspect,1,30, matrixP);
+
+		//fbScene.Bind().ClearDepth().ClearColor(0.0, 0.0, 0.0, 1.0).Viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+		
+		fbScene.Bind().DepthTest(true).DepthMask(true).
+		Viewport(); // Set viewport to the full framebuffer size
+//		Viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+        fbScene.Clear();
+		
+		// Draw regular geometry
+		var step = 2.5;
+		for (var x=-1; x <= 1; x ++) 
+		for (var y=-1; y <= 1; y ++)
+		for (var z=-1; z <= 1; z ++) 
+		{
+			if (x === 0 && y === 0 && z === 0) continue;
+			
+			mat4.identity(matrixM);
+			mat4.translate(matrixM, [x * step, y * step, z * step]);
+			
+			mat4.multiply(matrixV, matrixM , matrixMV);
+			mat4.toInverseMat3(matrixMV, matrixN);
+			mat3.transpose(matrixN);
+			
+
+			var r = (x + 1) / 2;
+			var g = (y + 1) / 2;
+			var b = (z + 1) / 2;
+
+			programPhong.Use().
+				Set("uMatrixV", 	matrixV). 		
+				Set("uMatrixP", 	matrixP).		
+				Set("uMatrixM", 	matrixM).
+				Set("uMatrixN", 	matrixN).
+				Set("uMaterialDiffuse", r, g, b, 1.0).	
+				Set("uMaterialAmbient", 0.0, 0.0, 0.0, 1.0).	
+				Set("uMaterialSpecular", 0.2, 0.2, 0.2, 1.0).	
+				Set("aPosition", 	vboCube.positions.pointer()).
+				Set("aNormal", 		vboCube.normals.pointer()).
+				DrawTriangles(vboCube.indexes);
+		}
+		
+		// Draw emmissive geometry
+		fbEmissive.Bind().DepthTest(true).DepthMask(true).
+		Viewport();
+        fbEmissive.ClearColorBuffer(0,0,0,1);
+		mat4.identity(matrixM);
+		mat4.translate(matrixM, [0, 0, 0]);
+		mat4.multiply(matrixV, matrixM , matrixMV);
+		mat4.toInverseMat3(matrixMV, matrixN);		
+		mat3.transpose(matrixN);
+		programPhong.Use().
+			Set("uMatrixV", 	matrixV). 		
+			Set("uMatrixP", 	matrixP).		
+			Set("uMatrixM", 	matrixM).
+			Set("uMatrixN", 	matrixN).
+			Set("uMaterialDiffuse", 0, 0, 0, 1.0).	
+			Set("uMaterialAmbient", 1.0, 1.0, 1.0, 1.0).	
+			Set("uMaterialSpecular", 0.0, 0.0, 0.0, 1.0).	
+			Set("aPosition", 	vboCube.positions.pointer()).
+			Set("aNormal", 		vboCube.normals.pointer()).
+			DrawTriangles(vboCube.indexes);
+
+		/*
+		fbEmissive.Bind().DepthTest(true).DepthMask(true).
+		Viewport();
+		programFlush.Use().
+			Set("aPosition", 	 vboPlane.positions.pointer()).
+			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
+			Set("uSampler0", textureScene).		
+			DrawTriangles();
+		*/
+
+
+		fbConvolutionPass1.Bind().DepthTest(false).Viewport();
+		programConvolution.Use().
+			Set("aPosition", 	 vboPlane.positions.pointer()).
+			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
+			Set("uStep", 0.1/fbConvolutionPass1.getWidth(), 0).							
+			Set("uSampler0", textureEmissive).		
+			DrawTriangles();
+		
+		fbConvolutionPass2.Bind().DepthTest(false).Viewport();
+		programConvolution.Use().
+			Set("aPosition", 	 vboPlane.positions.pointer()).
+			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
+			Set("uStep", 0, 0.1/fbConvolutionPass2.getHeight()).
+			Set("uSampler0", textureConvolutionPass1).		
+			DrawTriangles();
+
+		
+		fbBlurRadial.Bind().DepthTest(false).Viewport();
+		programBlurRadial.Use().
+			Set("aPosition", 	 vboPlane.positions.pointer()).
+			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
+			Set("uOrigin", 0.5, 0.5, 0.5, 0.5).
+			//Set("uCenter", 0.0, 0.0, 0.0, 0.0).
+			Set("uSampler0", textureConvolutionPass2).		
+//			Set("uSampler0", textureScene).		
+			DrawTriangles();
+		
+		/*
+		programFlush.Use().
+			Set("aPosition", 	 vboPlane.positions.pointer()).
+			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
+			Set("uSampler0", textureConvolutionPass2).		
+			DrawTriangles();
+		*/
+			
+			
+			
+		// Flush to the screen
+		fbDefault.Bind().DepthTest(false).
+		ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer().
+		Viewport();
+		
+		programBlend.Use().
+			Set("aPosition", 	 vboPlane.positions.pointer()).
+			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
+			Set("uSampler0", textureBlurRadial).		
+			Set("uSampler1", textureScene).		
+			DrawTriangles();
+		
+		
+		
+
+    }
+    
+    function update() {
+		angle += 0.01;
+		stats.begin();
+		render();
+		stats.end();
+		requestAnimFrame(update)
+    }
+
+    function webGLStart() {	
+		stats = new Stats();
+		stats.setMode(0); // 0: fps, 1: ms
+		// Align top-left
+		stats.domElement.style.position = 'absolute';
+		stats.domElement.style.left = '0px';
+		stats.domElement.style.top = '0px';
+
+		document.body.appendChild( stats.domElement );
+	
+        var canvas = document.getElementById("canvas");
+		var gl = WebGLUtils.setupWebGL(canvas);
+		o3gl = O3GL(gl);
+		init();
+        update();
+		
+		var r = mat4.create();
+		mat4.identity(r);
+		addMouseListener(function (dx, dy, lb, rb, mb) {
+			/*
+			var r = mat4.create();
+			mat4.identity(r);
+			mat4.rotate(r, 0.05, [dy, dx, 0]);
+			mat4.multiply(r, matrixM, matrixM);
+			*/
+			
+			mat4.rotate(r, 0.05, [-dy, -dx, 0]);
+			mat4.identity(matrixV);
+			mat4.translate(matrixV, [0,0,-15]);
+			mat4.multiply(matrixV, r, matrixV);
+			
+		}) ;
+    }
+	
+	window.onresize = function() {
+		gl.canvas.width  = document.body.clientWidth;
+		gl.canvas.height = document.body.clientHeight;			
+		viewport.x 		= 0;
+		viewport.y 		= 0;
+		viewport.width 	= gl.canvas.width;
+		viewport.height = gl.canvas.height;
+		viewport.aspect = viewport.width / viewport.height;
+	}
+	
+	function addMouseListener(listener) {
+		var x;
+		var y;
+		var isMouseDown = false;
+		addEventListener("mousemove", function(e) {
+			if (isMouseDown) {
+				listener(e.clientX - x, e.clientY - y);
+				x = e.clientX;
+				y = e.clientY;
+			}
+		}); 
+		
+		addEventListener("mousedown", function(e) {
+			isMouseDown = true;
+		}); 
+
+		addEventListener("mouseup", function(e) {
+			isMouseDown = false;
+		});
+	
+	}
+	
+</script>
+
+
+</head>
+
+
+<body onload="webGLStart();" style="overflow: hidden">
+	<div>
+		<canvas id="canvas" style="border: none; margin:0; padding:0; " width="300" height="300"></canvas>
+	</div>
+</body>
+
+</html>

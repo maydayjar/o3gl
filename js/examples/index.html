@@ -1,0 +1,524 @@
+<html>
+
+<head>
+<title>Heightmap with water generation</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<!--
+<script type="text/javascript" src="jquery-1.4.2.min.js"></script>
+-->
+<script type="text/javascript" src="stats.min.js"></script>
+<script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
+<script type="text/javascript" src="webgl-utils.js"></script>
+<script type="text/javascript" src="../o3gl-min.js"></script>
+
+<style type='text/css'>    
+	html, body {
+		width:  100%;
+		height: 100%;
+		margin: 0px;
+	}
+</style>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+attribute vec3 aPosition;
+attribute vec3 aNormal;
+uniform vec3 uLightPosition;
+uniform mat4 uMatrixM;
+uniform mat4 uMatrixV;
+uniform mat4 uMatrixP;
+uniform mat3 uMatrixN;
+uniform vec4 uMaterialDiffuse;
+uniform vec4 uMaterialAmbient;
+uniform vec4 uMaterialSpecular;
+varying vec4 vPosition;
+varying vec3 vNormal;
+void main(void) {
+	vPosition 		= uMatrixV * uMatrixM * vec4(aPosition, 1.0);
+	vNormal 		= uMatrixN * aNormal;
+	gl_Position		= uMatrixP * vPosition;
+} 
+</script>
+
+<script id="shader-fs" type="x-shader/x-fragment">
+#
+precision highp float;
+#
+uniform vec3 uLightPosition;
+uniform mat4 uMatrixM;
+uniform mat4 uMatrixV;
+uniform mat4 uMatrixP;
+uniform mat3 uMatrixN;
+uniform vec4 uMaterialDiffuse;
+uniform vec4 uMaterialAmbient;
+uniform vec4 uMaterialSpecular;
+varying vec4 vPosition;
+varying vec3 vNormal;
+void main(void) {
+	vec3 normal 			= vNormal;
+	normal					= normalize(normal);
+	vec3 lightDirection		= normalize(uLightPosition - vPosition.xyz);
+	vec3 eyeDirection		= normalize(-vPosition.xyz);
+	vec3 lightReflected		= reflect(-lightDirection, normal);
+	vec4 lightDiffuse		= vec4(1,1,1,1);
+	vec4 lightAmbient		= vec4(1,1,1,1);
+	vec4 lightSpecular		= vec4(0,0,0,0);
+	float materialShininess	= 1.0;
+	float specular			= pow(clamp(dot(lightReflected, eyeDirection), 0.0, 1.0), materialShininess);
+	lightSpecular			+= vec4(1,1,1,0) * specular;
+	vec4 materialDiffuse	= vec4(0.0, 0.0, 0.0, 1.0);
+	vec4 materialAmbient	= vec4(0.0, 0.0, 0.0, 1.0);
+	vec4 materialSpecular	= vec4(0.0, 0.0, 0.0, 1.0);
+	materialDiffuse			+= uMaterialDiffuse;
+	materialAmbient			+= uMaterialAmbient;
+	materialSpecular		+= uMaterialSpecular;
+	float lambertTerm = max(dot(normal, lightDirection), 0.0);
+	vec4 Id = lightDiffuse * materialDiffuse * lambertTerm;
+	vec4 Ia = lightAmbient * materialAmbient;
+	vec4 Is = lightSpecular * materialSpecular;
+	vec4 color = vec4(0,0,0,0);
+	color += Ia;
+	color += Id;
+	color += Is;
+	gl_FragColor = color;
+} 
+</script>
+
+<script type="text/javascript">
+    var gl;	
+	
+	var viewport 		= {};
+	var matrixN 		= mat3.create();
+	var matrixM 		= mat4.create();
+	var matrixV 		= mat4.create();
+	var matrixMV 		= mat4.create();
+	var matrixP 		= mat4.create();
+
+	var heightmap;
+	var watermap;
+	var drawCube;
+	
+	/************************************************
+		Multidimensional array utility functions
+	*************************************************/
+	function arrayNew(r1,r2) {
+		var result = [];
+		for(var i = 0; i < r1; ++i) {
+			result[i] = [];
+			for(var j = 0; j < r2; ++j) {
+				result[i][j] = 0;
+			}
+		}
+		return result;
+	}
+	function arrayMap(array, mapFunction) {
+		var result = [];
+		for (var i = 0; i < array.length; ++i) {
+			if (array[i] instanceof Array) {
+				result[i] = arrayMap(array[i], mapFunction)
+			} else {
+				result[i] = mapFunction(array[i]);
+			}
+		}
+		return result;
+	}
+	function arrayForeach(array, func) {
+		for (var i = 0; i < array.length; ++i) {
+			if (array[i] instanceof Array) {
+				arrayForeach(array[i], func)
+			} else {
+				func(array[i]);
+			}
+		}
+	}
+	function arrayMax(array) {
+		var result = 0;
+		arrayForeach(array, function(element) {
+			if (result < element) result = element;
+		});
+		return result;
+	}
+	function arraySum(array) {
+		var result = 0;
+		arrayForeach(array, function(element) {
+			result += element;
+		});
+		return result;
+	}
+	function arrayAdd(array1, array2) {
+		for(var i = 0; i < array1.length; ++i) {
+			if (array1[i] instanceof Array) {
+				arrayAdd(array1[i], array2[i]);
+			} else {
+				array1[i] += array2[i];
+			}
+		}
+	}
+	function lerp(v1, v2, k) {
+		var result = [];
+		for (var i = 0; i < v1.length; ++i) {
+			result[i] = v1[i] * k + v2[i] * (1.0 - k);
+		}
+		return result;
+	}
+	
+	/************************************************
+		Heighmap utils
+	*************************************************/
+	function setRegion(array, row, col, index) {
+		var isOutOfBounds = 
+			row < 0 || row >= array.length ||
+			col < 0 || col >= array[row].length;
+		if (isOutOfBounds) return;
+		var value = array[row][col];
+		if (value > 0) return;
+		
+		array[row][col] = index;
+		setRegion(array, row + 1, col, index);
+		setRegion(array, row - 1, col, index);
+		setRegion(array, row, col - 1, index);
+		setRegion(array, row, col + 1, index);
+	}
+	
+	function createWatermap(heightmap) {
+		var maxHeight = arrayMax(heightmap);
+		var result = arrayMap(heightmap, function() { return 0;})
+		for(var i = 1; i <= maxHeight; ++i) {		
+			var height = i;
+			var slice = arrayMap(heightmap, function (element) {
+				if (element < height) return 0;
+				return 1;
+			});
+			// 0 - undefined
+			// 1 - heightmap
+			var index = 2; // Min free cell index
+			// Generate regions
+			for (var r = 0; r < slice.length; ++r) {
+				for (var c = 0; c < slice[r].length; ++c) {
+					if (slice[r][c] > 1) continue;
+					setRegion(slice, r, c, index);
+					++index;
+				}
+			}
+			// Find excluded region indexes
+			var excluded = []; 
+			for (var r = 0; r < slice.length; ++r) {
+				for (var c = 0; c < slice[r].length; ++c) {
+					var regionIndex = slice[r][c];
+					if (heightmap[r][c] === 0) excluded[regionIndex] = true;
+				}
+			}
+			
+			slice = arrayMap(slice, function(element) {
+				if (excluded[element]) return 0;
+				if (element > 1) return 1;
+				return 0;
+			});
+			
+			arrayAdd(result, slice);
+		}
+		return result;
+	}
+	
+	function generateHeightsAndWater(rows, columns, maxHeight) {
+		heightmap = arrayMap(arrayNew(rows, columns), function(element) {
+			return Math.floor(Math.random() * maxHeight);
+		});		
+		watermap = createWatermap(heightmap);
+	}
+	
+	function createElementTable(array) {
+		var table = document.createElement("table");
+		for (var i = 0; i < array.length; ++i) {
+			var tr = document.createElement("tr");
+			table.appendChild(tr);
+			for (var j = 0; j < array[i].length; ++j) {
+				var td = document.createElement("td");
+				tr.appendChild(td);
+				var input = document.createElement("input");
+				input.setAttribute("type","text");
+				input.setAttribute("size","2");
+				input.setAttribute("align","center");
+				input.setAttribute("style","margin:0; padding:0;");
+				input.setAttribute("value",array[i][j]);
+				input.row = i;
+				input.column = j;
+				
+				input.onchange = function() {
+					heightmap[this.row][this.column] = Math.floor(this.value);
+					watermap = createWatermap(heightmap);
+				};
+				td.appendChild(input);
+			}
+		}
+		return table
+	}
+	
+	function onClickGenerate() {
+		var rows = parseFloat(document.getElementById("idRows").value);
+		var cols = parseFloat(document.getElementById("idCols").value);
+		var maxHeight = parseFloat(document.getElementById("idMax").value);
+		
+		generateHeightsAndWater(rows, cols, maxHeight + 1);
+		var heightmapTable = document.getElementById("heightmap");
+		heightmapTable.innerHTML = '';
+		heightmapTable.appendChild(createElementTable(heightmap));		
+	}
+	
+	
+	function init() {				
+		var materialDiffuse 	= [0.5, 0.5, 0.5, 1.0];
+		var materialSpecular 	= [1.0, 1.0, 1.0, 1.0];
+		var materialAmbient 	= [0.0, 0.0, 0.0, 1.0];
+		
+		// Initialize matrices
+		viewport.x 		= 0;
+		viewport.y 		= 0;
+		viewport.width 	= gl.canvas.width;
+		viewport.height = gl.canvas.height;
+		mat4.perspective(45, viewport.width / viewport.height, 0.1, 100.0, matrixP);
+		mat4.perspective(45, viewport.width / viewport.height, 0.1, 100.0, matrixP);
+		mat4.identity(matrixV);
+		mat4.translate(matrixV, [0,0,-50]);
+		mat4.rotate(matrixV, -Math.PI / 4, [1,0,0]);
+		mat4.identity(matrixM);
+		mat4.identity(matrixMV);
+		
+		var vertexShaderSource = document.getElementById("shader-vs").textContent;
+		var fragmentShaderSource = document.getElementById("shader-fs").textContent;
+		
+		drawCube = new Proxy(new Program(new VertexShader(vertexShaderSource),new FragmentShader(fragmentShaderSource))).
+			uniform4f("uMaterialDiffuse", 	materialDiffuse).
+			uniform4f("uMaterialAmbient", 	materialAmbient).
+			uniform4f("uMaterialSpecular", 	materialSpecular).
+			uniform3f("uLightPosition", 	0.0, 0.0, 0.0).
+			uniformMatrix4fv("uMatrixP", 	matrixP).
+			uniformMatrix4fv("uMatrixM", 	matrixM).
+			uniformMatrix4fv("uMatrixV", 	matrixV).
+			uniformMatrix3fv("uMatrixN", 	matrixN).
+			attribute3f("aPosition", new ArrayBuffer([
+				// Front face
+				-1.0, -1.0,  1.0,
+				 1.0, -1.0,  1.0,
+				 1.0,  1.0,  1.0,
+				-1.0,  1.0,  1.0,
+				// Back face
+				-1.0, -1.0, -1.0,
+				-1.0,  1.0, -1.0,
+				 1.0,  1.0, -1.0,
+				 1.0, -1.0, -1.0,
+				// Top face
+				-1.0,  1.0, -1.0,
+				-1.0,  1.0,  1.0,
+				 1.0,  1.0,  1.0,
+				 1.0,  1.0, -1.0,
+				// Bottom face
+				-1.0, -1.0, -1.0,
+				 1.0, -1.0, -1.0,
+				 1.0, -1.0,  1.0,
+				-1.0, -1.0,  1.0,
+				// Right face
+				 1.0, -1.0, -1.0,
+				 1.0,  1.0, -1.0,
+				 1.0,  1.0,  1.0,
+				 1.0, -1.0,  1.0,
+				// Left face
+				-1.0, -1.0, -1.0,
+				-1.0, -1.0,  1.0,
+				-1.0,  1.0,  1.0,
+				-1.0,  1.0, -1.0,
+			])).
+			attribute3f("aNormal", new ArrayBuffer([
+				// Front face
+				 0.0,  0.0,  1.0,
+				 0.0,  0.0,  1.0,
+				 0.0,  0.0,  1.0,
+				 0.0,  0.0,  1.0,
+				// Back face
+				 0.0,  0.0, -1.0,
+				 0.0,  0.0, -1.0,
+				 0.0,  0.0, -1.0,
+				 0.0,  0.0, -1.0,
+				// Top face
+				 0.0,  1.0,  0.0,
+				 0.0,  1.0,  0.0,
+				 0.0,  1.0,  0.0,
+				 0.0,  1.0,  0.0,
+				// Bottom face
+				 0.0, -1.0,  0.0,
+				 0.0, -1.0,  0.0,
+				 0.0, -1.0,  0.0,
+				 0.0, -1.0,  0.0,
+				// Right face
+				 1.0,  0.0,  0.0,
+				 1.0,  0.0,  0.0,
+				 1.0,  0.0,  0.0,
+				 1.0,  0.0,  0.0,
+				// Left face
+				-1.0,  0.0,  0.0,
+				-1.0,  0.0,  0.0,
+				-1.0,  0.0,  0.0,
+				-1.0,  0.0,  0.0
+			])).
+			drawElementsTriangles(new ArrayBuffer([
+				0, 1, 2,      0, 2, 3,    // Front face
+				4, 5, 6,      4, 6, 7,    // Back face
+				8, 9, 10,     8, 10, 11,  // Top face
+				12, 13, 14,   12, 14, 15, // Bottom face
+				16, 17, 18,   16, 18, 19, // Right face
+				20, 21, 22,   20, 22, 23  // Left face
+			]).typeUnsignedShort());
+		drawCube.get();
+
+		generateHeightsAndWater(1, 10, 6);
+		var heightmapTable = document.getElementById("heightmap");
+		heightmapTable.innerHTML = '';
+		heightmapTable.appendChild(createElementTable(heightmap));
+	}
+	
+	function render() {		
+		gl.enable(gl.DEPTH_TEST);
+		gl.clearColor(0.0, 0.0, 0.0, 1.0);
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
+		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+
+		gl.disable(gl.BLEND);
+		
+		drawCube.
+			uniform4f("uMaterialAmbient", [0,0,0,1]).
+			uniform4f("uMaterialSpecular", [0.5,0.5,0.5,1]);
+			
+		var maxHeight = arrayMax(heightmap);
+		var colorMin = [0, 1.0, 0, 1.0];
+		var colorMax = [1.0, 0.0, 0, 1.0];
+		
+		for (var i = 0; i < heightmap.length; ++i) {
+			for (var j = 0; j < heightmap[i].length; ++j) {			
+				mat4.identity(matrixMV);
+				mat4.multiply(matrixM, matrixMV, matrixMV);
+				mat4.multiply(matrixV, matrixMV, matrixMV);
+				mat4.toInverseMat3(matrixMV, matrixN);
+				mat3.transpose(matrixN);
+
+				var y = i * 2;
+				var x = j * 2;				
+				var h = heightmap.length * 2;
+				var w = heightmap[i].length * 2;
+				var height = heightmap[i][j];
+				for (var k = 1; k <= height; ++k) {
+					var z = k * 2;
+					var position = mat4.create();
+					mat4.identity(position);
+					mat4.translate(position, [x - w / 2, y - h / 2, z - maxHeight]);
+					mat4.multiply(matrixM, position, position);
+					drawCube.
+					uniformMatrix4fv("uMatrixM", 	position).
+					uniform4f("uMaterialDiffuse", 	lerp(colorMin, colorMax, k / (maxHeight))).
+					run();
+				}
+			}
+		}
+
+		gl.enable(gl.BLEND);
+		gl.blendFunc(gl.ONE, gl.ONE);
+		drawCube.
+			uniform4f("uMaterialAmbient", 	[0, 0, 0.1, 1.0]).
+			uniform4f("uMaterialSpecular", 	[0, 0, 0.5, 1.0]).
+			uniform4f("uMaterialDiffuse", 	[0, 0, 1, 1.0]);
+		for (var i = 0; i < watermap.length; ++i) {
+			for (var j = 0; j < watermap[i].length; ++j) {
+				mat4.identity(matrixMV);
+				mat4.multiply(matrixM, matrixMV, matrixMV);
+				mat4.multiply(matrixV, matrixMV, matrixMV);
+				mat4.toInverseMat3(matrixMV, matrixN);
+				mat3.transpose(matrixN);
+
+				var y = i * 2;
+				var x = j * 2;				
+				var h = watermap.length * 2;
+				var w = watermap[i].length * 2;
+				var height = watermap[i][j];
+				for (var k = 1; k <= height; ++k) {
+					var z = k * 2 + heightmap[i][j] * 2;
+					var position = mat4.create();
+					mat4.identity(position);
+					mat4.translate(position, [x - w / 2, y - h / 2, z - maxHeight]);
+					mat4.multiply(matrixM, position, position);
+					drawCube.uniformMatrix4fv("uMatrixM", 	position).run();
+				}
+			}
+		}
+    }
+    
+    function update() {
+		stats.begin();
+		render();
+		stats.end();
+		requestAnimFrame(update)
+    }
+
+    function webGLStart() {	
+		stats = new Stats();
+		stats.setMode(0); // 0: fps, 1: ms
+		// Align top-left
+		stats.domElement.style.position = 'absolute';
+		stats.domElement.style.left = '0px';
+		stats.domElement.style.top = '0px';
+
+		document.body.appendChild( stats.domElement );
+	
+        var canvas = document.getElementById("canvas");
+		gl = WebGLUtils.setupWebGL(canvas);
+		init();
+        update();
+		
+		addMouseListener(canvas, function (dx, dy, lb, rb, mb) {
+			mat4.rotate(matrixV, 0.05, [dy, 0, 0]);
+			mat4.rotate(matrixM, 0.05, [0, 0, dx]);
+		}) ;
+    }
+	
+	function addMouseListener(element, listener) {
+		var x;
+		var y;
+		var isMouseDown = false;
+		element.addEventListener("mousemove", function(e) {
+			if (isMouseDown) {
+				listener(e.clientX - x, e.clientY - y);
+				x = e.clientX;
+				y = e.clientY;
+			}
+		}); 
+		
+		element.addEventListener("mousedown", function(e) {
+			isMouseDown = true;
+		}); 
+
+		element.addEventListener("mouseup", function(e) {
+			isMouseDown = false;
+		});
+	
+	}
+</script>
+</head>
+
+
+<body onload="webGLStart();">
+	<div align = "left">
+		<canvas id="canvas" float="left" style="float:left; border: none; margin:0; padding:0; " width="500" height="500"></canvas>	
+		<div>
+			Rows: 
+			<input type="text" size="2" id="idRows" value="1"/>
+			Columns: 
+			<input type="text" size="2"  id="idCols" value="10"/>
+			Max height: 
+			<input type="text" size="2"  id="idMax" value="5"/>
+			<input type="button" id="idNew" value="generate" onclick="onClickGenerate()" />
+			<br/>
+			Heightmap:
+			<div id="heightmap" style="border:1px; margin:0; padding:0; "/>
+		</div>
+	</div>
+	
+</body>
+
+</html>
