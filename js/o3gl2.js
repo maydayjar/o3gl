@@ -1381,9 +1381,7 @@ o3gl.Program = function(shader1,shader2) {
 	They retain their values once loaded, and their values are restored whenever a program object is used, 
 	as long as the program object has not been re-linked.
 	*/
-	// Some draw methods has default versions that rely on the used VBO's traits
-	this.elementsCount = undefined;
-	// Shit!!!
+	// TODO Shit!!!
 	this.getTextureIndex = function (uniformName) {
 		return Utils.counter(this.textureIndex, uniformName);
 	}
@@ -1585,6 +1583,19 @@ o3gl.Program.prototype = {
 	}
 	,
 	UniformMatrix4fv: function(name, matrix) {
+	
+		// location [in]
+		// Type: WebGLUniformLocation
+		// The location of uniform variable to be updated. Locate set by getUniformLocation.
+		
+		// transpose [in]
+		// Type: boolean
+		// Sets whether to transpose the matrix as the values are loaded into the uniform variable. Must be set to gl.FALSE.
+		
+		// value [in]
+		// Type: Float32Array
+		// An array of float values representing one or more 4x4 matrices.
+	
 		gl.uniformMatrix4fv(this.getUniformLocation(name), false, matrix);
 		return this;		
 	}
@@ -1755,6 +1766,8 @@ o3gl.Program.prototype = {
 	}
 	,
 	_vertexAttribPointer : function (name, arrayBufferPointer) {		
+		//@See https://stackoverflow.com/questions/27316605/is-vertex-attrubute-pointer-persistent-in-opengl-es
+	
 		var arrayBuffer 	= arrayBufferPointer._buffer;
 		var type        	= arrayBuffer._type; 			// !!!
         var normalized  	= arrayBuffer._normalized;		//
@@ -1965,9 +1978,12 @@ o3gl.ProgramSources.prototype = {
 	}
 	,
 	createProgram : function() {
-		return new o3gl.Program(
-			new o3gl.Shader(this.vertexShaderSource.join("\n")) , new o3gl.Shader(this.fragmentShaderSource.join("\n"))
+		var program = o3gl.createProgram(
+			o3gl.createShader(this.vertexShaderSource.join("\n")) , 
+			o3gl.createShader(this.fragmentShaderSource.join("\n"))
 		);	
+		
+		return program;
 	}
 }
 
