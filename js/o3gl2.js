@@ -421,7 +421,6 @@ States:
 hints
 */
 
-
 o3gl.Texture = function() {
 //	this.magFilter 		= gl.LINEAR;
 //	this.minFilter 		= gl.LINEAR_MIPMAP_NEAREST
@@ -459,6 +458,21 @@ o3gl.Texture = function() {
 		}
 		return true;
 	}
+}
+
+
+/*
+	Auxillary class that refers to the texture level and target ()
+*/
+o3gl.Texture.Pointer = function(texture) {
+	this.texture 			= texture;
+	this._level 			= 0;
+	this._targetTexture		= 0;
+	
+	this._xOffset			= undefined;
+	this._yOffset			= undefined;
+	this._width				= undefined;
+	this._height			= undefined;
 }
 
 o3gl.Texture.prototype = {
@@ -514,9 +528,30 @@ o3gl.Texture.prototype = {
 			height 	= arguments[4];
 		}
 		
+		// TODO: we must consider following texture methods:
+		// texImage2D						//
+		// texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels)					// Replaces a portion of an existing 2D texture image with all of another image.
+		// compressedTexImage2D				//
+		// compressedTexSubImage2D			//
+		
+		// copyTexImage2D(target, level, format, x, y, width, height, border);									// Copies a rectangle of pixels from the current WebGLFramebuffer into a texture image.
+		// copyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);								// Replaces a portion of an existing 2D texture image with data from the current framebuffer.
+		
 		if (data) {
 			if (xOffset && yOffset && width && height) {
-				
+				// Replaces a portion of an existing 2D texture image with all of another image.
+				gl.texSubImage2D(
+					this._targetTexture,
+					this._level,
+					xOffset,
+					yOffset,
+					width,
+					height,
+					// this._internalFormat,  // Internal format is already specified
+					this._format, 
+					this._type, 
+					data
+				);
 			} else {
 				gl.texImage2D(this._targetTexture,
 					this._level, 
@@ -728,6 +763,7 @@ o3gl.Texture.prototype = {
 	}
 	,
 
+	// TODO: must be implemented as an Buffer.pointer
 	positiveX : function() {
 		this._target = gl.TEXTURE_CUBE_MAP;
 		this._targetTexture = gl.TEXTURE_CUBE_MAP_POSITIVE_X;
@@ -1357,6 +1393,37 @@ o3gl.Shader.prototype = {
 	}
 }
 
+// http://blog.tojicode.com/2012/10/oesvertexarrayobject-extension.html
+o3gl.VertexArrayObject = function (programs) {
+	this.extension = gl.getExtension("OES_vertex_array_object"); // Vendor prefixes may apply!  
+	this.vertexArrayObjectId = extension.createVertexArrayOES();
+}
+
+o3gl.VertexArrayObject.prototype = {
+	Id : function() {
+		return this.vertexArrayObjectId;
+	}
+	,
+	Delete : function() {
+		this.deleteVertexArrayOES(this.vertexArrayObjectId);
+	}
+	,
+	Bind : function() {
+		this.extension.bindVertexArrayOES(this.vertexArrayObjectId);
+		return this;
+	}
+	,
+	Attribute1f : function(index, pointer) {} // arraybuffers must be fully initialized here
+	,
+	Attribute2f : function(index, pointer) {}
+	,
+	Attribute3f : function(index, pointer) {}
+	,
+	Attribute4f : function(index, pointer) {}
+	,
+	Elements :function() {}
+}
+
 /**
  *
  * @param {Shader} shader1
@@ -1386,6 +1453,9 @@ o3gl.Program = function(shader1,shader2) {
 		return Utils.counter(this.textureIndex, uniformName);
 	}
 }
+
+
+
 
 o3gl.Program.prototype = {
 	isUsed : function() {
@@ -1463,6 +1533,28 @@ o3gl.Program.prototype = {
 		return null;
 	}
 	,
+	getActiveUniforms : function() { 
+		var result = [];
+		var activeUniformsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS);
+		for (var idx = 0; idx < activeUniformsCount; ++idx) {
+			// Get information about an active uniform variable
+			var variable = gl.getActiveUniform(this.Id(), idx); // {name:"", type:int, size:3}
+			result.push(variable);
+		}
+		return result;
+	}
+	,
+	getActiveAttributes : function() {
+		var result = [];
+		var activeAttribsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS);
+		for (var idx = 0; idx < activeAttribsCount; ++idx) {
+				// Get information about an active attribute variable
+				var variable = gl.getActiveAttrib(this.Id(), idx);
+				result.push(variable);
+		}
+		return result;
+	}
+	,
 	Use : function () {
 		gl.useProgram(this.Id());
 		
@@ -1529,6 +1621,16 @@ o3gl.Program.prototype = {
 		}
 		return result;
 		*/
+	}
+	,
+	BindAttribLocation : function (name, index) {
+		/*
+			More than one name can be bound to the same vertex index, but multiple indexes cannot be bound to the same name.
+			If name is a matrix attribute, then index points to the first column of the matrix. Additional matrix columns are automatically bound to index+1, index+2, and so forth based on matrix variable (mat2,mat3,mat4).
+		*/
+		gl.bindAttribLocation(this.programId, index, name);
+		this.attributes[name].location = index;
+		return this;
 	}
 	,
 	getSize : function(name) { 
@@ -2116,11 +2218,103 @@ return o3gl;
 }
 
 /*
+// Experimental interface
+
+var dc = DrawCall {
+	Delete : function() {}
+	
+	
+	
+	in : function(name, value) {
+	}
+	,
+	out : function(texture) {}
+	,
+	out : function(depthBuffer) {}
+	,
+	in : function (depthBuffer) {}
+}
+
+
+o3gl.program().binding().color(texture).depthMask().depthTest()
+
+var ns = o3gl.instance(); // Utilize shaders, programs, framebuffers, vertex array objects
+
+var p1 = ns.Sources(vs, fs).Set("", vb.pointer()).Set
+
+var resources = o3gl.resources();
+
+resources.Begin();
+resources.End();
+
+o3gl.resources().Delete();
+
+ns.Delete();
+
+program.Set("a1", ab.pointer())		// creates new program instance, implicitly creates VAO or it's program implementation
+program.VertexArrayObject() 		// create VAO explicitly, create program instance
+program.VertexArrayObject(vao)		// use existing vao (program attribs relocation)
+
+program.VertexArrayObject().Elements(elements.pointer()).
+
+program.FrameBuffer().Color()
+
+program.FrameBuffer(fbo)
+
+var texture = o3gl.createTexture();
+var rbDepth;
+
+program.FrameBufferDefault().DepthTest().DepthMask()
+
+
+var instance1 = 
+	program.
+	Set("u1",1,0,0).
+	Set(o3gl.createVertexArrayObject())
+	
+	VertexArrayObject(). 			// Create inner VAO explicitly
+		Set("a1",vab.pointer()).
+		Set("a1",vab.pointer()).
+		Elements(eab).
+		
+	FrameBufferObject().			// Create inner FBO explicitly
+		Color(texture).				// Create inner render buffer from texture
+		DepthMask().				// 
+		DepthTest();
+	
+
+
+	program.
+		attribute("a1").Set()
+		
+
+
+	
+	
+	Color(texture).
+	Color(rbColor).
+	DepthTest(rbDepth).
+	DepthMask(rbDepth)
+	
+	
+	
+
+
+var binding = ns.binding(program1,program2,program3).Set("a1",ptr1).Set("a2",prt2).
+
+//...
+
+program.
+
+*/
+
+/*
 	program.
 	Set("uP",1,0,0).
 	Set("aV", ab.pointer().stride(0).offset(0)).			
 	Set("sampler", t1).
 	Color(t1.level(0)).
 	Depth(depthBuffer).depthMask(true).depthTest(true).
+	Elements(elementArray)
 	DrawTriangles(indexes, 0, 6).toFrameBuffer(frameBuffer);
 */
