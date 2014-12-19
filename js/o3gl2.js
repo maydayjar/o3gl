@@ -404,6 +404,45 @@ o3gl.parameters[gl.TEXTURE_BINDING_CUBE_MAP] 		= undefined;
 o3gl.parameters[gl.CURRENT_PROGRAM] 				= undefined;
 
 
+
+
+// AUXILLARY METHODS
+o3gl.VertexAttrib = function(attributeLocation, v1, v2, v3, v4) {
+	gl.disableVertexAttribArray(attributeLocation);
+	switch(arguments.length) {
+		case 2 : gl.vertexAttrib1f(attributeLocation, v1); break;
+		case 3 : gl.vertexAttrib2f(attributeLocation, v1, v2); break;
+		case 4 : gl.vertexAttrib3f(attributeLocation, v1, v2, v3); break;
+		case 5 : gl.vertexAttrib4f(attributeLocation, v1, v2, v3, v4); break;
+	}
+}
+o3gl.VertexAttribPointer = function (attributeLocation, arrayBufferPointer) {		
+	//@See https://stackoverflow.com/questions/27316605/is-vertex-attrubute-pointer-persistent-in-opengl-es
+
+	var arrayBuffer 	= arrayBufferPointer._buffer;
+	var type        	= arrayBuffer._type; 			// !!!
+	var normalized  	= arrayBuffer._normalized;		//
+	
+	var sizeOfTypeBytes = Utils.glSizeOfType(type);
+	var size 			= arrayBufferPointer._size;
+	var strideBytes     = arrayBufferPointer._stride * sizeOfTypeBytes;
+	var offsetBytes     = arrayBufferPointer._offset * sizeOfTypeBytes;
+		
+	arrayBuffer.targetArrayBuffer(); // Assert or deffered initialization for Buffer
+	arrayBuffer.Bind();
+	gl.enableVertexAttribArray(attributeLocation);
+	gl.vertexAttribPointer(attributeLocation,
+		size,   // Specifies the number of components per generic vertex attribute. Must be 1, 2, 3, 4. Additionally, the symbolic constant GL_BGRA is accepted by glVertexAttribPointer. The initial value is 4.
+		type,   // Specifies the data type of each component in the array
+		normalized,  // Specifies whether fixed-point data values should be normalized (GL_TRUE) or converted directly as fixed-point values (GL_FALSE) when they are accessed.
+		strideBytes, // Specifies the byte offset between consecutive generic vertex attributes. If stride is 0, the generic vertex attributes are understood to be tightly packed in the array. The initial value is 0.
+		offsetBytes  // Specifies a offset of the first component of the first generic vertex attribute in the array in the data store of the buffer currently bound to the GL_ARRAY_BUFFER target. The initial value is 0.
+	);
+}
+
+
+
+
 /*
 Deffered setting cases:
 1) array buffer / element array buffer
@@ -807,13 +846,11 @@ o3gl.Texture.prototype = {
 * This class implements deffered target and type resolve,
 * relying on the buffer's usage context
 */
-o3gl.Buffer = function(data) {
-	this._data = data;
-	
+o3gl.Buffer = function() {
 	// Basically usage parameter is a hint to OpenGL/WebGL how you intent to use the buffer. The OpenGL/WebGL can then optimize the buffer depending of your hint.
 	this._usage 		= gl.STATIC_DRAW;			// gl.STATIC_DRAW gl.DYNAMIC_DRAW
 	this._target 		= undefined;				// gl.ARRAY_BUFFER gl.ELEMENT_ARRAY_BUFFER
-	this._type 			= undefined;				// Component type
+	this._type 			= undefined;				// Component type HINT. Used by pointers as default value
 
 	this._bufferId 		= gl.createBuffer();	
 }
@@ -865,30 +902,83 @@ o3gl.Buffer.prototype =
 		return this;
 	}
     ,
-    /**
-     * The “normalized” indicates whether integer types are accepted directly or normalized to [0;1] (for unsigned types)
-     * or [-1;1] (for signed types)
-     * @param enable
-     */
-    normalized : function() {
-        // Assert one of the integer types.
-        // i.e. typeByte().normalized()
-        this._normalized = true;
-        return this;
-    }
-    ,
+	/**
+	 * The data store contents are modified once, and used many times as the source for WebGL drawing commands.
+	 */
     usageStaticDraw : function() {
 		this._usage = gl.STATIC_DRAW;
 		var builder = this; 
 		return builder;
 	}
 	,
+	/**
+	 * The data store contents are repeatedly respecified, and used many times as the source for WebGL drawing commands
+	 */
 	usageDynamicDraw : function() {
 		this._usage = gl.DYNAMIC_DRAW;
 		var builder = this; 
 		return builder;
 	}
 	,
+	/**
+	 * The data store contents are specified once, and used occasionally as the source of a WebGL drawing command
+	 */
+	usageStreamDraw : function() {
+		this._usage = gl.STREAM_DRAW;
+		var builder = this; 
+		return builder;
+	}
+	,
+	/**
+	* Accepts javascript arrays and WebGL typed arrays
+	*/
+	Data : function(array, offset) {
+		var typedArray;
+		// Convert array to typed array
+		if (array instanceof Array) {
+			// Assign default value
+			if (!this._type) {
+				if (this._target === gl.ELEMENT_ARRAY_BUFFER)
+					this._type = gl.UNSIGNED_SHORT;
+				if (this._target === gl.ARRAY_BUFFER)
+					this._type = gl.FLOAT;
+			}
+			typedArray = Utils.createTypedArray(this._type, array);
+		} else {
+			// Does it make sense of passing typed arrays here?
+			typedArray = array;
+			var glType = Utils.glArrayType(typedArray);
+			this._type = glType; // Overwrite current type.
+		}
+		// Set the default offset value
+		if (offset === undefined) {
+			// Rewrite entire buffer data
+			gl.bufferData(this._target, typedArray, this._usage);
+			this._length = array.length;			
+		} else {
+			// Rewrite partial buffer data			
+			gl.bufferSubData(this._target, offset, typedArray);			
+		}
+		return this;
+	}
+}
+
+o3gl.Buffer.Pointer = function(buffer) {
+	// Assert buffer target is Array
+	buffer.targetArrayBuffer();
+    this._buffer = buffer;
+
+    this._type = buffer._type;	// It is possible that buffer contains data of various types. So type must be set per pointer
+    this._stride = 0;			// Stride in bytes
+    this._offset = 0;			// Offset in bytes
+	this._size = 4; 			// Specifies the number of components per generic vertex attribute. Must be 1, 2, 3, 4. Additionally, the symbolic constant GL_BGRA is accepted by glVertexAttribPointer. The initial value is 4.
+	this._normalized = false;	// as
+	
+	this._divisor = 0;	// Extensions ANGLE_instanced_arrays, 
+	
+}
+
+o3gl.Buffer.Pointer.prototype = {
 	typeByte : function() {
 		this._type = gl.BYTE;
 		return this;
@@ -934,58 +1024,13 @@ o3gl.Buffer.prototype =
 		return this;
 	}
 	,
-	/**
-	* Accepts javascript arrays and WebGL typed arrays
-	*/
-	Data : function(array, offset) {
-		var typedArray;
-		// Convert array to typed array
-		if (array instanceof Array) {
-			// Assign default value
-			if (!this._type) {
-				if (this._target === gl.ELEMENT_ARRAY_BUFFER)
-					this._type = gl.UNSIGNED_SHORT;
-				if (this._target === gl.ARRAY_BUFFER)
-					this._type = gl.FLOAT;
-			}
-			typedArray = Utils.createTypedArray(this._type, array);
-		} else {
-			// Does it make sense of passing typed arrays here?
-			typedArray = array;
-			var glType = Utils.glArrayType(typedArray);
-			this._type = glType; // Overwrite current type.
-		}
-		// Set the default offset value
-		if (offset === undefined) {
-			// Rewrite entire buffer data
-			gl.bufferData(this._target, typedArray, this._usage);
-			this._length = array.length;			
-		} else {
-			// Rewrite partial buffer data			
-			gl.bufferSubData(this._target, offset, typedArray);			
-		}
-		return this;
-	}
-}
-
-o3gl.Buffer.Pointer = function(buffer) {
-	// Assert buffer target is Array
-	buffer.targetArrayBuffer();
-	
-    this._buffer = buffer;
-    this._stride = 0;	// Stride in (elements or bytes ???)
-    this._offset = 0;	// Offset in (elements or bytes ???)
-	this._size = 4; 	// Specifies the number of components per generic vertex attribute. Must be 1, 2, 3, 4. Additionally, the symbolic constant GL_BGRA is accepted by glVertexAttribPointer. The initial value is 4.
-}
-
-o3gl.Buffer.Pointer.prototype = {
-	stride : function(elements) {
-		this._stride = elements;
+	stride : function(bytes) {
+		this._stride = bytes;
 		return this;
 	}
 	,
-	offset : function(elements) {
-		this._offset = elements;
+	offset : function(bytes) {
+		this._offset = bytes;
 		return this;
 	}
 	,
@@ -993,90 +1038,32 @@ o3gl.Buffer.Pointer.prototype = {
 		this._size = value;
 		return this;
 	}
-}
-
-o3gl.Iterator = function() {
-	this._program; 
-	this._arrayBuffer = {}; 				// VBO's
-	this._first = 0;						// first index
-	this._count = undefined; 				// If undefined vertices count is retrieved from assotiated array buffers length or element array buffer length
-	this._elementArrayBuffer = undefined; 	// If undefined the use drawArrays otherwise use drawElements
-	this._mode = gl.TRIANGLES;				
-}
-
-o3gl.Iterator.prototype = {
-	/** connects each group of three consecutive vertices to make a triangle - so 24 vertices produces 8 separate triangles. */
-	modeTriangles : function() {
-		this._mode = gl.TRIANGLES;
+	,
+	divisor : function(value) {
+		// specifies for the given attribute location how often a value should be repeated when drawing instanced arrays
+		// A divisor of 0 means the attribute isn't instanced
+		// A divisor of one means that each value in the attribute stream is used for a single instance
+		this._divisor = value;
 		return this;
 	}
 	,
-	/** is a little harder to get your head around...let's letter our 24 vertices 'A' through 'X'. 
-	* This produces N-2 triangles where N is the number of vertices...the first triangle connects vertices A,B,C, 
-	* the remaining triangles are each formed from the previous two vertices of the last triangle...(swapped over to keep the triangle facing the same way) plus one new vertex, so the second triangle is C,B,D, the third is C,D,E, the fourth is E,D,F...all the way through to the 22nd triangle which is made from W,V,X. 
-	* This sounds messy but imagine that you are drawing something like a long, winding ribbon - with vertices A,C,E,G down one side of the ribbon and B,D,F,H down the otherside. 
-	* You'll need to sketch this one on some paper to get the hang of it. */
-	modeTriangleStrip : function() {
-		this._mode = gl.TRIANGLE_STRIP;
-		return this;
-	}
+    /**
+     * The “normalized” indicates whether integer types are accepted directly or normalized to [0;1] (for unsigned types)
+     * or [-1;1] (for signed types)
+     * @param enable
+     */
+    normalized : function(value) {
+        // Assert one of the integer types.
+        // i.e. typeByte().normalized()
+        this._normalized = value;
+        return this;
+    }
 	,
-	/**  similar in concept to the STRIP but now we start with triangle A,B,C, then A,C,D, then A,D,E...and so on until A,W,X. The result looks like a ladies' fan. */
-	modeTriangleFan : function() {
-		this._mode = gl.TRIANGLE_FAN;
-		return this;
-	}
-	,
-	/** Draws each vertex as a single pixel dot...so if there are 24 vertices, you get 24 dots.*/
-	modePoints : function() {
-		this._mode = gl.POINTS;
-		return this;
-	}
-	,
-	/** connects each pair of vertices by a straight line, so 24 vertices produces 12 separate lines. */
-	modeLines : function() {
-		this._mode = gl.LINES;
-		return this;
-	}
-	,
-	/** connects each vertex to the next by a straight line, so 24 vertices produces 23 lines that are all connected end-to-end. */
-	modeLineStrip : function() {
-		this._mode = gl.LINE_STRIP;
-		return this;
-	}
-	,
-	/**  is like LINESTRIP except that the last vertex is connected back to the first, so 24 vertices produces 24 straight lines - looping back to the start*/
-	modeLineLoop : function() {
-		this._mode = gl.LINE_LOOP;
-		return this;
-	}
-	
-	,
-	first : function(element) {
-		this._first = element;
-		return this;
-	}
-	,
-	count : function(elements) {
-		this._count = elements;
-		return this;
-	}
-	,
-	elements : function(elementArrayBuffer) {
-		// Assert the buffer target
-		elementArrayBuffer.targetElementArrayBuffer();
-		this._elementArrayBuffer = elementArrayBuffer;
-		return this;
-	}
-	,
-	pointer : function(name, arrayBuffer) {
-		if (arrayBuffer) {
-			this._arrayBuffer[name] = arrayBuffer.pointer();
-		}
-		return this._arrayBuffer[name];
+	getMaxElementsCount : function() {
+		// TODO: consider offset, stride and data type
+		return this._buffer._length / this._size;
 	}
 }
-
 
 o3gl.FrameBufferDefault = {
 	getWidth : function() {
@@ -1394,7 +1381,7 @@ o3gl.Shader.prototype = {
 }
 
 // http://blog.tojicode.com/2012/10/oesvertexarrayobject-extension.html
-o3gl.VertexArrayObject = function (programs) {
+o3gl.VertexArrayObject = function () {
 	this.extension = gl.getExtension("OES_vertex_array_object"); // Vendor prefixes may apply!  
 	this.vertexArrayObjectId = extension.createVertexArrayOES();
 }
@@ -1405,7 +1392,7 @@ o3gl.VertexArrayObject.prototype = {
 	}
 	,
 	Delete : function() {
-		this.deleteVertexArrayOES(this.vertexArrayObjectId);
+		this.extension.deleteVertexArrayOES(this.vertexArrayObjectId);
 	}
 	,
 	Bind : function() {
@@ -1413,15 +1400,29 @@ o3gl.VertexArrayObject.prototype = {
 		return this;
 	}
 	,
-	Attribute1f : function(index, pointer) {} // arraybuffers must be fully initialized here
+	Attribute1f : function(attributeLocation, pointer) {} // arraybuffers must be fully initialized here
 	,
-	Attribute2f : function(index, pointer) {}
+	Attribute2f : function(attributeLocation, pointer) {}
 	,
-	Attribute3f : function(index, pointer) {}
+	Attribute3f : function(attributeLocation, pointer) {}
 	,
-	Attribute4f : function(index, pointer) {}
+	Attribute4f : function(attributeLocation, pointer) {}
 	,
-	Elements :function() {}
+	Elements :function(elementArrayBuffer) {}
+}
+
+o3gl.UniformBufferObject = function () {
+}
+
+o3gl.UniformBufferObject.prototype = {
+	Id : function() {
+	}
+	,
+	Delete : function() {
+	}
+	,
+	Bind : function() {
+	}
 }
 
 /**
@@ -1452,6 +1453,9 @@ o3gl.Program = function(shader1,shader2) {
 	this.getTextureIndex = function (uniformName) {
 		return Utils.counter(this.textureIndex, uniformName);
 	}
+	
+	// Build uniforms and attributes dictionaries
+	this._initializeVariables();
 }
 
 
@@ -1533,31 +1537,7 @@ o3gl.Program.prototype = {
 		return null;
 	}
 	,
-	getActiveUniforms : function() { 
-		var result = [];
-		var activeUniformsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS);
-		for (var idx = 0; idx < activeUniformsCount; ++idx) {
-			// Get information about an active uniform variable
-			var variable = gl.getActiveUniform(this.Id(), idx); // {name:"", type:int, size:3}
-			result.push(variable);
-		}
-		return result;
-	}
-	,
-	getActiveAttributes : function() {
-		var result = [];
-		var activeAttribsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS);
-		for (var idx = 0; idx < activeAttribsCount; ++idx) {
-				// Get information about an active attribute variable
-				var variable = gl.getActiveAttrib(this.Id(), idx);
-				result.push(variable);
-		}
-		return result;
-	}
-	,
-	Use : function () {
-		gl.useProgram(this.Id());
-		
+	_initializeVariables : function() {
 		// Initialize attributes and uniforms cache
 		if (!this.uniforms) {
 			this.uniforms = {};
@@ -1575,7 +1555,6 @@ o3gl.Program.prototype = {
 				}
 			}
 		}
-		
 		if (!this.attributes) {
 			this.attributes = {};
 			for (var idx = 0; idx < gl.getProgramParameter(this.Id(), gl.ACTIVE_ATTRIBUTES); ++idx) {
@@ -1592,35 +1571,41 @@ o3gl.Program.prototype = {
 				}
 			}
 		}
-
-		
+	}
+	,
+	getActiveUniforms : function() { 
+		var result = [];
+		var activeUniformsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS);
+		for (var idx = 0; idx < activeUniformsCount; ++idx) {
+			// Get information about an active uniform variable
+			var variable = gl.getActiveUniform(this.Id(), idx); // {name:"", type:int, size:3}
+			result.push(variable);
+		}
+		return result;
+	}
+	,
+	getActiveAttributes : function() {
+		var result = [];
+		var activeAttribsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_ATTRIBUTES);
+		for (var idx = 0; idx < activeAttribsCount; ++idx) {
+				// Get information about an active attribute variable
+				var variable = gl.getActiveAttrib(this.Id(), idx);
+				result.push(variable);
+		}
+		return result;
+	}
+	,
+	Use : function () {
+		gl.useProgram(this.Id());
 		return this;
 	}
 	,
 	getUniformLocation : function (name) {
 		return this.uniforms[name].location;
-
-		/*
-		var result = this.dictionary[name];
-		if(!result) {
-			result = gl.getUniformLocation(this.programId, name);
-			this.dictionary[name] = result;
-		}
-		return result;
-		*/
 	}
 	,
 	getAttribLocation : function (name) {
 		return this.attributes[name].location;
-
-		/*
-		var result = this.dictionary[name];
-		if(!result) {
-			result = gl.getAttribLocation(this.programId, name);
-			this.dictionary[name] = result;
-		}
-		return result;
-		*/
 	}
 	,
 	BindAttribLocation : function (name, index) {
@@ -1802,97 +1787,67 @@ o3gl.Program.prototype = {
 	}
 	,
 	Attribute1f : function(name, v1) {
+		var attributeLocation = this.getAttribLocation(name);
 		if (v1 instanceof o3gl.Buffer.Pointer) {
 			var arrayBufferPointer = v1;
 			arrayBufferPointer.size(1);
-			arrayBuffer = arrayBufferPointer._buffer;
-			arrayBuffer.typeFloat();
-			this._vertexAttribPointer(name, arrayBufferPointer);
+			arrayBufferPointer.typeFloat();
+			o3gl.VertexAttribPointer(attributeLocation, arrayBufferPointer);
+			// remember for default draw methods invocation
+			this._defaultElementsCount = arrayBufferPointer.getMaxElementsCount();
 		} else {
-			this._vertexAttrib(name, v1);
+			gl.disableVertexAttribArray(attributeLocation);
+			gl.vertexAttrib1f(attributeLocation, v1); 
 		}
 		return this;
 	}
 	,
-	Attribute2f : function(name, v1, v2, v3, v4) {
+	Attribute2f : function(name, v1, v2) {
+		var attributeLocation = this.getAttribLocation(name);
 		if (v1 instanceof o3gl.Buffer.Pointer) {
 			var arrayBufferPointer = v1;
 			arrayBufferPointer.size(2);
-			arrayBuffer = arrayBufferPointer._buffer;
-			arrayBuffer.typeFloat();
-			this._vertexAttribPointer(name, arrayBufferPointer);
+			arrayBufferPointer.typeFloat();
+			o3gl.VertexAttribPointer(attributeLocation, arrayBufferPointer);
+			// remember for default draw methods invocation
+			this._defaultElementsCount = arrayBufferPointer.getMaxElementsCount();
 		} else {
-			this._vertexAttrib(name, v1, v2);			
+			gl.disableVertexAttribArray(attributeLocation);
+			gl.vertexAttrib2f(attributeLocation, v1, v2); 
 		}
 		return this;
 	}
 	,
-	Attribute3f : function(name, v1, v2, v3, v4) {
+	Attribute3f : function(name, v1, v2, v3) {
+		var attributeLocation = this.getAttribLocation(name);
 		if (v1 instanceof o3gl.Buffer.Pointer) {
 			var arrayBufferPointer = v1;
 			arrayBufferPointer.size(3);
-			arrayBuffer = arrayBufferPointer._buffer;
-			arrayBuffer.typeFloat();
-			this._vertexAttribPointer(name, arrayBufferPointer);
+			arrayBufferPointer.typeFloat();
+			o3gl.VertexAttribPointer(attributeLocation, arrayBufferPointer);
+			// remember for default draw methods invocation
+			this._defaultElementsCount = arrayBufferPointer.getMaxElementsCount();
 		} else {
-			this._vertexAttrib(name, v1, v2, v3);	
+			gl.disableVertexAttribArray(attributeLocation);
+			gl.vertexAttrib2f(attributeLocation, v1, v2, v3); 
 		}
 		return this;
 	}
 	,
 	Attribute4f : function(name, v1, v2, v3, v4) {
+		var attributeLocation = this.getAttribLocation(name);
 		if (v1 instanceof o3gl.Buffer.Pointer) {
 			var arrayBufferPointer = v1;
 			arrayBufferPointer.size(4);
-			arrayBuffer = arrayBufferPointer._buffer;
-			arrayBuffer.typeFloat();
-			this._vertexAttribPointer(name, arrayBufferPointer);
+			arrayBufferPointer.typeFloat();
+			o3gl.VertexAttribPointer(attributeLocation, arrayBufferPointer);
+			// remember for default draw methods invocation
+			this._defaultElementsCount = arrayBufferPointer.getMaxElementsCount();
 		} else {
-			this._vertexAttrib(name, v1, v2, v3, v4);			
+			gl.disableVertexAttribArray(attributeLocation);
+			gl.vertexAttrib2f(attributeLocation, v1, v2, v3, v4); 
 		}
 		return this;
-	}
-	,
-	_vertexAttrib : function(name, v1, v2, v3, v4) {
-		var attributeLocation = this.getAttribLocation(name);
-		gl.disableVertexAttribArray(attributeLocation);
-		switch(arguments.length) {
-			case 2 : gl.vertexAttrib1f(attributeLocation, v1); break;
-			case 3 : gl.vertexAttrib2f(attributeLocation, v1, v2); break;
-			case 4 : gl.vertexAttrib3f(attributeLocation, v1, v2, v3); break;
-			case 5 : gl.vertexAttrib4f(attributeLocation, v1, v2, v3, v4); break;
-		}
-		if (arguments.length === 2) {
-			gl.vertexAttrib1f(attributeLocation, v1);
-		}
-	}
-	,
-	_vertexAttribPointer : function (name, arrayBufferPointer) {		
-		//@See https://stackoverflow.com/questions/27316605/is-vertex-attrubute-pointer-persistent-in-opengl-es
-	
-		var arrayBuffer 	= arrayBufferPointer._buffer;
-		var type        	= arrayBuffer._type; 			// !!!
-        var normalized  	= arrayBuffer._normalized;		//
-		
-		var sizeOfTypeBytes = Utils.glSizeOfType(type);
-		var size 			= arrayBufferPointer._size;
-        var strideBytes     = arrayBufferPointer._stride * sizeOfTypeBytes;
-        var offsetBytes     = arrayBufferPointer._offset * sizeOfTypeBytes;
-		
-        // remember for default draw methods invocation
-		this._defaultElementsCount = arrayBuffer._length / size;
-		
-		var attributeLocation = this.getAttribLocation(name);
-		arrayBuffer.targetArrayBuffer(); // Assert or deffered initialization for Buffer
-		arrayBuffer.Bind();
-		gl.enableVertexAttribArray(attributeLocation);
-		gl.vertexAttribPointer(attributeLocation,
-            size,   // Specifies the number of components per generic vertex attribute. Must be 1, 2, 3, 4. Additionally, the symbolic constant GL_BGRA is accepted by glVertexAttribPointer. The initial value is 4.
-            type,   // Specifies the data type of each component in the array
-            normalized,  // Specifies whether fixed-point data values should be normalized (GL_TRUE) or converted directly as fixed-point values (GL_FALSE) when they are accessed.
-            strideBytes, // Specifies the byte offset between consecutive generic vertex attributes. If stride is 0, the generic vertex attributes are understood to be tightly packed in the array. The initial value is 0.
-            offsetBytes  // Specifies a offset of the first component of the first generic vertex attribute in the array in the data store of the buffer currently bound to the GL_ARRAY_BUFFER target. The initial value is 0.
-        );
 	}
 	,
 	_drawPrimitives : function(glMode, elementArrayBuffer, first, count) {
@@ -1941,41 +1896,6 @@ o3gl.Program.prototype = {
 			first = args[1];
 			count = args[2];
 		}
-		this._drawPrimitives(mode, elementArrayBuffer, first, count);
-	}
-	,
-	Draw : function(iterator) {
-		this.Use(); // assert current program
-
-		// Set up attributes
-		var mode 				= iterator._mode;
-		var elementArrayBuffer 	= iterator._elementArrayBuffer;
-		var first 				= iterator._first;
-		var count 				= iterator._count;
-
-		if (first === undefined) {
-			first = 0; // Default value for the first element
-		}
-		
-		// Try to initialize count to the full element array buffer length
-		if (count === undefined) {
-			if (elementArrayBuffer) {
-				count = elementArrayBuffer._length;
-			}
-		}
-		
-		// Set up attribute pointers
-		for (name in iterator._arrayBuffer) {
-			var pointer = iterator.pointer(name);
-			this.Set(name, pointer);
-			
-			// Try to initialize count to the full array buffer length
-			if (count === undefined) {
-				count = pointer._buffer._length / pointer._size;
-			}
-		}
-		
-		// draw primitives
 		this._drawPrimitives(mode, elementArrayBuffer, first, count);
 	}
 	,
@@ -2204,11 +2124,6 @@ o3gl.createProgram = function(shader1,shader2) {
 	return new o3gl.Program(shader1,shader2);
 }
 
-o3gl.iterator = function() {
-	return new o3gl.Iterator();
-}
-
-
 o3gl.sources = function(sources1, sources2) {
 	return new o3gl.ProgramSources(sources1, sources2);
 }
@@ -2313,8 +2228,30 @@ program.
 	Set("uP",1,0,0).
 	Set("aV", ab.pointer().stride(0).offset(0)).			
 	Set("sampler", t1).
+	
+	
+	
 	Color(t1.level(0)).
 	Depth(depthBuffer).depthMask(true).depthTest(true).
 	Elements(elementArray)
 	DrawTriangles(indexes, 0, 6).toFrameBuffer(frameBuffer);
 */
+
+/*
+	Program - is executable code
+	instance 	- pointer to drawcall data. vao 
+				- 
+	
+*/
+
+
+/*
+// OBJECT concept
+- Has assotiated VAO 's  UAO' s  that are applied to any program within 
+- Can have one or more 'methods' that are programs
+
+o3gl.createObject().
+
+
+*/
+
