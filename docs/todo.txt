@@ -1,0 +1,4 @@
+﻿Разобраться с 
+gl.activeTexture
+gl.enableVertexAttributeArray
+
