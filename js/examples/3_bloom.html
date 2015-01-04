@@ -234,62 +234,6 @@ void main() {
 			Set("aPosition",	vbo.plane.positions.pointer()).
 			Set("aTextureCoord",vbo.plane.textureCoords.pointer()).					
 			DrawTriangles();
-			
-		
-			
-		/*
-		// Program build different shaders from one source
-		// 
-		problems:
-		1) Saving state of the last array buffer in program object for draw call with default count parameters
-		2) Deffered initialization of the array buffer data inside Bind() method
-		3) 
-			
-		// Resource proxy and auxillary methods :
-		var program = o3gl.program()
-		var t = o3gl.texture().image2d();
-		var t2 = o3gl.texture().image2d();
-		var ab = o3gl.arraybuffer().data([]);		
-		var ib = o3gl.arraybuffer().data([]);		
-		var p = o3gl.program(source1, source2, source3).exclude();
-		
-		// Binding is 
-		// - program variables binding
-		// - primitive geometry configuration 
-		// - some preconfigured properties
-		// - viewport and framebuffer. program output is often coupled with frame buffer;
-		var drawSomeGeometry = o3gl.binding(program).
-		set("uP",1,0,0).
-		set("aV", ab.pointer())			// initialize ab here
-		set("sampler", t)				// 
-		set("samplerCube").
-		depth(depthbuffer).depthMask(true).depthTest(true).
-		color(texture1, texture2, texture3).
-		drawTriangles().elements(ib).first(0).count(5); // draw call only causes drawing invokation
-		
-		drawSomeGeometry.program().Set()
-		drawSomeGeometry.run();
-		drawSomeGeometry();
-
-		// Multiple bindings configuration in one place
-		var binding1 = o3gl.binding(program1);
-		var binding2 = o3gl.binding(program2);
-		o3gl.bindings(binding1,binding2).
-		Set("aPosition", o3gl.arraybuffer(plane.positions)).
-		Set("aTextureCoord", o3gl.arraybuffer(plane.textureCoords));
-		
-		program.
-		Set("uP",1,0,0).
-		Set("aV", ab.pointer()).			
-		Set("sampler", t).
-		Color(texture1).Depth(depthBuffer)
-		
-		*/
-		
-		
-		
-		
-		
     }
     
     function update() {

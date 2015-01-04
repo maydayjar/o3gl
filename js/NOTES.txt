@@ -1,0 +1,17 @@
+# Vertex Attribute Pointer
+
+http://blog.tojicode.com/2012/10/oesvertexarrayobject-extension.html
+https://stackoverflow.com/questions/27316605/is-vertex-attrubute-pointer-persistent-in-opengl-es
+
+# Program arguments binding
+Render buffers / vertex arrays and elements arrays 
+FrameBufferObject and ArrayBufferObject can be
+
+*What about textures* ?
+
+# Examine extensions
+https://www.khronos.org/registry/webgl/extensions/
+
+
+# Portability and efficient
+http://codeflow.org/entries/2013/feb/22/how-to-write-portable-webgl
