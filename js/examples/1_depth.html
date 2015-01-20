@@ -29,6 +29,7 @@ attribute vec3 	aPosition;
 uniform mat4 	uModelViewMatrix;
 uniform mat4 	uProjectionMatrix;
 varying vec4 	vPosition;
+
 void main() {
 	vPosition 	= uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
 	gl_Position = vPosition;
@@ -127,12 +128,6 @@ void main() {
 		program 	= o3gl.createProgram(o3gl.createShader(vertexShaderSource), o3gl.createShader(fragmentShaderSource));
 		positions 	= o3gl.createBuffer().Data(cubeVertex);
 		indexes 	= o3gl.createBuffer().Data(cubeIndex);
-		
-		/*
-		cube = o3gl.iterator().modeTriangles().elements(indexes);
-		cube.pointer("aPosition", positions);
-		*/
-		
 	}
 	
 	function render() {
