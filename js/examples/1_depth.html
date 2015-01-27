@@ -152,7 +152,8 @@ void main() {
 			Set("uProjectionMatrix", 	pMatrix).
 			Set("uModelViewMatrix", 	mvMatrix).
 			Set("aPosition", positions.pointer()).
-			DrawTriangles(indexes);
+			Elements(indexes).
+			DrawTriangles();
 
 		// Draw using iterator
 		/*

@@ -202,16 +202,19 @@ void main() {
 			ClearDepthBuffer();
 		
 		programDraw.
+			Use().
 			Set("uMatrixP", 	matrixP).
 			Set("uMatrixMV", 	matrixMV).
 			Set("uSampler0", 	textureDiffuse).		
 			Set("aPosition",	vbo.cube.positions.pointer()).
 			Set("aTextureCoord",vbo.cube.textureCoords.pointer()).
-			DrawTriangles(vbo.cube.indexes);
+			Elements(vbo.cube.indexes).
+			DrawTriangles();
 			
 
 		fbPass1.Bind().Viewport(0, 0, 128, 128).DepthTest(false);
 		programConvolution.
+			Use().
 			Set("aPosition",	vbo.plane.positions.pointer()).
 			Set("aTextureCoord",vbo.plane.textureCoords.pointer()).					
 			Set("uStep", 1/128, 0).							
@@ -220,6 +223,7 @@ void main() {
 		
 		fbPass2.Bind().Viewport(0, 0, 128, 128).DepthTest(false);
 		programConvolution.
+			Use().
 			Set("aPosition",	vbo.plane.positions.pointer()).
 			Set("aTextureCoord",vbo.plane.textureCoords.pointer()).					
 			Set("uStep", 0, 1/128).
@@ -228,6 +232,7 @@ void main() {
 
 		o3gl.defaultFrameBuffer().Bind().DepthTest(false).DepthMask(false).Viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 		programBlend.
+			Use().
 			Set("uSampler0", fbTexturePass2).		
 			Set("uSampler1", fbTextureScene).		
 			Set("aPosition",	vbo.plane.positions.pointer()).
