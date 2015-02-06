@@ -2,6 +2,112 @@ function O3GL (context) {
 gl = context;
 	
 /*********************************************
+* ASPECT
+**********************************************/
+function Aspect(object) {
+	var _object = object;
+	var _deffered = [];
+	
+	return {
+		advice : function(methodName, adviceBefore, adviceAfter) {
+			var method = _object[methodName];
+			// Wrapped
+			_object[methodName] = function() {
+				var args = arguments;
+				if (adviceBefore) {
+					adviceBefore.apply(this, args);					
+				}
+				var result = method.apply(this, args);
+				if (adviceAfter) {
+					adviceAfter.apply(this, args);					
+				}
+				return result;
+			}	
+			return this;
+		}
+		,
+		
+		before : function(methodNameRegExp, advice) {			
+			if (methodNameRegExp instanceof String) {
+				methodNameRegExp = new RegExp(methodNameRegExp);
+			}
+			for (var propertyName in _object) {
+				if (!propertyName.match(methodNameRegExp)) continue;
+				var property = object[propertyName];				
+				this.advice(propertyName, advice, null);				
+			}			
+			return this;
+		}
+		,
+		after : function(methodName, advice) {
+			
+			if (methodName instanceof String) {
+				methodName = new RegExp(methodName);
+			}
+			
+			for (var propertyName in _object) {
+				if (!propertyName.match(methodName)) continue;
+				var property = object[propertyName];
+				this.advice(propertyName, null, advice);				
+			}			
+			return this;
+		}
+		,
+		deffer : function(methodName, condition) {
+			// Old method
+			var method = _object[methodName];
+
+			// Wrapped
+			_object[methodName] = function() {
+				var methodArgs = arguments;
+			
+				if (condition.apply(_object, methodArgs)) {
+					// Invoke directly
+					method.apply(_object, methodArgs);				
+				} else {
+					// Postpone method invocation
+					_deffered.push(function() {
+						if (condition.apply(_object, methodArgs)) {
+							method.apply(_object, methodArgs);
+							// Signal 
+							return true;
+						} else {
+							
+							return false;
+						}
+					});
+				}			
+			}
+			
+			return this;
+		}
+		,
+		invokeDeffered : function() {
+			var count = _deffered.length;
+			for (var i = 0; i < count; ++i) {
+				var defferedMethod = _deffered.shift();
+				if (defferedMethod()) {
+					// invoked. remove from the queue
+				} else {
+					// not invoked. enqueue again
+					_deffered.push(defferedMethod);
+				}
+			}
+		}
+		,
+		invokeDefferedAfter : function (methodName) {
+			var that = this;
+			this.after(methodName, function() {
+				that.invokeDeffered();
+			});
+			return this;
+		}
+	}	
+}
+
+	
+	
+/*********************************************
 * 			UTILS
 **********************************************/	
 var Utils = {
@@ -387,59 +493,71 @@ States:
 hints
 */
 
+/*
+	o3gl.Resource
+		o3gl.Texture
+			o3gl Texture2D
+			o3gl TextureCubeMap
+
+			
+		
+*/
+
+function Extend(functionDerived, functionBase, properties) {
+	functionDerived.prototype = Object.create(functionBase.prototype);	
+	if (properties) {
+		for (var p in properties) {
+			functionDerived.prototype[p] = properties[p];
+		}
+	}
+}
+
+o3gl.Resource = function() {
+}
+
+o3gl.Resource.prototype = {
+}
+
 o3gl.Texture = function() {
-//	this.magFilter 		= gl.LINEAR;
-//	this.minFilter 		= gl.LINEAR_MIPMAP_NEAREST
-//	this.wraps 			= gl.CLAMP_TO_EDGE;
-//	this.wrapt 			= gl.CLAMP_TO_EDGE;
+	this._textureId 	= gl.createTexture();	
 	// Specifies the target texture. Must be GL_TEXTURE_2D, GL_PROXY_TEXTURE_2D, GL_TEXTURE_1D_ARRAY, GL_PROXY_TEXTURE_1D_ARRAY, GL_TEXTURE_RECTANGLE, GL_PROXY_TEXTURE_RECTANGLE, GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, or GL_PROXY_TEXTURE_CUBE_MAP.
-	this._target 		= undefined; 	// gl.TEXTURE_2D;
+	this._target 		= undefined;	// gl.TEXTURE_2D;
+	// this._targetTexture = undefined;	// gl.TEXTURE_2D;
 
 	// Specifies the level-of-detail number. Level 0 is the base image level. Level n is the nth mipmap reduction image. If target is GL_TEXTURE_RECTANGLE or GL_PROXY_TEXTURE_RECTANGLE, level must be 0.
-	this._level 			= 0; // Mipmap level
+	//this._level 			= 0; // Mipmap level
 	// Specifies the number of color components in the texture.
 	this._internalFormat = gl.RGBA; // gl.ALPHA, gl.LUMINANCE, gl.LUMINANCE_ALPHA, gl.RGB, gl.RGBA
 	// This value must be 0.
 	this._border 		= 0;
 	// Specifies the format of the pixel data. The following symbolic values are accepted: GL_RED, GL_RG, GL_RGB, GL_BGR, GL_RGBA, and GL_BGRA.
 	this._format 		= gl.RGBA; // Contains the format for the source pixel data. Must match internalformat
-	// Specifies the data type of the pixel data. The following symbolic values are accepted: GL_UNSIGNED_BYTE, GL_BYTE, GL_UNSIGNED_SHORT, GL_SHORT, GL_UNSIGNED_INT, GL_INT, GL_FLOAT, GL_UNSIGNED_BYTE_3_3_2, GL_UNSIGNED_BYTE_2_3_3_REV, GL_UNSIGNED_SHORT_5_6_5, GL_UNSIGNED_SHORT_5_6_5_REV, GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_SHORT_4_4_4_4_REV, GL_UNSIGNED_SHORT_5_5_5_1, GL_UNSIGNED_SHORT_1_5_5_5_REV, GL_UNSIGNED_INT_8_8_8_8, GL_UNSIGNED_INT_8_8_8_8_REV, GL_UNSIGNED_INT_10_10_10_2, and GL_UNSIGNED_INT_2_10_10_10_REV.
+	
+	// Specifies the data type of the pixel data. 
+	// gl.UNSIGNED_BYTE				Provides 8 bits per channel for gl.RGBA.
+	// gl.FLOAT						Call getExtension("gl.OES_texture_float") first to enable. This creates 128 bit-per-pixel textures instead of 32 bit-per-pixel for the image.
+	// gl.UNSIGNED_SHORT_5_6_5		Represents colors in a Uint16Array where red = 5 bits, green=6 bits, and blue=5 bits.
+	// gl.UNSIGNED_SHORT_4_4_4_4	Represents colors in a Uint16Array where red = 4 bits, green=4 bits, blue=4 bits, and alpha=4 bits.
+	// gl.UNSIGNED_SHORT_5_5_5_1	Represents colors in a Uint16Array where red = 5 bits, green=5 bits, blue=5 bits and alpha=1 bit.
 	this._type 			= gl.UNSIGNED_BYTE;
-
-	// Specifies the target texture. Must be GL_TEXTURE_2D, GL_PROXY_TEXTURE_2D, GL_TEXTURE_1D_ARRAY, GL_PROXY_TEXTURE_1D_ARRAY, GL_TEXTURE_RECTANGLE, GL_PROXY_TEXTURE_RECTANGLE, GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, or GL_PROXY_TEXTURE_CUBE_MAP.
-	this._target 		= gl.TEXTURE_2D;
-	this._targetTexture = gl.TEXTURE_2D;
-
-	this._textureId = gl.createTexture();	
 	
 	// auxillary texture size data
+	// TODO: Is it impossible to get texture size using gl methods ?
 	this._size = [];
 		
-	// Size must be specified first!
+	// Size must be specified first!	
 	this.isPowerOfTwo = function() {
-		for (var i = 0; i < this._size.length; ++i) {
-			var dimension = this._size[i];
-			if(dimension % 2 !== 0) return false;
+		for (var textureTarget in this._size) {
+			for (var i = 0; i < this._size[textureTarget].length; ++i) {
+				var dimension = this._size[textureTarget][i];
+				if(dimension % 2 !== 0) return false;
+			}
 		}
 		return true;
 	}
 }
 
-/*
-	Auxillary class that refers to the texture level and target ()
-*/
-o3gl.Texture.Target = function(texture) {
-	this.texture 			= texture;
-	this._level 			= 0;
-	this._targetTexture		= 0;
-	
-	this._xOffset			= undefined;
-	this._yOffset			= undefined;
-	this._width				= undefined;
-	this._height			= undefined;
-}
-
-o3gl.Texture.prototype = {
+Extend(o3gl.Texture, o3gl.Resource, {
 	isBound : function() {
 		if (this._target === gl.TEXTURE_2D) {
 			return this._textureId === gl.getParameter(gl.TEXTURE_BINDING_2D);
@@ -465,97 +583,34 @@ o3gl.Texture.prototype = {
 		return this; // Return intrface with all the texture manipulation API
 	}
 	,
-	GenerateMipmap : function() {
-		gl.generateMipmap(this._target);
+	typeUnsignedByte : function() { 
+		this._type = gl.UNSIGNED_BYTE;
 		return this;
 	}
 	,
-	Image2D : function() {
-		var data;
-		var xOffset;
-		var yOffset;
-		var width;
-		var height;
-		// Collect vararg parameters
-		if (arguments.length == 1) {
-			data 	= arguments[0];
+	typeFloat : function() { 
+		var isExtension = gl.getExtension("OES_texture_float");
+		if (isExtension) {
+			this._type = gl.FLOAT;
+		} else {
+			throw new TypeError("Float textures are not supported");
 		}
-		if (arguments.length == 2) {
-			width 	= arguments[0];
-			height 	= arguments[1];
-		}
-		if (arguments.length == 5) {
-			data 	= arguments[0];
-			xOffset = arguments[1];
-			yOffset = arguments[2];
-			width 	= arguments[3];
-			height 	= arguments[4];
-		}
-		
-		// TODO: we must consider following texture methods:
-		// texImage2D						//
-		// texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels)					// Replaces a portion of an existing 2D texture image with all of another image.
-		// compressedTexImage2D				//
-		// compressedTexSubImage2D			//
-		
-		// copyTexImage2D(target, level, format, x, y, width, height, border);									// Copies a rectangle of pixels from the current WebGLFramebuffer into a texture image.
-		// copyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);								// Replaces a portion of an existing 2D texture image with data from the current framebuffer.
-		
-		if (data) {
-			if (xOffset && yOffset && width && height) {
-				// Replaces a portion of an existing 2D texture image with all of another image.
-				gl.texSubImage2D(
-					this._targetTexture,
-					this._level,
-					xOffset,
-					yOffset,
-					width,
-					height,
-					// this._internalFormat,  // Internal format is already specified
-					this._format, 
-					this._type, 
-					data
-				);
-			} else {
-				gl.texImage2D(this._targetTexture,
-					this._level, 
-					this._internalFormat, 
-					this._format, 
-					this._type, 
-					data);		
-				this._size[0] = data.width;
-				this._size[1] = data.height;
-				
-				if (this.isFilterRequiresMipmap()) {
-					if (this.isPowerOfTwo()) {
-						gl.generateMipmap(this._target);
-					} else {
-						// Filter settings are incorrect
-					}
-				}
-			}
-		} else if (width && height) {
-		
-			gl.texImage2D(this._targetTexture,
-				this._level, 
-				this._internalFormat, 
-				width, height, 
-				this._border, 
-				this._format, 
-				this._type, null);
-				
-			this._size[0] = width;
-			this._size[1] = height;
-				
-			if (this.isFilterRequiresMipmap()) {
-				if (this.isPowerOfTwo()) {
-					gl.generateMipmap(this._target);
-				} else {
-					// Filter settings are incorrect
-				}
-			}
-		}
+		return this;
+	}
+});
 
+o3gl.Texture2D = function() {
+	// Super constructor
+	o3gl.Texture.call(this);
+	
+	// Target
+	this._target = gl.TEXTURE_2D;
+}
+// Extend Texture
+Extend(o3gl.Texture2D, o3gl.Texture,
+{
+	GenerateMipmap : function() {
+		gl.generateMipmap(this._target);
 		return this;
 	}
 	,
@@ -586,58 +641,58 @@ o3gl.Texture.prototype = {
 //		return true;
 	}
 	,
-	_Filter : function (glFilterMin, glFilterMag) {
-		if (glFilterMin != null) {
-			gl.texParameteri(this._target, gl.TEXTURE_MIN_FILTER, glFilterMin);		
-		}
-		if (glFilterMag != null) {
-			gl.texParameteri(this._target, gl.TEXTURE_MAG_FILTER, glFilterMag);		
-		}
-		return this;
-	}
-    ,
 	FilterMagLinear : function () {
-		return this._Filter(null,gl.LINEAR);
+		gl.texParameteri(this._target, gl.TEXTURE_MAG_FILTER, gl.LINEAR);		
+		return this;
 	}
 	,
 	FilterMagNearest : function () {
-		return this._Filter(null,gl.NEAREST);
+		gl.texParameteri(this._target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);		
+		return this;
 	}
 	,
 	FilterMagLinearMipmapNearest : function () {
-		return this._Filter(null,gl.LINEAR_MIPMAP_NEAREST);
+		gl.texParameteri(this._target, gl.TEXTURE_MAG_FILTER, gl.LINEAR_MIPMAP_NEAREST);		
+		return this;
 	}
 	,
 	FilterMagLinearMipmapLinear : function () {
-		return this._Filter(null,gl.LINEAR_MIPMAP_LINEAR);
+		gl.texParameteri(this._target, gl.TEXTURE_MAG_FILTER, gl.LINEAR_MIPMAP_LINEAR);		
+		return this;
 	}
 	,
 	FilterMinLinear : function () {
-		return this._Filter(gl.LINEAR,null);
+		gl.texParameteri(this._target, gl.TEXTURE_MIN_FILTER, gl.LINEAR);		
+		return this;
 	}
 	,
 	FilterMinNearest : function () {
-		return this._Filter(gl.NEAREST,null);
+		gl.texParameteri(this._target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);		
+		return this;
 	}
 	,
 	/** Use the nearest neighbor in the nearest mipmap level */
 	FilterMinNearestMipmapNearest : function () {
-		return this._Filter(gl.NEAREST_MIPMAP_NEAREST,null);
+		gl.texParameteri(this._target, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);		
+		return this;
 	}
 	,
 	/** Linearly interpolate in the nearest mipmap level */
 	FilterMinNearestMipmapLinear : function () {
-		return this._Filter(gl.NEAREST_MIPMAP_LINEAR,null);
+		gl.texParameteri(this._target, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);		
+		return this;
 	}
 	,
 	/** Use the nearest neighbor after linearly interpolating between mipmap levels */
 	FilterMinLinearMipmapNearest : function () {
-		return this._Filter(gl.LINEAR_MIPMAP_NEAREST,null);
+		gl.texParameteri(this._target, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);		
+		return this;
 	}
 	,
 	/** Linearly interpolate both the mipmap levels and at between texels */
 	FilterMinLinearMipmapLinear : function () {
-		return this._Filter(gl.LINEAR_MIPMAP_LINEAR,null);
+		gl.texParameteri(this._target, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);		
+		return this;
 	}
     ,
     FilterNearest : function() {
@@ -664,123 +719,251 @@ o3gl.Texture.prototype = {
         return this.FilterMinLinearMipmapNearest().FilterMagLinearMipmapNearest();
     }
     ,
-	
-    _Wrap : function (wraps, wrapt) {
-		if(wraps != null) {
-			gl.texParameteri(this._target, gl.TEXTURE_WRAP_S, wraps);
-		}
-		if (wrapt != null) {
-			gl.texParameteri(this._target, gl.TEXTURE_WRAP_T, wrapt);
-		}
-		return this;		
-	}
-	,
 	WrapClampToEdge : function () {
-		return this._Wrap(gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(this._target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(this._target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		return this;
 	}
 	,
 	WrapRepeat : function () {
-		return this._Wrap(gl.REPEAT, gl.REPEAT);
+		gl.texParameteri(this._target, gl.TEXTURE_WRAP_S, gl.REPEAT);
+		gl.texParameteri(this._target, gl.TEXTURE_WRAP_T, gl.REPEAT);
+		return this;
 	}
 	,
 	WrapMirroredRepeat : function () {
-		return this._Wrap(gl.MIRRORED_REPEAT, gl.MIRRORED_REPEAT);
-	}
-	,
-	typeUnsignedByte : function() { 
-		this._type = gl.UNSIGNED_BYTE;
+		gl.texParameteri(this._target, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
+		gl.texParameteri(this._target, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
 		return this;
 	}
 	,
-	typeFloat : function() { 
-		var isExtension = gl.getExtension("OES_texture_float");
-		if (isExtension) {
-			this._type = gl.FLOAT;
-		} else {
-			throw new TypeError("Float textures are not supported");
+	target : function() {
+		return new o3gl.Texture2D.Target(this);
+	}
+	,
+	mipmapLevel : function(level) {
+		return this.target().mipmapLevel(level);
+	}
+	,
+	Image : function() {
+		if (arguments.length === 1) {
+			var data = arguments[0];
+			this.target().Image(data);
+		}
+		if (arguments.length === 2) {
+			var width = arguments[0];
+			var height = arguments[1];
+			this.target().Image(width, height);
 		}
 		return this;
-	}	
-	,
-	target1D : function() {
-		this._target = gl.TEXTURE_1D;
-		this._targetTexture = gl.TEXTURE_1D;
-		return this;
-	}	
-	,
-	target2D : function() {
-		this._target = gl.TEXTURE_2D;
-		this._targetTexture = gl.TEXTURE_2D;
-		return this;
 	}
-	,
-	target3D : function() {
-		this._target = gl.TEXTURE_3D;
-		this._targetTexture = gl.TEXTURE_3D;
-		return this;
-	}
-	,
-	targetCubeMap : function() {
-		this._target = gl.TEXTURE_CUBE_MAP;
-		return this;
-	}
-	,
+});
 
-	// TODO: must be implemented as an Buffer.pointer
+
+
+
+/*
+	Auxillary class that refers to the texture level and target ()
+*/
+o3gl.Texture2D.Target = function(texture) {
+	this._texture 			= texture;
+	this._level 			= 0;
+	this._targetTexture		= gl.TEXTURE_2D;
+	
+	// Texture region:
+	this._xOffset			= undefined;
+	this._yOffset			= undefined;
+	this._width				= undefined;
+	this._height			= undefined;
+}
+
+o3gl.Texture2D.Target.prototype = {
+	mipmapLevel : function (level) {
+		this._level = level;
+		return this;
+	}
+	,
+	offset : function(xOffset, yOffset) {
+		this._xOffset = xOffset;
+		this._yOffset = yOffset;		
+		return this;
+	}
+	,
+	size : function(width, height) {
+		this._width 	= width;
+		this._height 	= heigth;		
+		return this;
+	}
+	,
+	
+	Image : function() {
+		this._texture.Bind();
+		
+		var data;
+		var width;
+		var height;
+		// Collect vararg parameters
+		if (arguments.length == 1) {
+			data 	= arguments[0];
+		}
+		if (arguments.length == 2) {
+			width 	= arguments[0];
+			height 	= arguments[1];
+		}
+		
+		// TODO: we must consider following texture methods:
+		// texImage2D						//
+		// texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels)					// Replaces a portion of an existing 2D texture image with all of another image.
+		// compressedTexImage2D				//
+		// compressedTexSubImage2D			//
+		
+		// copyTexImage2D(target, level, format, x, y, width, height, border);									// Copies a rectangle of pixels from the current WebGLFramebuffer into a texture image.
+		// copyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);								// Replaces a portion of an existing 2D texture image with data from the current framebuffer.
+		
+		if (data) {
+			
+			if (this._xOffset && this._yOffset) {
+				width = data.width;
+				height = data.height;
+				
+				// Subimage
+				gl.texSubImage2D(
+					this._targetTexture,
+					this._level,
+					this._xOffset,
+					this._yOffset,
+					width,
+					height,
+					// this._texture._internalFormat,  // Internal format is already specified
+					this._texture._format, 
+					this._texture._type, 
+					data
+				);
+			} else {
+				gl.texImage2D(this._targetTexture,
+					this._level, 
+					this._texture._internalFormat, 
+					this._texture._format, 
+					this._texture._type, 
+					data);		
+					
+				this._texture._size[this._targetTexture] = [data.width, data.height];
+			}
+			
+		} else if (width && height) {		
+			gl.texImage2D(this._targetTexture,
+				this._level, 
+				this._texture._internalFormat, 
+				width, height, 
+				this._texture._border, 
+				this._texture._format, 
+				this._texture._type, null);
+				
+			this._texture._size[this._targetTexture] = [width, height];				
+		}
+						
+		if (this._texture.isFilterRequiresMipmap()) {
+			if (this._texture.isPowerOfTwo()) {
+				this._texture.GenerateMipmap();
+			} else {
+				// Filter settings are incorrect
+			}
+		}
+		
+		return this;
+	}
+}
+
+
+
+o3gl.TextureCubeMap = function() {
+	// Super constructor
+	o3gl.Texture2D.call(this);
+	
+	// Target cube map
+	this._target = gl.TEXTURE_CUBE_MAP;
+}
+// Extend Texture
+Extend(o3gl.TextureCubeMap, o3gl.Texture2D, {
+	target : function() {
+		return new o3gl.TextureCubeMap.Target(this);
+	}
+	,
 	positiveX : function() {
-		this._target = gl.TEXTURE_CUBE_MAP;
+		return this.target().positiveX();
+	}
+	,
+	positiveY : function() {
+		return this.target().positiveY();
+	}
+	,
+	positiveZ : function() {
+		return this.target().positiveZ();
+	}
+	,
+	negativeX : function() {
+		return this.target().negativeX();
+	}
+	,
+	negativeY : function() {
+		return this.target().negativeX();
+	}
+	,
+	negativeZ : function() {
+		return this.target().negativeZ();
+	}
+});
+
+o3gl.TextureCubeMap.Target = function() {
+	this._targetTexture = undefined;
+}
+
+Extend(o3gl.TextureCubeMap.Target, o3gl.Texture2D.Target,
+{
+	positiveX : function() {
 		this._targetTexture = gl.TEXTURE_CUBE_MAP_POSITIVE_X;
 		return this;
 	}
 	,
 	positiveY : function() {
-		this._target = gl.TEXTURE_CUBE_MAP;
 		this._targetTexture = gl.TEXTURE_CUBE_MAP_POSITIVE_Y;
 		return this;
 	}
 	,
 	positiveZ : function() {
-		this._target = gl.TEXTURE_CUBE_MAP;
 		this._targetTexture = gl.TEXTURE_CUBE_MAP_POSITIVE_Z;
 		return this;
 	}
 	,
 	negativeX : function() {
-		this._target = gl.TEXTURE_CUBE_MAP;
 		this._targetTexture = gl.TEXTURE_CUBE_MAP_NEGATIVE_X;
 		return this;
 	}
 	,
 	negativeY : function() {
-		this._target = gl.TEXTURE_CUBE_MAP;
 		this._targetTexture = gl.TEXTURE_CUBE_MAP_NEGATIVE_Y;
 		return this;
 	}
 	,
 	negativeZ : function() {
-		this._target = gl.TEXTURE_CUBE_MAP;
 		this._targetTexture = gl.TEXTURE_CUBE_MAP_NEGATIVE_Z;
 		return this;
 	}
-
-
-}
+});
 
 /**
 * This class implements deffered target and type resolve,
 * relying on the buffer's usage context
 */
 o3gl.Buffer = function() {
-	// Basically usage parameter is a hint to OpenGL/WebGL how you intent to use the buffer. The OpenGL/WebGL can then optimize the buffer depending of your hint.
-	this._usage 		= gl.STATIC_DRAW;			// gl.STATIC_DRAW gl.DYNAMIC_DRAW
-	this._target 		= undefined;				// gl.ARRAY_BUFFER gl.ELEMENT_ARRAY_BUFFER
-	this._type 			= undefined;				// Component type HINT. Used by pointers as default value
-
 	this._bufferId 		= gl.createBuffer();	
+	// Basically usage parameter is a hint to OpenGL/WebGL how you intent to use the buffer. The OpenGL/WebGL can then optimize the buffer depending of your hint.
+	this._target 		= undefined;				// gl.ARRAY_BUFFER gl.ELEMENT_ARRAY_BUFFER
+	this._usage 		= gl.STATIC_DRAW;			// gl.STATIC_DRAW gl.DYNAMIC_DRAW
+	this._type 			= undefined;				// Component type HINT. Used by pointers as default value
 }
 
-o3gl.Buffer.prototype =
-{
+Extend(o3gl.Buffer, o3gl.Resource, {
 	isBound : function() {
 		if (this._target === gl.ARRAY_BUFFER) {
 			return this._bufferId === gl.getParameter(gl.ARRAY_BUFFER_BINDING);
@@ -803,27 +986,6 @@ o3gl.Buffer.prototype =
 		gl.bindBuffer(this._target, this._bufferId);
 		var builder = this; 
 		return builder;
-	}
-	,
-    pointer : function() {
-        return new o3gl.Buffer.Pointer(this);
-    }
-    ,
-	targetArrayBuffer : function() {
-		this._target = gl.ARRAY_BUFFER;
-		if (!this._type) {
-			this._type = gl.FLOAT;
-		}
-		return this;
-	}
-	,
-	targetElementArrayBuffer : function() {
-		this._target = gl.ELEMENT_ARRAY_BUFFER;
-		// Set the default value
-		if (!this._type) {
-			this._type = gl.UNSIGNED_SHORT;
-		}
-		return this;
 	}
     ,
 	/**
@@ -886,12 +1048,67 @@ o3gl.Buffer.prototype =
 		return this;
 	}
 }
+);
 
-o3gl.Buffer.Pointer = function(buffer) {
-	// Assert buffer target is Array
-	buffer.targetArrayBuffer();
+
+o3gl.ArrayBuffer = function() {
+	o3gl.Buffer.call(this);
+	// Basically usage parameter is a hint to OpenGL/WebGL how you intent to use the buffer. The OpenGL/WebGL can then optimize the buffer depending of your hint.
+	this._target 		= gl.ARRAY_BUFFER;			// gl.ARRAY_BUFFER gl.ELEMENT_ARRAY_BUFFER
+	this._usage 		= gl.STATIC_DRAW;			// gl.STATIC_DRAW gl.DYNAMIC_DRAW
+	this._type 			= gl.FLOAT;				// Component type HINT. Used by pointers as default value
+}
+
+Extend(o3gl.ArrayBuffer, o3gl.Buffer, 
+{
+	typeUnsignedByte : function() {
+		this._type = gl.UNSIGNED_BYTE;
+		return this;
+	}
+	,
+	typeShort : function() {
+		this._type = gl.SHORT;
+		return this;
+	}
+	,
+	typeUnsignedShort : function() {
+		this._type = gl.UNSIGNED_SHORT;
+		return this;
+	}
+	,
+	typeInt : function() {
+		this._type = gl.INT;
+		return this;
+	}
+	,
+	typeUnsignedInt : function() {
+		this._type = gl.UNSIGNED_INT;
+		return this;
+	}
+	,
+	typeHalfFloat : function() {
+		this._type = gl.HALF_FLOAT;
+		return this;
+	}
+	,
+	typeFloat : function(size) {
+		this._type = gl.FLOAT;
+		return this;
+	}
+	,
+	typeDouble : function(size) {
+		this._type = gl.DOUBLE;
+		return this;
+	}
+	,
+	pointer : function() {
+        return new o3gl.ArrayBuffer.Pointer(this);
+    }
+}
+);
+
+o3gl.ArrayBuffer.Pointer = function(buffer) {
     this._buffer = buffer;
-
     this._type = buffer._type;	// It is possible that buffer contains data of various types. So type must be set per pointer
     this._stride = 0;			// Stride in bytes
     this._offset = 0;			// Offset in bytes
@@ -902,7 +1119,7 @@ o3gl.Buffer.Pointer = function(buffer) {
 	
 }
 
-o3gl.Buffer.Pointer.prototype = {
+o3gl.ArrayBuffer.Pointer.prototype = {
 	typeByte : function() {
 		this._type = gl.BYTE;
 		return this;
@@ -987,7 +1204,43 @@ o3gl.Buffer.Pointer.prototype = {
 		// TODO: consider offset, stride and data type
 		return this._buffer._length / this._size;
 	}
+};
+
+o3gl.ElementArrayBuffer = function() {
+	// Super constructor
+	o3gl.Buffer.call(this);
+	// Basically usage parameter is a hint to OpenGL/WebGL how you intent to use the buffer. The OpenGL/WebGL can then optimize the buffer depending of your hint.
+	this._target 		= gl.ELEMENT_ARRAY_BUFFER;			// gl.ARRAY_BUFFER gl.ELEMENT_ARRAY_BUFFER
+	this._usage 		= gl.STATIC_DRAW;			// gl.STATIC_DRAW gl.DYNAMIC_DRAW
+	this._type 			= gl.UNSIGNED_SHORT;				// Component type HINT. Used by pointers as default value
 }
+
+Extend(o3gl.ElementArrayBuffer, o3gl.Buffer, 
+{
+	typeUnsignedByte : function() {
+		this._type = gl.UNSIGNED_BYTE;
+		return this;
+	}
+	,
+	typeUnsignedShort : function() {
+		this._type = gl.UNSIGNED_SHORT;
+		return this;
+	}
+	,
+	typeUnsignedInt : function() {
+		this._type = gl.UNSIGNED_INT;
+		return this;
+	}
+});
+
+
+
+
+
+
+
+
+
 
 o3gl.FrameBufferDefault = {
 	getWidth : function() {
@@ -1010,8 +1263,7 @@ o3gl.FrameBufferDefault = {
 	,
 	Bind : function() {
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-		var bound = this;
-		return bound;
+		return this;
 	}
 	,
 	Viewport : function(x,y,width,height) {
@@ -1029,16 +1281,14 @@ o3gl.FrameBufferDefault = {
 		}
 		gl.clearColor(r, g, b, a);
 		gl.clear(gl.COLOR_BUFFER_BIT);
-		var bound = this;
-		return bound;
+		return this;
 	}
 	,
 	ClearDepthBuffer : function(depth) {
 		if (depth === undefined) depth = 1.0; // Specification default values
 		gl.clearDepth(depth);
 		gl.clear(gl.DEPTH_BUFFER_BIT);
-		var bound = this;
-		return bound;
+		return this;
 	}	
 	,
 	Clear : function() {
@@ -1048,8 +1298,7 @@ o3gl.FrameBufferDefault = {
 	,
 	DepthMask : function(enable) {
 		gl.depthMask(enable);
-		var bound = this;
-		return bound;
+		return this;
 	}
 	,
 	DepthTest : function(enable) {
@@ -1057,27 +1306,23 @@ o3gl.FrameBufferDefault = {
 			gl.enable(gl.DEPTH_TEST);
 		else
 			gl.disable(gl.DEPTH_TEST);
-		var bound = this;
-		return bound;
+		return this;
 	}
 	,
 	ColorMask : function(r,g,b,a) {
 		gl.colorMask(r,g,b,a);
-		var bound = this;
-		return bound;
+		return this;
 	}
 	,
 	SetClearColor : function(r,g,b,a) {
 		gl.clearColor(r,g,b,a);
-		var bound = this;
-		return bound;
+		return this;
 	}
 	,
 	SetClearDepth : function(value) {
 		// depth: floating-point number between 0.0 and 1.0, the default value is 1.0	
-		gl.clearColor(depth);
-		var bound = this;
-		return bound;
+		gl.clearDepth(value);
+		return this;
 	}
 }
 
@@ -1089,7 +1334,75 @@ o3gl.FrameBuffer = function() {
 	// It seems there is no way to access texture size in OpenGL ES specification
 	this._colorAttachment = [];
 	this._depthAttachment = undefined;
+	this._stencilAttachment = undefined;
 }
+
+
+o3gl.FrameBuffer.getWidth = function() {
+	// The actual width of the drawing buffer, which may differ from the
+	// width attribute of the HTMLCanvasElement if the implementation is
+	// unable to satisfy the requested width or height.
+	return gl.drawingBufferWidth;
+}
+
+o3gl.FrameBuffer.getHeight = function() {
+	// The actual height of the drawing buffer, which may differ from the
+	// width attribute of the HTMLCanvasElement if the implementation is
+	// unable to satisfy the requested width or height.
+	return gl.drawingBufferHeight;
+}
+o3gl.FrameBuffer.Viewport = function(x,y,width,height) {
+	if (arguments.length === 0) {
+		gl.viewport(0, 0, this.getWidth(), this.getHeight());
+	} else {
+		gl.viewport(x,y,width,height);
+	}
+	return this;
+}
+o3gl.FrameBuffer.ClearColorBuffer = function(r,g,b,a) {
+	if (arguments.length === 0) {
+		r = 0.0; g = 0.0; b = 0.0; a = 0.0; // Specification default values
+	}
+	gl.clearColor(r, g, b, a);
+	gl.clear(gl.COLOR_BUFFER_BIT);
+	return this;
+}
+o3gl.FrameBuffer.ClearDepthBuffer = function(depth) {
+	if (depth === undefined) depth = 1.0; // Specification default values
+	gl.clearDepth(depth);
+	gl.clear(gl.DEPTH_BUFFER_BIT);
+	return this;
+}	
+o3gl.FrameBuffer.Clear = function() {
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);		
+	return this;
+}
+o3gl.FrameBuffer.DepthMask = function(enable) {
+	gl.depthMask(enable);
+	return this;
+}
+o3gl.FrameBuffer.DepthTest = function(enable) {
+	if (enable) 
+		gl.enable(gl.DEPTH_TEST);
+	else
+		gl.disable(gl.DEPTH_TEST);
+	return this;
+}
+o3gl.FrameBuffer.ColorMask = function(r,g,b,a) {
+	gl.colorMask(r,g,b,a);
+	return this;
+}
+o3gl.FrameBuffer.SetClearColor = function(r,g,b,a) {
+	gl.clearColor(r,g,b,a);
+	return this;
+}
+o3gl.FrameBuffer.SetClearDepth = function(value) {
+	// depth: floating-point number between 0.0 and 1.0, the default value is 1.0	
+	gl.clearDepth(value);
+	return this;
+}
+
+
 
 o3gl.FrameBuffer.prototype = {
 	getWidth : function() {
@@ -1114,8 +1427,7 @@ o3gl.FrameBuffer.prototype = {
 	,
 	Bind : function() {
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBufferId);
-		var bound = this;
-		return bound;
+		return this;
 	}
 	,
 	CheckStatus : function() {
@@ -1152,15 +1464,25 @@ o3gl.FrameBuffer.prototype = {
 	
 		for (var i=0; i<arguments.length; ++i) {
 			var level = 0; // Must be 0;
-			var texture 	= arguments[i];
-			
-			// Default texture attachement is 2d texture
-			if (!texture._targetTexture) texture.targetTexture2D();
+			var attachment 	= arguments[i];
 
+			var texture = undefined;
+			var textureTarget = undefined;
+			var textureId = undefined;
+			
+			if (attachment instanceof o3gl.Texture) {
+				texture = attachment;
+				textureTarget = texture.target()._targetTexture;
+				textureId = texture.Id();
+
+			} else {
+				texture = attachment._texture;
+				textureTarget = attachment._targetTexture;
+				textureId = texture.Id();		
+			}
+			
 			texture.Bind();
 			// texture.FilterLinear().WrapClampToEdge(); // What requirements should be here???
-			var textureTarget = texture._targetTexture;
-			var textureId = texture.Id();
 			
 			if (!texture.isFrameBufferCompatible()) {
 				throw "Texture is not framebuffer compatible";
@@ -1170,8 +1492,7 @@ o3gl.FrameBuffer.prototype = {
 
 			this._colorAttachment[i] = texture;
 		}
-		var bound = this;
-		return bound;
+		return this;
 	}
 	,
 	Depth : function(attachment) {
@@ -1190,8 +1511,7 @@ o3gl.FrameBuffer.prototype = {
 
 			this._depthAttachment = attachment;
 		}
-		var bound = this;
-		return bound;
+		return this;
 	}
 	,
 	Stencil : function(attachment) {
@@ -1221,10 +1541,10 @@ o3gl.FrameBuffer.prototype = {
 };
 
 o3gl.RenderBuffer = function() {
+	this._renderBufferId = gl.createRenderbuffer();
 	this._target = gl.RENDERBUFFER; // must be GL_RENDERBUFFER.
 	this._internalFormat = undefined; // Specifies the color-renderable, depth-renderable, or stencil-renderable format of the renderbuffer. Must be one of the following symbolic constants: GL_RGBA4, GL_RGB565, GL_RGB5_A1, GL_DEPTH_COMPONENT16, or GL_STENCIL_INDEX8
 	this.formatDepthComponent16();
-	this._renderBufferId = gl.createRenderbuffer();
 }
 
 o3gl.RenderBuffer.prototype = {
@@ -1250,18 +1570,34 @@ o3gl.RenderBuffer.prototype = {
 	Delete : function() {
 		gl.deleteRenderbuffer(this._renderBufferId)
 	}
-	,
+}
+
+o3gl.RenderBufferDepth = function() {
+	o3gl.RenderBuffer.call(this);
+	this._renderBufferId = gl.createRenderbuffer();
+	this._internalFormat = gl.DEPTH_COMPONENT16; // Specifies the color-renderable, depth-renderable, or stencil-renderable format of the renderbuffer. Must be one of the following symbolic constants: GL_RGBA4, GL_RGB565, GL_RGB5_A1, GL_DEPTH_COMPONENT16, or GL_STENCIL_INDEX8
+}
+
+Extend(o3gl.RenderBufferDepth, o3gl.RenderBuffer, {
 	formatDepthComponent16 : function() {
 		this._internalFormat = gl.DEPTH_COMPONENT16;
 		return this;
 	}
-	,
+});
+
+o3gl.RenderBufferStencil = function() {
+	o3gl.RenderBuffer.call(this);
+	this._renderBufferId = gl.createRenderbuffer();
+	this._internalFormat = gl.STENCIL_INDEX8; // Specifies the color-renderable, depth-renderable, or stencil-renderable format of the renderbuffer. Must be one of the following symbolic constants: GL_RGBA4, GL_RGB565, GL_RGB5_A1, GL_DEPTH_COMPONENT16, or GL_STENCIL_INDEX8
+}
+
+Extend(o3gl.RenderBufferStencil, o3gl.RenderBuffer, {
 	formatStencilIndex8 : function() {
 		this._internalFormat = gl.STENCIL_INDEX8;
 		return this;
 	}
+});
 
-}
 
 
 /**
@@ -1311,8 +1647,7 @@ o3gl.VertexArrayObject = function () {
 	
 	// Used to calculate default buffer size
 	this.elementArrayBuffer = null;											// Assotiated element array buffer
-	this.attributes = [];										// Per location vertex attribute values
-	this.maxElementsCount = null;											// Precomputed max elements count
+	this.attributes = [];													// Per location vertex attribute values
 }
 
 o3gl.VertexArrayObject.prototype = {
@@ -1330,40 +1665,35 @@ o3gl.VertexArrayObject.prototype = {
 	}
 	,
 	getMaxElementsCount : function() {
-		if (!this.maxElementsCount) {
-			
-			if (this.elementArrayBuffer) {
-				this.maxElementsCount = this.elementArrayBuffer._length
-			} else {
-				for (var attributeLocation in this.attributes) {				
-					var value = this.attributes[attributeLocation];
-					
-					if (!(value instanceof o3gl.Buffer.Pointer)) continue;
-					
-					var pointer = value;
-					
-					var pointerMaxElementsCount = pointer.getMaxElementsCount();
+		var maxElementsCount = undefined;
+		if (this.elementArrayBuffer) {
+			maxElementsCount = this.elementArrayBuffer._length
+		} else {
+			for (var attributeLocation in this.attributes) {				
+				var value = this.attributes[attributeLocation];
+				
+				if (!(value instanceof o3gl.ArrayBuffer.Pointer)) continue;
+				
+				var pointer = value;
+				
+				var pointerMaxElementsCount = pointer.getMaxElementsCount();
 
-					if (!this.maxElementsCount) {
-						this.maxElementsCount = pointerMaxElementsCount;					
-					}
-					if (this.maxElementsCount > pointerMaxElementsCount) {
-						this.maxElementsCount = pointerMaxElementsCount;
-					}
-				}		
-			}			
-		}
-		return this.maxElementsCount;
+				if (!maxElementsCount) {
+					maxElementsCount = pointerMaxElementsCount;					
+				}
+				if (maxElementsCount > pointerMaxElementsCount) {
+					maxElementsCount = pointerMaxElementsCount;
+				}
+			}		
+		}			
+		return maxElementsCount;
 	}
 	,
 	Elements :function(elementArrayBuffer) {
-		this._maxElementsCount = null;						// Reset max elements count
-		elementArrayBuffer.targetElementArrayBuffer();
 		this.elementArrayBuffer = elementArrayBuffer;
 		this.elementArrayBuffer.Bind();
 		return this;
 	}
-	// Attribute as pseudoclass
 	,
 	VertexAttributePointer : function(attributeLocation, arrayBufferPointer) {		
 		//TODO: mat4 attribute takes up 4 attribute locations. The one you bind and the 3 following	
@@ -1389,7 +1719,6 @@ o3gl.VertexArrayObject.prototype = {
 			
 		// Configure and bind array buffer
 		var arrayBuffer 	= arrayBufferPointer._buffer;
-		arrayBuffer.targetArrayBuffer(); // Assert or deffered initialization for Buffer
 		arrayBuffer.Bind();
 		
 		gl.enableVertexAttribArray(attributeLocation);
@@ -1449,7 +1778,7 @@ o3gl.VertexArrayObjectDefault = function () {
 		}
 		for (var attributeLocation in this.attributes) {				
 			var value = this.attributes[attributeLocation];
-			if (value instanceof o3gl.Buffer.Pointer) {
+			if (value instanceof o3gl.ArrayBuffer.Pointer) {
 				this.VertexAttributePointer(attributeLocation, value)
 			} else {
 				if (value.length === 1) this.VertexAttribute1f(attributeLocation, value[0]);
@@ -1511,10 +1840,10 @@ o3gl.Program = function(shader1,shader2) {
 	this._initializeVariables();
 	
 	// Assotiate new VAO with program
-	this._vertexArrayObject = new o3gl.VertexArrayObjectDefault();
+	this._vertexArrayObject = undefined;
 	
 	// Assotiate new FBO with program;
-	this._frameBufferObject = o3gl.FrameBufferObjectDefault;
+	this._frameBufferObject = undefined;
 
 }
 
@@ -1721,7 +2050,24 @@ o3gl.Program.prototype = {
 	isTypeSampler2D 	 : function(name) { return this.getType(name) === gl.SAMPLER_2D; 	},
 	isTypeSamplerCube 	 : function(name) { return this.getType(name) === gl.SAMPLER_CUBE; 	},	
 
-	 
+	VertexArray : function(value) {
+		if (value || value === null) {
+			this._vertexArrayObject = value;
+		} else {
+			this._vertexArrayObject = new o3gl.VertexArrayObjectDefault();
+		}
+		return this._vertexArrayObject;
+	}
+	,
+	FrameBuffer : function(value) {
+		if (value || value === null) {
+			this._frameBufferObject = value;
+		} else {
+			this._frameBufferObject = new o3gl.FrameBufferDefault();
+		}
+		return this._frameBufferObject;
+	}
+	,
 	//	Helper method that allows setting of the uniform or attribute pointer using retrospections capabilities.
 	//	Overloaded in strong types languages
 	Set : function (name, v1, v2, v3, v4) {	
@@ -1867,38 +2213,38 @@ o3gl.Program.prototype = {
 	}
 	,
 	Elements : function(elementArrayBuffer) {
-		this._vertexArrayObject.Elements(elementArrayBuffer);
+		this.VertexArray().Elements(elementArrayBuffer);
 		return this;
 	}
 	,
 	VertexAttributePointer : function(name, arrayBufferPointer) {		
 		var attributeLocation = this.getAttribLocation(name);
-		this._vertexArrayObject.VertexAttributePointer(attributeLocation, arrayBufferPointer);
+		this.VertexArray().VertexAttributePointer(attributeLocation, arrayBufferPointer);
 		return this;
 	}
 	,
 	VertexAttribute1f : function(name, v1) {
 		var attributeLocation = this.getAttribLocation(name);
-		this.vertexArrayObject.VertexAttribute1f(attributeLocation, v1);
+		this.VertexArray().VertexAttribute1f(attributeLocation, v1);
 		return this;
 	}
 	,
 	VertexAttribute2f : function(name, v1, v2) {
 		var attributeLocation = this.getAttribLocation(name);
-		this._vertexArrayObject.VertexAttribute2f(attributeLocation, v1, v2);
+		this.VertexArray().VertexAttribute2f(attributeLocation, v1, v2);
 		return this;
 	}
 	,
 	VertexAttribute3f : function(name, v1, v2, v3) {
 		var attributeLocation = this.getAttribLocation(name);
-		this._vertexArrayObject.VertexAttribute3f(attributeLocation, v1, v2, v3);
+		this.VertexArray().VertexAttribute3f(attributeLocation, v1, v2, v3);
 		return this;
 	}
 	,
 	VertexAttribute4f : function(name, v1, v2, v3, v4) {
 		var attributeLocation = this.getAttribLocation(name);
 		var attributeLocation = this.getAttribLocation(name);
-		this._vertexArrayObject.VertexAttribute4f(attributeLocation, v1, v2, v3, v4);
+		this.VertexArray().VertexAttribute4f(attributeLocation, v1, v2, v3, v4);
 		return this;
 	}
 	,
@@ -1911,7 +2257,7 @@ o3gl.Program.prototype = {
 		if (v1 instanceof o3gl.Buffer) {
 			v1.targetArrayBuffer();
 			this.VertexAttributePointer(name, v1.pointer().typeFloat().size(1));
-		} else if (v1 instanceof o3gl.Buffer.Pointer) {
+		} else if (v1 instanceof o3gl.ArrayBuffer.Pointer) {
 			this.VertexAttributePointer(name, v1.typeFloat().size(1));
 		} else {
 			this.VertexAttribute1f(name, v1);
@@ -1923,7 +2269,7 @@ o3gl.Program.prototype = {
 		if (v1 instanceof o3gl.Buffer) {
 			v1.targetArrayBuffer();
 			this.VertexAttributePointer(name, v1.pointer().typeFloat().size(2));
-		} else if (v1 instanceof o3gl.Buffer.Pointer) {
+		} else if (v1 instanceof o3gl.ArrayBuffer.Pointer) {
 			this.VertexAttributePointer(name, v1.typeFloat().size(2));
 		} else {
 			this.VertexAttribute2f(name, v1, v2);
@@ -1935,7 +2281,7 @@ o3gl.Program.prototype = {
 		if (v1 instanceof o3gl.Buffer) {
 			v1.targetArrayBuffer();
 			this.VertexAttributePointer(name, v1.pointer().typeFloat().size(3));
-		} else if (v1 instanceof o3gl.Buffer.Pointer) {
+		} else if (v1 instanceof o3gl.ArrayBuffer.Pointer) {
 			this.VertexAttributePointer(name, v1.typeFloat().size(3));
 		} else {
 			this.VertexAttribute3f(name, v1, v2, v3);
@@ -1947,7 +2293,7 @@ o3gl.Program.prototype = {
 		if (v1 instanceof o3gl.Buffer) {
 			v1.targetArrayBuffer();
 			this.VertexAttributePointer(name, v1.pointer().typeFloat().size(4));
-		} else if (v1 instanceof o3gl.Buffer.Pointer) {
+		} else if (v1 instanceof o3gl.ArrayBuffer.Pointer) {
 			this.VertexAttributePointer(name, v1.typeFloat().size(4));
 		} else {
 			this.VertexAttribute4f(name, v1, v2, v3, v4);
@@ -1958,13 +2304,21 @@ o3gl.Program.prototype = {
 	_drawPrimitives : function(glMode, first, count) {
 		this.Use(); // assert current program
 		
-		var elementArrayBuffer = this._vertexArrayObject.elementArrayBuffer;
+		
+		var elementArrayBuffer = undefined;
+		var maxElementsCount = undefined;
+		
+		if (this._vertexArrayObject) {
+			elementArrayBuffer = this._vertexArrayObject.elementArrayBuffer;
+			maxElementsCount = this._vertexArrayObject.getMaxElementsCount();
+		}
+		
 		
 		if (elementArrayBuffer) {
-			elementArrayBuffer.targetElementArrayBuffer().Bind();
+			elementArrayBuffer.Bind();
 			var elementType 	= elementArrayBuffer._type; // The type of elements in the element array buffer. Must be a gl.UNSIGNED_SHORT.
-			var elementsCount 	= undefined; // The number of elements to render.
-			var offsetBytes		= 0; // Offset into the element array buffer. Must be a valid multiple of the size of type.
+			var elementsCount 	= undefined; 				// The number of elements to render.
+			var offsetBytes		= 0; 						// Offset into the element array buffer. Must be a valid multiple of the size of type.
 			
 			if (first) {
 				offsetBytes = Utils.glTypeSizeBytes(elementType) * first; // elementType must be gl.UNSIGNED_SHORT here
@@ -1973,7 +2327,7 @@ o3gl.Program.prototype = {
 			if (count) {
 				elementsCount = count;
 			} else {
-				elementsCount = this._vertexArrayObject.getMaxElementsCount();
+				elementsCount = maxElementsCount;
 			}
 			
 			gl.drawElements(glMode, elementsCount, elementType, offsetBytes);
@@ -1982,8 +2336,7 @@ o3gl.Program.prototype = {
 				first = 0;
 			}
 			if (!count) {
-				// Restore the last array buffer pointer elements count
-				count = this._vertexArrayObject.getMaxElementsCount();
+				count = maxElementsCount;
 			}
 			gl.drawArrays(glMode, first, count);
 		}
@@ -2144,57 +2497,44 @@ function wrap(object, methods) {
 	}
 }
 
-/*
-o3gl.Buffer.prototype.Data = _deffered(o3gl.Buffer.prototype.Data);
-o3gl.Buffer.prototype.Bind = _defferedCall(o3gl.Buffer.prototype.Bind);
-*/
-wrap(o3gl.Buffer.prototype, "Data");
-wrap(o3gl.Texture.prototype, "GenerateMipmap", "Image2D", "_Wrap", "_Filter");
+function enshureBound() {
+	if (!this.isBound()) {
+		this.Bind();
+	}
+}
 
-wrap(o3gl.FrameBufferDefault, 
-"Viewport",
-"ClearColorBuffer",
-"ClearDepthBuffer",
-"Clear",
-"DepthMask",
-"DepthTest",
-"ColorMask",
-"SetClearColor",
-"SetClearDepth"
-);
-wrap(o3gl.FrameBuffer.prototype, 
-"Viewport",
-"ClearColorBuffer",
-"ClearDepthBuffer",
-"Clear",
-"DepthMask",
-"DepthTest",
-"ColorMask",
-"SetClearColor",
-"SetClearDepth",
-"Color",
-"Depth",
-"Stencil"
-);
-wrap(o3gl.RenderBuffer.prototype, "Storage" );
-wrap(o3gl.Program.prototype, "Set" );
+function enshureUsed() {
+	if (!this.isUsed()) {
+		this.Use();
+	}
+}
 
+// Apply client state tracking advices
+
+Aspect(o3gl.Texture2D.prototype).before("GenerateMipmap|Filter|Wrap|Image", enshureBound);
+//Aspect(o3gl.Texture2D.Target.prototype).before("Image", enshureBound);
+Aspect(o3gl.TextureCubeMap.prototype).before("GenerateMipmap|Filter|Wrap|Image", enshureBound);
+// Aspect(o3gl.TextureCubeMap.Target.prototype).before("Image", enshureBound);
+Aspect(o3gl.ArrayBuffer.prototype).before("Data", enshureBound);
+Aspect(o3gl.ElementArrayBuffer.prototype).before("Data", enshureBound);
+Aspect(o3gl.FrameBufferDefault).before("Viewport|ClearColorBuffer|ClearDepthBuffer|Clear|DepthMask|DepthTest|ColorMask|SetClearColor|SetClearDepth", enshureBound);
+Aspect(o3gl.FrameBuffer.prototype).before("Viewport|ClearColorBuffer|ClearDepthBuffer|Clear|DepthMask|DepthTest|ColorMask|SetClearColor|SetClearDepth|Color|Depth|Stencil",enshureBound);
+Aspect(o3gl.RenderBuffer.prototype).before("Storage", enshureBound);
+Aspect(o3gl.Program.prototype).before("^Set", enshureUsed);
 
 
 // Resource methods
-o3gl.createTexture = function() {
-	return new o3gl.Texture();
-}
-/*
 o3gl.createTexture2D = function() {
-	return new o3gl.Texture().target2D();
+	return new o3gl.Texture2D();
 }
 o3gl.createTextureCubeMap = function() {
-	return new o3gl.Texture().targetCubeMap();
+	return new o3gl.TextureCubeMap();
 }
-*/
-o3gl.createBuffer = function(data) {
-	return new o3gl.Buffer(data);
+o3gl.createArrayBuffer = function(data) {
+	return new o3gl.ArrayBuffer(data);
+}
+o3gl.createElementArrayBuffer = function(data) {
+	return new o3gl.ElementArrayBuffer(data);
 }
 o3gl.createFrameBuffer = function() {
 	return new o3gl.FrameBuffer();
@@ -2202,8 +2542,11 @@ o3gl.createFrameBuffer = function() {
 o3gl.defaultFrameBuffer = function() {
 	return o3gl.FrameBufferDefault;
 }
-o3gl.createRenderBuffer = function() {
-	return new o3gl.RenderBuffer();
+o3gl.createRenderBufferDepth = function() {
+	return new o3gl.RenderBufferDepth();
+}
+o3gl.createRenderBufferStencil = function() {
+	return new o3gl.RenderBufferDepth();
 }
 o3gl.createShader = function(sources) {
 	return new o3gl.Shader(sources);

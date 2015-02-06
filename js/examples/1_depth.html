@@ -126,8 +126,8 @@ void main() {
 		];
 		
 		program 	= o3gl.createProgram(o3gl.createShader(vertexShaderSource), o3gl.createShader(fragmentShaderSource));
-		positions 	= o3gl.createBuffer().Data(cubeVertex);
-		indexes 	= o3gl.createBuffer().Data(cubeIndex);
+		positions 	= o3gl.createArrayBuffer().Data(cubeVertex);
+		indexes 	= o3gl.createElementArrayBuffer().Data(cubeIndex);
 	}
 	
 	function render() {
@@ -142,13 +142,12 @@ void main() {
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
 		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 
-		o3gl.defaultFrameBuffer().Bind().
+		o3gl.defaultFrameBuffer().
 		DepthTest(true).DepthMask(true).
 		ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer().
 		Viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 		
 		program.
-			Use().
 			Set("uProjectionMatrix", 	pMatrix).
 			Set("uModelViewMatrix", 	mvMatrix).
 			Set("aPosition", positions.pointer()).
