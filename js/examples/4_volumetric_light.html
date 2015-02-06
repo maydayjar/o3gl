@@ -9,7 +9,7 @@
 <script type="text/javascript" src="stats.min.js"></script>
 <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
-<script type="text/javascript" src="../o3gl2.js"></script>
+<script type="text/javascript" src="../o3gl.js"></script>
 <script type="text/javascript" src="../shaders/phong.js"></script>
 <script type="text/javascript" src="../shaders/postprocess.js"></script>
 <script type="text/javascript" src="../utils/utils.js"></script>
@@ -271,7 +271,7 @@
 			var g = (y + 1) / 2;
 			var b = (z + 1) / 2;
 
-			programPhong.Use().
+			programPhong.
 				Set("uMatrixV", 	matrixV). 		
 				Set("uMatrixP", 	matrixP).		
 				Set("uMatrixM", 	matrixM).
@@ -281,7 +281,8 @@
 				Set("uMaterialSpecular", 0.2, 0.2, 0.2, 1.0).	
 				Set("aPosition", 	vboCube.positions.pointer()).
 				Set("aNormal", 		vboCube.normals.pointer()).
-				DrawTriangles(vboCube.indexes);
+				Elements(vboCube.indexes).
+				DrawTriangles();
 		}
 		
 		// Draw emmissive geometry
@@ -303,7 +304,8 @@
 			Set("uMaterialSpecular", 0.0, 0.0, 0.0, 1.0).	
 			Set("aPosition", 	vboCube.positions.pointer()).
 			Set("aNormal", 		vboCube.normals.pointer()).
-			DrawTriangles(vboCube.indexes);
+			Elements(vboCube.indexes).
+			DrawTriangles();
 
 		/*
 		fbEmissive.Bind().DepthTest(true).DepthMask(true).

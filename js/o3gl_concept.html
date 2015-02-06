@@ -1,0 +1,409 @@
+<script>
+/*
+	program.
+	Set("uP",1,0,0).
+	Set("aV", ab.pointer().stride(0).offset(0)).			
+	Set("sampler", t1).
+
+	Color(t1.level(0)).
+	Depth(depthBuffer).depthMask(true).depthTest(true).
+	Elements(elementArray)
+	DrawTriangles(indexes, 0, 6).toFrameBuffer(frameBuffer);
+*/
+
+/*
+	Program - is executable code
+	instance 	- pointer to drawcall data. vao 
+				- 
+	
+*/
+
+/*
+// GL object groups concept
+- Programs with precompiled shaders
+- Vertex Array Object
+- Frame Buffer objects
+
+*/
+
+/*
+// OBJECT concept
+- Has assotiated VAO and UAO that are applied to any program within
+- elements array
+- first and count
+- draw mode 
+- Can have one or more 'methods' that are programs
+- Can be 'abstract' and extended
+- Every method is passed it's output (textures, depthBuffer)
+
+o3gl.createObject().
+
+// Entities
+Geometry 
+	VAO
+	Elements
+	first/last
+
+Geometry Assembly
+	Triangle
+	Line
+	Point
+	
+	
+Rasterize
+	inputs
+		DepthTest
+		StencilTest
+		Blend 
+
+	outputs
+		FrameBuffer
+			RenderBuffers 
+				Color
+				Depth
+				Stencil
+		
+	Viewport
+	glDrawMode
+	
+
+Program
+	DepthTest
+	StencilTest
+	unitforms
+	
+
+// PIPELINE concept
+
+Vertices > Vertex shader > Primitives generation > Rasterization > Fragment shader > Testing/Blending > Framebuffer
+o3gl.pipeline().
+	vertices(vertexShader).
+		elements(buffer).
+		set("a1", arrayBuffer.pointer()).
+		set("a2", arrayBuffer.pointer()).
+	rasterization(fragmentShader).
+		first(0).count(6)
+		modeTriangleFan()
+		modePoints(pointSize)
+		modeLines(lineWidth)
+		
+	
+	primitivesGeneration().
+	rasterization()
+	
+// DRAWCALL concept
+
+o3gl.
+	drawcall().
+	program(program).
+	vertexArrayObject(abo).
+	frameBufferObject(fbo).
+	set("a", vertexes).
+	elements(buffer).
+	drawTriangles().
+	first(0).
+	last(100).
+	renderBufferColor(texture1, texture2).
+	renderBufferDepth().
+	depthTest(true).
+	depthMask(true).
+	viewport()
+	
+
+// IMPLICIT INSTANCING concept
+Some of the chained methods produce a new program instance 
+
+// EXPLICIT INSTANCING concept
+Explicit program instance creation
+
+
+*/
+
+/**
+TODO:
+
+- hints sucks. must be changed to inheritance or some kind of builder pattern
+
+	
+- Program instancing
+	- Program globals are bound to program and used implicitly (if set)
+		- Global uniforms (default) (implemented by default)
+		- Global attributes (default) (implemented)
+			- Shortcut (VAO) lazy initialization methods (Set, AttributeXX, VertexAttributeXX,  VertexAttributePointer)
+		- Global FrameBufferObject
+			- Shortcut (FBO) lazy initialization methods (Set, AttributeXX, VertexAttributeXX,  VertexAttributePointer)
+
+	- Instancing implies usage of global values that are substituted when new value is assigned
+		- Uniform Buffer Object (per instance)		
+		- Vertex Array Objects (per instance)		
+		- FrameBufferObject (per instance). 		Do we really need it???
+		
+	- Internally generated resources (It is likely a bad idea, can have problems with configuration !!! )
+		- Deleted when the program resource is deleted
+		- Both for globals and in
+		- textures, (sampler2D/samplerCube), )
+
+	- Embedded matrix operations
+		```
+			mat4.identity(matrixM);
+			mat4.translate(matrixM, [x * step, y * step, z * step]);			
+			mat4.multiply(matrixV, matrixM , matrixMV);
+			mat4.toInverseMat3(matrixMV, matrixN);
+			mat3.transpose(matrixN);
+			programPhong.
+				Set("uMatrixV", 	matrixV). 		
+				Set("uMatrixP", 	matrixP).		
+				Set("uMatrixM", 	matrixM).
+				Set("uMatrixN", 	matrixN).
+		```
+		```
+			// Internal stack
+			programPhong.matrix("uMatrixV").identity().lookat();
+			programPhong.matrix("uMatrixM").identity().translate(1, 0, 0);
+			programPhong. matrix("uMatrixV").multiply("uMatrixM").toInverseMat3().transpose().Set("uMatrixN");
+		```
+		
+	
+- aspects
+
+	- layered concept (based on aspects)
+		- client state tracking. Automatic `Use` and `Bind` methods invokation
+		- or deffered methods that are used right after `Use` or `Bind` methods invoked. this allows configuration reordering. The cases are:
+			- Any ideas???
+
+		
+- methods and variables naming convention
+
+
+- Inline compillation / scripts generation. Killer feature!
+
+*/
+
+/**
+program.VertexArray(); 				// return default
+program.VertexArrayt(customVAO); 		// set up new
+program.FrameBuffer();				// default frame buffer
+program.FrameBuffer(custom FBO);		// default frame buffer
+
+program.Color(texture0, texture1);
+program.Depth(texture2);		// Depth texture extension
+program.Stencil(rbDepth);		// Depth texture extension DepthMask(true)
+
+program.DepthTest(true);		// Depth texture extension
+program.DepthMask(true);		// Depth texture extension
+
+
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+new Aspect(o3gl.FrameBufferDefault).
+deffer(
+	function() {
+		return isBound
+	}
+	,
+	"Viewport",
+	"ClearColorBuffer",
+	"ClearDepthBuffer",
+	"Clear",
+	"DepthMask",
+	"DepthTest",
+	"ColorMask",
+	"SetClearColor",
+	"SetClearDepth",
+	
+)
+
+
+"Viewport",
+"ClearColorBuffer",
+"ClearDepthBuffer",
+"Clear",
+"DepthMask",
+"DepthTest",
+"ColorMask",
+"SetClearColor",
+"SetClearDepth"
+)
+*/
+
+/**
+new Aspect(o3gl.Program.prototype).
+deffer("Set", "isUsed").
+after("Use").triggerDeffered()
+
+
+deffered(o3gl.Program.prototype).
+methods("Set").
+condition("isUsed").
+triggerAfter("Use")
+
+
+deffered(
+	o3gl.Program.prototype,
+	"Set", 
+	"isUsed",
+)
+
+
+if (this.isUsed()) {
+	method();
+} else {
+	
+}
+
+*/
+
+// Aspect builder
+/*
+	aspect(o).method(function(){}).before("f1");
+	aspect(o).method(function(){}).before("f1");
+	
+	aspect(o).deffer("Data").ifFalse("isBound").after("Bind");
+	
+	
+	aspect(o).
+*/
+
+
+function Aspect(object) {
+	var _object = object;
+	var _deffered = [];
+	
+	return {
+		before : function(methodName, beforeAdvice) {
+			// Old method
+			var method = _object[methodName];
+			
+			// Wrapped
+			_object[methodName] = function() {
+				var args = arguments;
+				beforeAdvice.apply(_object, args);
+				method.apply(_object, args);
+			}
+			
+			return this;
+		}
+		,
+		after : function(methodName, afterAdvice) {
+			// Old method
+			var method = _object[methodName];
+			
+			// Wrapped
+			_object[methodName] = function() {
+				var args = arguments;
+				method.apply(_object, args);
+				afterAdvice.apply(_object, args);
+			}		
+			
+			return this;
+		}
+		,
+		deffer : function(methodName, condition) {
+			// Old method
+			var method = _object[methodName];
+
+			// Wrapped
+			_object[methodName] = function() {
+				var methodArgs = arguments;
+			
+				if (condition.apply(_object, methodArgs)) {
+					// Invoke directly
+					method.apply(_object, methodArgs);				
+				} else {
+					// Postpone method invocation
+					_deffered.push(function() {
+						if (condition.apply(_object, methodArgs)) {
+							method.apply(_object, methodArgs);
+							// Signal 
+							return true;
+						} else {
+							
+							return false;
+						}
+					});
+				}			
+			}
+			
+			return this;
+		}
+		,
+		invokeDeffered : function() {
+			var count = _deffered.length;
+			for (var i = 0; i < count; ++i) {
+				var defferedMethod = _deffered.shift();
+				if (defferedMethod()) {
+					// invoked. remove from the queue
+				} else {
+					// not invoked. enqueue again
+					_deffered.push(defferedMethod);
+				}
+			}
+		}
+		,
+		invokeDefferedAfter : function (methodName) {
+			var that = this;
+			this.after(methodName, function() {
+				that.invokeDeffered();
+			});
+			return this;
+		}
+	}	
+}
+
+
+var A = function () {};
+A.prototype = {
+	f : function() {alert(100500); }
+}
+
+var B = function() {}
+B.prototype = new A();
+
+var C = function() {}
+C.prototype = Object.create(A.prototype);
+
+var a = new A();
+var b = new B();
+var c = new C();
+/*
+//console.log(Object.create(null) instanceof Object); 	// => false. no prototype
+//console.log(Object.create(1) instanceof Object); 	// => error. Uncaught TypeError: Object prototype may only be an Object or null: 1
+//console.log(Object.create(new Number(1)) instanceof Object); 	// => true
+console.log(a instanceof Object); 	// => true
+console.log(a instanceof A);		// => true
+console.log(a instanceof B);		// => false
+console.log(a instanceof C);		// => false
+
+console.log(b instanceof A);		// => true
+console.log(b instanceof B);		// => true
+console.log(b instanceof C);		// => false
+
+console.log(c instanceof A);		// => true
+console.log(c instanceof B);		// => false
+console.log(c instanceof C);		// => true
+*/
+
+console.log(A.prototype.constructor === A);		// => false
+A.prototype.constructor === Object;// => true
+
+
+</script>
