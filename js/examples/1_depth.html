@@ -128,6 +128,15 @@ void main() {
 		program 	= o3gl.createProgram(o3gl.createShader(vertexShaderSource), o3gl.createShader(fragmentShaderSource));
 		positions 	= o3gl.createArrayBuffer().Data(cubeVertex);
 		indexes 	= o3gl.createElementArrayBuffer().Data(cubeIndex);
+		
+		
+		// Set up program properties that won't change
+		program.
+			DepthTest(true).DepthMask(true).	// Enable depth test and mask
+			Viewport(). 						// Update default frame buffer viewport to it's max size every time
+			Set("aPosition", positions.pointer()).
+			Elements(indexes).
+			Set("uProjectionMatrix", 	pMatrix);
 	}
 	
 	function render() {
@@ -137,31 +146,20 @@ void main() {
 //		mat4.translate(mvMatrix, [-1, 0, 0]);
 		mat4.rotate(mvMatrix, angle, [1, 0, 0]);
 
+		/*
 		gl.enable(gl.DEPTH_TEST);
 		gl.clearColor(0.0, 0.0, 0.0, 1.0);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
 		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-
-		o3gl.defaultFrameBuffer().
-		DepthTest(true).DepthMask(true).
-		ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer().
-		Viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+		*/
 		
 		program.
-			Set("uProjectionMatrix", 	pMatrix).
+			// Clear buffers
+			ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer().
+			// Update recalculated MV transformation
 			Set("uModelViewMatrix", 	mvMatrix).
-			Set("aPosition", positions.pointer()).
-			Elements(indexes).
+			// End up with drawcall
 			DrawTriangles();
-
-		// Draw using iterator
-		/*
-		program.
-			Use().
-			Set("uProjectionMatrix", 	pMatrix).
-			Set("uModelViewMatrix", 	mvMatrix).
-			Draw(cube);
-		*/	
     }
 
     function update() {	

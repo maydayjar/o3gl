@@ -116,15 +116,9 @@ void main() {
 		var vertexShaderSource = document.getElementById("vs").textContent;
 		var fragmentShaderSource = document.getElementById("fs").textContent;
 		
-		// Create the programs
-		programDraw 		= o3gl.createProgram(o3gl.createShader(vertexShaderSource),o3gl.createShader(fragmentShaderSource));
-		programDefault 		= o3gl.createProgram(o3gl.createShader(Shaders.Default.Vertex),o3gl.createShader(Shaders.Default.Fragment));
-		programConvolution 	= o3gl.createProgram(o3gl.createShader(Shaders.Convolution.Vertex),o3gl.createShader(Shaders.Convolution.Fragment));
-		programBlend 		= o3gl.createProgram(o3gl.createShader(Shaders.BlendAdditive.Vertex),o3gl.createShader(Shaders.BlendAdditive.Fragment));
 		// Initialize mesh texture
 		var imageDiffuse 	= document.getElementById("specular");
 		
-		//textureDiffuse 		= o3gl.createTexture2D().mipmapLevel(0).Image(imageDiffuse);
 		textureDiffuse 		= o3gl.createTexture2D().Image(imageDiffuse);
 		
 		// Create framebuffers
@@ -147,6 +141,41 @@ void main() {
 		var plane = new Plane2D(); // Post-process plane
 		vbo.plane.positions = o3gl.createArrayBuffer().Data(plane.positions);
 		vbo.plane.textureCoords = o3gl.createArrayBuffer().Data(plane.textureCoords);
+
+
+		// Create the programs
+		programDraw 		= o3gl.createProgram(o3gl.createShader(vertexShaderSource),o3gl.createShader(fragmentShaderSource));
+		programDefault 		= o3gl.createProgram(o3gl.createShader(Shaders.Default.Vertex),o3gl.createShader(Shaders.Default.Fragment));
+		programConvolution 	= o3gl.createProgram(o3gl.createShader(Shaders.Convolution.Vertex),o3gl.createShader(Shaders.Convolution.Fragment));
+		programBlend 		= o3gl.createProgram(o3gl.createShader(Shaders.BlendAdditive.Vertex),o3gl.createShader(Shaders.BlendAdditive.Fragment));
+
+
+		programDraw.
+			DepthTest(true).
+			DepthMask(true).
+            Viewport();
+			
+		programConvolution.
+			Viewport().
+			DepthTest(false).
+			DepthMask(false).
+			Set("aPosition",	vbo.plane.positions.pointer()).
+			Set("aTextureCoord",vbo.plane.textureCoords.pointer());
+
+		programBlend.
+			Viewport().
+			DepthTest(false).
+			DepthMask(false).
+			Set("uSampler0", fbTexturePass2).		
+			Set("uSampler1", fbTextureScene).		
+			Set("aPosition",	vbo.plane.positions.pointer()).
+			Set("aTextureCoord",vbo.plane.textureCoords.pointer());
+			
+			/*
+		programDefault.
+			Set("aPosition",	vbo.plane.positions.pointer()).
+			Set("aTextureCoord",vbo.plane.textureCoords.pointer());
+			*/
 		
 		/*
 		// Create buffers:
@@ -197,12 +226,12 @@ void main() {
 		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 		*/
 		
-		
-		fbScene.Bind().DepthTest(true).DepthMask(true).
-            Viewport(viewport.x, viewport.y, viewport.width, viewport.height).
+		// Clear the scene
+		programDraw.
 			ClearColorBuffer(0.0, 0.0, 0.0, 1.0).
 			ClearDepthBuffer();
 		
+		// Draw the scene
 		programDraw.
 			Set("uMatrixP", 	matrixP).
 			Set("uMatrixMV", 	matrixMV).
@@ -212,29 +241,19 @@ void main() {
 			Elements(vbo.cube.indexes).
 			DrawTriangles();
 			
-
-		fbPass1.Bind().Viewport(0, 0, 128, 128).DepthTest(false);
+		programConvolution.FrameBuffer(fbPass1);
 		programConvolution.
-			Set("aPosition",	vbo.plane.positions.pointer()).
-			Set("aTextureCoord",vbo.plane.textureCoords.pointer()).					
 			Set("uStep", 1/128, 0).							
 			Set("uSampler0", fbTextureScene).	
 			DrawTriangles();
 		
-		fbPass2.Bind().Viewport(0, 0, 128, 128).DepthTest(false);
-		programConvolution.
-			Set("aPosition",	vbo.plane.positions.pointer()).
-			Set("aTextureCoord",vbo.plane.textureCoords.pointer()).					
+		programConvolution.FrameBuffer(fbPass2);
+		programConvolution.		
 			Set("uStep", 0, 1/128).
 			Set("uSampler0", fbTexturePass1).		
 			DrawTriangles();
 
-		o3gl.defaultFrameBuffer().Bind().DepthTest(false).DepthMask(false).Viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 		programBlend.
-			Set("uSampler0", fbTexturePass2).		
-			Set("uSampler1", fbTextureScene).		
-			Set("aPosition",	vbo.plane.positions.pointer()).
-			Set("aTextureCoord",vbo.plane.textureCoords.pointer()).					
 			DrawTriangles();
     }
     
@@ -281,7 +300,7 @@ void main() {
 		mat4.perspective(45, viewport.aspect, 0.1, 100.0, matrixP);
 
         if (fbTextureScene && fbDepthScene) {
-            fbTextureScene.Image2D(viewport.width, viewport.height);
+            fbTextureScene.Image(viewport.width, viewport.height);
             fbDepthScene.Storage(viewport.width, viewport.height);
         }
     }

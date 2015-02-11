@@ -181,16 +181,27 @@ TODO:
 
 /**
 program.VertexArray(); 				// return default
-program.VertexArrayt(customVAO); 		// set up new
+program.VertexArray(customVAO); 		// set up new
 program.FrameBuffer();				// default frame buffer
+program.FrameBuffer(null);				// default frame buffer
 program.FrameBuffer(custom FBO);		// default frame buffer
 
-program.Color(texture0, texture1);
-program.Depth(texture2);		// Depth texture extension
-program.Stencil(rbDepth);		// Depth texture extension DepthMask(true)
+program.FrameBuffer().Color(texture0, texture1);
+program.FrameBuffer().Depth(texture2);		// Depth texture extension
+program.FrameBuffer().Stencil(rbDepth);		// Depth texture extension DepthMask(true)
+program.FrameBuffer().Clear(); // Clear all the assotiated buffers
 
-program.DepthTest(true);		// Depth texture extension
-program.DepthMask(true);		// Depth texture extension
+program.FrameBuffer().ClearColor(0,0,0,1);
+program.FrameBuffer().ClearColor(false);
+program.FrameBuffer().ClearDepth(1.0);
+program.FrameBuffer().ClearDepth(false);
+program.FrameBuffer().Clear();					// By default clears all the assotiated render buffers with the default value. 
+program.FrameBuffer().ClearColorBuffer();		
+program.FrameBuffer().ClearDepthBuffer();
+program.FrameBuffer().ClearStencilBuffer();
+
+program.DepthTest(true);		// Depth test and mask are program-specific features
+program.DepthMask(true);		// Depth test and mask are program-specific features 
 
 
 */
@@ -289,121 +300,100 @@ function Aspect(object) {
 	var _deffered = [];
 	
 	return {
-		before : function(methodName, beforeAdvice) {
-			// Old method
+		advice : function(methodName, adviceBefore, adviceAfter) {
 			var method = _object[methodName];
-			
 			// Wrapped
 			_object[methodName] = function() {
 				var args = arguments;
-				beforeAdvice.apply(_object, args);
-				method.apply(_object, args);
-			}
-			
-			return this;
-		}
-		,
-		after : function(methodName, afterAdvice) {
-			// Old method
-			var method = _object[methodName];
-			
-			// Wrapped
-			_object[methodName] = function() {
-				var args = arguments;
-				method.apply(_object, args);
-				afterAdvice.apply(_object, args);
-			}		
-			
-			return this;
-		}
-		,
-		deffer : function(methodName, condition) {
-			// Old method
-			var method = _object[methodName];
-
-			// Wrapped
-			_object[methodName] = function() {
-				var methodArgs = arguments;
-			
-				if (condition.apply(_object, methodArgs)) {
-					// Invoke directly
-					method.apply(_object, methodArgs);				
-				} else {
-					// Postpone method invocation
-					_deffered.push(function() {
-						if (condition.apply(_object, methodArgs)) {
-							method.apply(_object, methodArgs);
-							// Signal 
-							return true;
-						} else {
-							
-							return false;
-						}
-					});
-				}			
-			}
-			
-			return this;
-		}
-		,
-		invokeDeffered : function() {
-			var count = _deffered.length;
-			for (var i = 0; i < count; ++i) {
-				var defferedMethod = _deffered.shift();
-				if (defferedMethod()) {
-					// invoked. remove from the queue
-				} else {
-					// not invoked. enqueue again
-					_deffered.push(defferedMethod);
+				if (adviceBefore) {
+					adviceBefore.apply(this, args);					
 				}
-			}
-		}
-		,
-		invokeDefferedAfter : function (methodName) {
-			var that = this;
-			this.after(methodName, function() {
-				that.invokeDeffered();
-			});
+				var result = method.apply(this, args);
+				if (adviceAfter) {
+					adviceAfter.apply(this, args);					
+				}
+				return result;
+			}	
 			return this;
 		}
-	}	
+		,
+		
+		before : function(methodNameRegExp, advice) {			
+			if (methodNameRegExp instanceof String) {
+				methodNameRegExp = new RegExp(methodNameRegExp);
+			}
+			for (var propertyName in _object) {
+				if (!propertyName.match(methodNameRegExp)) continue;
+				this.advice(propertyName, advice, null);				
+			}			
+			return this;
+		}
+		,
+		after : function(methodName, advice) {
+			
+			if (methodName instanceof String) {
+				methodName = new RegExp(methodName);
+			}
+			
+			for (var propertyName in _object) {
+				if (!propertyName.match(methodName)) continue;
+				this.advice(propertyName, null, advice);				
+			}			
+			return this;
+		}
+		,
+		around : function(methodName, advice) {
+						
+			if (methodName instanceof String) {
+				methodName = new RegExp(methodName);
+			}
+			
+			for (var propertyName in _object) {
+				if (!propertyName.match(methodName)) continue;
+				var property = _object[propertyName];
+				
+				_object[propertyName] = function() {
+					var args = arguments;
+					var that = this;
+					function pointcut() {
+						return property.apply(that, args);
+					}
+					return advice.call(this, pointcut)
+				}
+			}			
+			return this;
+		}
+	}
 }
 
-
-var A = function () {};
-A.prototype = {
-	f : function() {alert(100500); }
+var o = {
+	m1 : function(a1, a2) {
+		console.log(a1, a2);
+		return a1;
+	}
+	,
+	m2 : function(a1, a2) {
+		console.log(a1, a2);
+		return a2;
+	}
 }
 
-var B = function() {}
-B.prototype = new A();
+Aspect(o).around("m1", function(pointcut) {
+	console.log("before m1");
+	var result = pointcut();
+	console.log("after m1");
+	return result;
+});
 
-var C = function() {}
-C.prototype = Object.create(A.prototype);
+Aspect(o).around("m2", function(pointcut) {
+	console.log("before m2");
+	var result = pointcut();
+	console.log("after m2");
+	return result;
+});
 
-var a = new A();
-var b = new B();
-var c = new C();
-/*
-//console.log(Object.create(null) instanceof Object); 	// => false. no prototype
-//console.log(Object.create(1) instanceof Object); 	// => error. Uncaught TypeError: Object prototype may only be an Object or null: 1
-//console.log(Object.create(new Number(1)) instanceof Object); 	// => true
-console.log(a instanceof Object); 	// => true
-console.log(a instanceof A);		// => true
-console.log(a instanceof B);		// => false
-console.log(a instanceof C);		// => false
 
-console.log(b instanceof A);		// => true
-console.log(b instanceof B);		// => true
-console.log(b instanceof C);		// => false
-
-console.log(c instanceof A);		// => true
-console.log(c instanceof B);		// => false
-console.log(c instanceof C);		// => true
-*/
-
-console.log(A.prototype.constructor === A);		// => false
-A.prototype.constructor === Object;// => true
-
+o.m1(1,2);
+o.m2(1,2);
 
 </script>

@@ -90,18 +90,18 @@
 		// Create mesh
 		var cube = new Cube();
 		vboCube = {
-			positions : 	o3gl.createBuffer().Data(cube.positions),
-			normals : 		o3gl.createBuffer().Data(cube.normals),				
-			tangents : 		o3gl.createBuffer().Data(cube.tangents),				
-			textureCoords : o3gl.createBuffer().Data(cube.textureCoords),				
-			indexes : 		o3gl.createBuffer().Data(cube.indexes)			
+			positions : 	o3gl.createArrayBuffer().Data(cube.positions),
+			normals : 		o3gl.createArrayBuffer().Data(cube.normals),				
+			tangents : 		o3gl.createArrayBuffer().Data(cube.tangents),				
+			textureCoords : o3gl.createArrayBuffer().Data(cube.textureCoords),				
+			indexes : 		o3gl.createElementArrayBuffer().Data(cube.indexes)			
 		}
 
 		// Create offsreen rendering surface
 		var plane = new Plane2D(); // Post-process plane
 		vboPlane = {
-			positions : 	o3gl.createBuffer().Data(plane.positions),
-			textureCoords : o3gl.createBuffer().Data(plane.textureCoords)				
+			positions : 	o3gl.createArrayBuffer().Data(plane.positions),
+			textureCoords : o3gl.createArrayBuffer().Data(plane.textureCoords)				
 		}
 		
 		programPhong = o3gl.
@@ -127,20 +127,20 @@
 
 		// Create frame buffer textures
 		var ppScale = 0.5;
-		textureScene 			= o3gl.createTexture().FilterNearest().WrapClampToEdge().Image2D(viewport.width, viewport.height);
-		textureEmissive			= o3gl.createTexture().FilterNearest().WrapClampToEdge().Image2D(viewport.width, viewport.height);
-		textureConvolutionPass1	= o3gl.createTexture().FilterNearest().WrapClampToEdge().Image2D(viewport.width * ppScale, viewport.height * ppScale);
-		textureConvolutionPass2	= o3gl.createTexture().FilterNearest().WrapClampToEdge().Image2D(viewport.width * ppScale, viewport.height * ppScale);
-		textureBlurRadial		= o3gl.createTexture().FilterNearest().WrapClampToEdge().Image2D(viewport.width * ppScale, viewport.height * ppScale);
+		textureScene 			= o3gl.createTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
+		textureEmissive			= o3gl.createTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
+		textureConvolutionPass1	= o3gl.createTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width * ppScale, viewport.height * ppScale);
+		textureConvolutionPass2	= o3gl.createTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width * ppScale, viewport.height * ppScale);
+		textureBlurRadial		= o3gl.createTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width * ppScale, viewport.height * ppScale);
 		
 		// Create offscreen buffers
-		rbDepth 				= o3gl.createRenderBuffer().Storage(viewport.width, viewport.height);
+		rbDepth 				= o3gl.createRenderBufferDepth().Storage(viewport.width, viewport.height);
 		fbScene					= o3gl.createFrameBuffer().Color(textureScene).Depth(rbDepth);
 		fbEmissive				= o3gl.createFrameBuffer().Color(textureEmissive).Depth(rbDepth);
 		fbConvolutionPass1		= o3gl.createFrameBuffer().Color(textureConvolutionPass1);
 		fbConvolutionPass2		= o3gl.createFrameBuffer().Color(textureConvolutionPass2);
 		fbBlurRadial			= o3gl.createFrameBuffer().Color(textureBlurRadial);
-		fbDefault				= o3gl.defaultFrameBuffer();
+		fbDefault				= o3gl.createFrameBuffer();
 
 		
 		/*
@@ -249,7 +249,7 @@
 		fbScene.Bind().DepthTest(true).DepthMask(true).
 		Viewport(); // Set viewport to the full framebuffer size
 //		Viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-        fbScene.Clear();
+        fbScene.ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer();
 		
 		// Draw regular geometry
 		var step = 2.5;
@@ -271,7 +271,7 @@
 			var g = (y + 1) / 2;
 			var b = (z + 1) / 2;
 
-			programPhong.
+			programPhong.Use().
 				Set("uMatrixV", 	matrixV). 		
 				Set("uMatrixP", 	matrixP).		
 				Set("uMatrixM", 	matrixM).
@@ -284,6 +284,22 @@
 				Elements(vboCube.indexes).
 				DrawTriangles();
 		}
+
+/*		
+		// Flush to the screen
+		fbDefault.Bind().DepthTest(false).DepthMask(false).
+		ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer().
+		Viewport();
+		
+		programFlush.Use().
+			Set("aPosition", 	 vboPlane.positions.pointer()).
+			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
+			Set("uSampler0", textureScene).		
+//			Set("uSampler0", textureConvolutionPass2).		
+			DrawTriangles();
+
+		return;
+*/
 		
 		// Draw emmissive geometry
 		fbEmissive.Bind().DepthTest(true).DepthMask(true).
@@ -294,7 +310,7 @@
 		mat4.multiply(matrixV, matrixM , matrixMV);
 		mat4.toInverseMat3(matrixMV, matrixN);		
 		mat3.transpose(matrixN);
-		programPhong.Use().
+		programPhong.
 			Set("uMatrixV", 	matrixV). 		
 			Set("uMatrixP", 	matrixP).		
 			Set("uMatrixM", 	matrixM).
@@ -306,8 +322,8 @@
 			Set("aNormal", 		vboCube.normals.pointer()).
 			Elements(vboCube.indexes).
 			DrawTriangles();
-
-		/*
+			
+/*		
 		fbEmissive.Bind().DepthTest(true).DepthMask(true).
 		Viewport();
 		programFlush.Use().
@@ -315,11 +331,11 @@
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uSampler0", textureScene).		
 			DrawTriangles();
-		*/
+*/		
 
 
 		fbConvolutionPass1.Bind().DepthTest(false).Viewport();
-		programConvolution.Use().
+		programConvolution.
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uStep", 0.1/fbConvolutionPass1.getWidth(), 0).							
@@ -327,7 +343,7 @@
 			DrawTriangles();
 		
 		fbConvolutionPass2.Bind().DepthTest(false).Viewport();
-		programConvolution.Use().
+		programConvolution.
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uStep", 0, 0.1/fbConvolutionPass2.getHeight()).
@@ -336,7 +352,7 @@
 
 		
 		fbBlurRadial.Bind().DepthTest(false).Viewport();
-		programBlurRadial.Use().
+		programBlurRadial.
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uOrigin", 0.5, 0.5, 0.5, 0.5).
@@ -344,32 +360,29 @@
 			Set("uSampler0", textureConvolutionPass2).		
 //			Set("uSampler0", textureScene).		
 			DrawTriangles();
-		
-		/*
-		programFlush.Use().
-			Set("aPosition", 	 vboPlane.positions.pointer()).
-			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
-			Set("uSampler0", textureConvolutionPass2).		
-			DrawTriangles();
-		*/
+					
 			
-			
-			
-		// Flush to the screen
+	
+			// Flush to the screen
 		fbDefault.Bind().DepthTest(false).
-		ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer().
+		// ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer().
 		Viewport();
 		
-		programBlend.Use().
+		programBlend.
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uSampler0", textureBlurRadial).		
 			Set("uSampler1", textureScene).		
 			DrawTriangles();
 		
+		return;
 		
-		
-
+		programFlush.Use().
+			Set("aPosition", 	 vboPlane.positions.pointer()).
+			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
+//			Set("uSampler0", textureScene).		
+			Set("uSampler0", textureConvolutionPass2).		
+			DrawTriangles();
     }
     
     function update() {
