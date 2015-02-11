@@ -125,13 +125,13 @@ void main() {
 		fbTextureScene 		= o3gl.createTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
 		
         fbDepthScene 		= o3gl.createRenderBufferDepth().Storage(viewport.width, viewport.height);
-		fbScene 			= o3gl.createFrameBuffer().Color(fbTextureScene).Depth(fbDepthScene);
+		fbScene 			= o3gl.createFrameBuffer().Color(fbTextureScene).Depth(fbDepthScene).DepthTest(true).DepthMask(true).Viewport();
 
 		fbTexturePass1 		= o3gl.createTexture2D().FilterLinear().WrapClampToEdge().Image(128, 128);
-		fbPass1 			= o3gl.createFrameBuffer().Color(fbTexturePass1);
+		fbPass1 			= o3gl.createFrameBuffer().Color(fbTexturePass1).Viewport().DepthTest(false).DepthMask(false);
 
 		fbTexturePass2 		= o3gl.createTexture2D().FilterLinear().WrapClampToEdge().Image(128, 128);
-		fbPass2 			= o3gl.createFrameBuffer().Color(fbTexturePass2);
+		fbPass2 			= o3gl.createFrameBuffer().Color(fbTexturePass2).Viewport().DepthTest(false).DepthMask(false);
 
 		// Create vertex buffer objects
 		var cube = new Cube();
@@ -149,24 +149,15 @@ void main() {
 		programConvolution 	= o3gl.createProgram(o3gl.createShader(Shaders.Convolution.Vertex),o3gl.createShader(Shaders.Convolution.Fragment));
 		programBlend 		= o3gl.createProgram(o3gl.createShader(Shaders.BlendAdditive.Vertex),o3gl.createShader(Shaders.BlendAdditive.Fragment));
 
-
-		programDraw.
-			DepthTest(true).
-			DepthMask(true).
-            Viewport();
+		programDraw.FrameBuffer(fbScene);
 			
 		programConvolution.
-			Viewport().
-			DepthTest(false).
-			DepthMask(false).
 			Set("aPosition",	vbo.plane.positions.pointer()).
 			Set("aTextureCoord",vbo.plane.textureCoords.pointer());
 
+		programBlend.FrameBuffer().Viewport().DepthTest(false).DepthMask(false);
 		programBlend.
-			Viewport().
-			DepthTest(false).
-			DepthMask(false).
-			Set("uSampler0", fbTexturePass2).		
+			Set("uSampler0", fbTexturePass1).		
 			Set("uSampler1", fbTextureScene).		
 			Set("aPosition",	vbo.plane.positions.pointer()).
 			Set("aTextureCoord",vbo.plane.textureCoords.pointer());
@@ -241,6 +232,7 @@ void main() {
 			Elements(vbo.cube.indexes).
 			DrawTriangles();
 			
+		fbPass1.Bind();
 		programConvolution.FrameBuffer(fbPass1);
 		programConvolution.
 			Set("uStep", 1/128, 0).							
@@ -252,8 +244,11 @@ void main() {
 			Set("uStep", 0, 1/128).
 			Set("uSampler0", fbTexturePass1).		
 			DrawTriangles();
-
+			
 		programBlend.
+			Set("uSampler0", fbTexturePass2).		
+			Set("uSampler1", fbTextureScene).		
+
 			DrawTriangles();
     }
     

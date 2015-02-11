@@ -261,6 +261,7 @@
 			
 			mat4.identity(matrixM);
 			mat4.translate(matrixM, [x * step, y * step, z * step]);
+			mat4.scale(matrixM, [0.8, 0.8, 0.8]);
 			
 			mat4.multiply(matrixV, matrixM , matrixMV);
 			mat4.toInverseMat3(matrixMV, matrixN);
@@ -338,7 +339,7 @@
 		programConvolution.
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
-			Set("uStep", 0.1/fbConvolutionPass1.getWidth(), 0).							
+			Set("uStep", 0.9/fbConvolutionPass1.getWidth(), 0).							
 			Set("uSampler0", textureEmissive).		
 			DrawTriangles();
 		
@@ -346,10 +347,9 @@
 		programConvolution.
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
-			Set("uStep", 0, 0.1/fbConvolutionPass2.getHeight()).
+			Set("uStep", 0, 0.9/fbConvolutionPass2.getHeight()).
 			Set("uSampler0", textureConvolutionPass1).		
 			DrawTriangles();
-
 		
 		fbBlurRadial.Bind().DepthTest(false).Viewport();
 		programBlurRadial.
@@ -360,8 +360,6 @@
 			Set("uSampler0", textureConvolutionPass2).		
 //			Set("uSampler0", textureScene).		
 			DrawTriangles();
-					
-			
 	
 			// Flush to the screen
 		fbDefault.Bind().DepthTest(false).

@@ -267,19 +267,6 @@ var Utils = {
 		if (Preprocessor.isFragmentShader(sources)) return gl.FRAGMENT_SHADER;
 		return undefined;
 	}
-	,
-	counter : function (object, name) {
-		var result = 0;		
-		for (var prop in object) {
-			if (object.hasOwnProperty(prop)) {
-				var index = object[prop];
-				if (prop === name) return index;
-				if (result <= index) result = index + 1; 
-			}
-		}
-		object[name] = result;
-		return result;
-	}
 }
 
 /*********************************************
@@ -576,6 +563,11 @@ Extend(o3gl.Texture, o3gl.Resource, {
 		gl.bindTexture(this._target, this._textureId);
 		// Texture itself has no methods except bind.
 		return this; // Return intrface with all the texture manipulation API
+	}
+	,
+	Active : function (textureUnit) {
+		gl.activeTexture(gl.TEXTURE0 + textureUnit);
+		return this.Bind();
 	}
 	,
 	typeUnsignedByte : function() { 
@@ -1698,6 +1690,48 @@ o3gl.UniformBufferObject.prototype = {
 	}
 }
 
+/*
+Virtual texture unit object
+Holds 
+*/
+
+o3gl.TextureUnitObject = function () {
+	// Auto assigned sampler indicies
+	this.textureIndex = {};
+
+	this._texture = {};	// Texture reference by name
+	this._index = {};	// Texture index by name
+}
+
+o3gl.TextureUnitObject.prototype = {
+	set : function (name, texture) {
+		this._texture[name] = texture;
+		
+		if (!this._index[name]) {
+			var maxIndex = -1;
+			for (var i in this._index) {
+				if (!this._index.hasOwnProperty(i)) continue;
+				var index = this._index[i];
+				if (maxIndex < index) maxIndex = index;
+			}
+			
+			maxIndex++;
+			this._index[name] = maxIndex;
+		}
+	}
+	,
+	Active : function (program) {
+		for (var name in this._texture) {
+			var texture = this._texture[name];
+			var index = this._index[name];
+			var uniformLocation = program.getUniformLocation(name);
+			gl.activeTexture(gl.TEXTURE0 + index);
+			texture.Bind();
+			gl.uniform1i(uniformLocation, index);
+		}
+	}	
+}
+
 /**
  *
  * @param {Shader} shader1
@@ -1710,8 +1744,6 @@ o3gl.Program = function(shader1,shader2) {
 	// Build the program with given shaders
 	this._attachShader(shader1, shader2)._link();
 
-	// Auto assigned sampler indicies
-	this.textureIndex = {};
 	// Uniform and attribute cache
 	this.attributes = undefined; // {name:...; location:...; type:...; size:...;}	
 	this.uniforms = undefined; // {name:...; location:...; type:...; size:...;}	
@@ -1722,10 +1754,6 @@ o3gl.Program = function(shader1,shader2) {
 	They retain their values once loaded, and their values are restored whenever a program object is used, 
 	as long as the program object has not been re-linked.
 	*/
-	// TODO Shit!!!
-	this.getTextureIndex = function (uniformName) {
-		return Utils.counter(this.textureIndex, uniformName);
-	}
 	
 	// Build uniforms and attributes dictionaries
 	this._initializeVariables();
@@ -1735,6 +1763,9 @@ o3gl.Program = function(shader1,shader2) {
 	
 	// Assotiate new FBO with program;
 	this._frameBufferObject = undefined;
+	
+	// Assotiate new `TUO` with program;
+	this._textureUnitObject = undefined;
 }
 
 
@@ -1952,6 +1983,17 @@ o3gl.Program.prototype = {
 		return this._frameBufferObject;
 	}
 	,
+	TextureUnit : function(value) {
+		if (value || value === null) {
+			this._textureUnitObject = value;
+		} else {
+			if (!this._textureUnitObject) {
+				this._textureUnitObject = new o3gl.TextureUnitObject();
+			}
+		}
+		return this._textureUnitObject;
+	}
+	,
 	//	Helper method that allows setting of the uniform or attribute pointer using retrospections capabilities.
 	//	Overloaded in strong types languages
 	Set : function (name, v1, v2, v3, v4) {	
@@ -2087,12 +2129,15 @@ o3gl.Program.prototype = {
 	}
 	,
 	UniformSampler : function(name, texture) {
+		this.TextureUnit().set(name, texture);		
+		/*
 		var index 			= this.getTextureIndex(name);
 		var glTextureId 	= Utils.getGLTextureId(index);
 		var uniformLocation = this.getUniformLocation(name);
 		gl.activeTexture(glTextureId);
 		texture.Bind();
 		gl.uniform1i(uniformLocation, index);
+		*/
 		return this;
 	}
 	,
@@ -2268,6 +2313,9 @@ o3gl.Program.prototype = {
 		if (this._frameBufferObject) {
 			this._frameBufferObject.Bind();		
 		}
+		if (this._textureUnitObject) {
+			this._textureUnitObject.Active(this);		
+		}
 		
 		
 		var elementArrayBuffer = undefined;
@@ -2356,7 +2404,10 @@ o3gl.Program.prototype = {
 
 
 o3gl.ProgramSources = function(shaderSource1, shaderSource2, shaderSource3) {
-	this.program = undefined;
+	this.programs = {};
+
+	this.shaders = {};
+
 	
 	// Collect and prepare shader sources
 	this.vertexShaderSource = undefined;
@@ -2389,23 +2440,34 @@ o3gl.ProgramSources = function(shaderSource1, shaderSource2, shaderSource3) {
 }
 
 o3gl.ProgramSources.prototype = {
-	define : function(identifiers) {
-		var defined = [];
-		for (var  i = 0; i < arguments.length; ++i)	 {
-			var identifier = arguments[i];
-			defined[identifier] = true;
-		}
-		// Exclude lines with undeclared variables;
-		this.vertexShaderSource = Preprocessor.excludeUndefined(this.vertexShaderSource, defined);
-		this.fragmentShaderSource = Preprocessor.excludeUndefined(this.fragmentShaderSource, defined);
-		return this;
+	Delete : function() {
+		// TODO: Delete all the programs and shaders
 	}
 	,
-	createProgram : function() {
-		var program = o3gl.createProgram(
-			o3gl.createShader(this.vertexShaderSource.join("\n")) , 
-			o3gl.createShader(this.fragmentShaderSource.join("\n"))
-		);	
+	createProgram : function(identifiers) {
+		var program = this.programs[arguments];
+		if (program == null) {
+			var vertexShaderSource 		= this.vertexShaderSource;
+			var fragmentShaderSource 	= this.fragmentShaderSource;
+			
+			if (arguments.length > 0) {
+				var defined = [];
+				for (var  i = 0; i < arguments.length; ++i)	 {
+					var identifier = arguments[i];
+					defined[identifier] = true;
+				}
+				// Exclude lines with undeclared variables;
+				vertexShaderSource = Preprocessor.excludeUndefined(vertexShaderSource, defined);
+				fragmentShaderSource = Preprocessor.excludeUndefined(fragmentShaderSource, defined);				
+			}		
+			// TODO: shaders cache
+			program = o3gl.createProgram(
+				o3gl.createShader(vertexShaderSource.join("\n")) , 
+				o3gl.createShader(fragmentShaderSource.join("\n"))
+			);	
+			
+			this.programs[arguments] = program;
+		}
 		
 		return program;
 	}
@@ -2448,23 +2510,31 @@ Aspect(o3gl.FrameBuffer.prototype).after("Bind", 		function() { o3gl._parameters
 Aspect(o3gl.RenderBuffer.prototype).after("Bind", 		function() { o3gl._parameters[gl.RENDERBUFFER_BINDING] = this.Id();});
 Aspect(o3gl.Program.prototype).after("Use", 			function() { o3gl._parameters[gl.CURRENT_PROGRAM] = this.Id();});
 
+
+var bindingTexture2D = /^GenerateMipmap|^Filter|^Wrap|^Image/;
+var bindingTextureCubeMap = /^GenerateMipmap|^Filter|^Wrap|^Image/;
+var bindingArrayBuffer = /^Data/;
+var bindingElementArrayBuffer = /^Data/;
+
 // Automatic resources bindings check
-Aspect(o3gl.Texture2D.prototype).before(["GenerateMipmap","Filter","Wrap","Image"], 		function() { if (o3gl._parameters[gl.TEXTURE_BINDING_2D] !== this.Id()) this.Bind(); } );
-Aspect(o3gl.TextureCubeMap.prototype).before(["GenerateMipmap","Filter","Wrap","Image"], 	function() { if (o3gl._parameters[gl.TEXTURE_BINDING_CUBE_MAP] !== this.Id()) this.Bind(); } );
-Aspect(o3gl.ArrayBuffer.prototype).before(["Data"], 									function() { if (o3gl._parameters[gl.ARRAY_BUFFER_BINDING] !== this.Id()) this.Bind(); } );
-Aspect(o3gl.ElementArrayBuffer.prototype).before(["Data"], 							function() { if (o3gl._parameters[gl.ELEMENT_ARRAY_BUFFER_BINDING] !== this.Id()) this.Bind(); } );
-Aspect(o3gl.FrameBuffer.prototype).before(["ClearColorBuffer","ClearDepthBuffer","Clear","Color","Depth","Stencil"], function() { if (o3gl._parameters[gl.FRAMEBUFFER_BINDING] !== this.Id()) this.Bind(); } );
-Aspect(o3gl.RenderBuffer.prototype).before("Storage", 								function() { if (o3gl._parameters[gl.RENDERBUFFER_BINDING] != this.Id()) this.Bind(); } );
-Aspect(o3gl.Program.prototype).before("Set", 										function() { if (o3gl._parameters[gl.CURRENT_PROGRAM] != this.Id()) this.Use(); } );
+Aspect(o3gl.Texture2D.prototype).before(/^GenerateMipmap$|^Filter|^Wrap|^Image$/, 		function() { if (o3gl._parameters[gl.TEXTURE_BINDING_2D] !== this.Id()) this.Bind(); } );
+Aspect(o3gl.TextureCubeMap.prototype).before(/^GenerateMipmap$|^Filter|^Wrap|^Image$/, 	function() { if (o3gl._parameters[gl.TEXTURE_BINDING_CUBE_MAP] !== this.Id()) this.Bind(); } );
+Aspect(o3gl.ArrayBuffer.prototype).before(/^Data$/, 									function() { if (o3gl._parameters[gl.ARRAY_BUFFER_BINDING] !== this.Id()) this.Bind(); } );
+Aspect(o3gl.ElementArrayBuffer.prototype).before(/^Data$/, 								function() { if (o3gl._parameters[gl.ELEMENT_ARRAY_BUFFER_BINDING] !== this.Id()) this.Bind(); } );
+Aspect(o3gl.FrameBuffer.prototype).before(/^ClearColorBuffer$|^ClearDepthBuffer$|^Clear$|^Color$|^Depth$|^Stencil$/, function() { if (o3gl._parameters[gl.FRAMEBUFFER_BINDING] !== this.Id()) this.Bind(); } );
+Aspect(o3gl.RenderBuffer.prototype).before(/^Storage$/, 								function() { if (o3gl._parameters[gl.RENDERBUFFER_BINDING] != this.Id()) this.Bind(); } );
+Aspect(o3gl.Program.prototype).before(/^Set$|Uniform|Attribute/, 						function() { if (o3gl._parameters[gl.CURRENT_PROGRAM] != this.Id()) this.Use(); } );
 
 // Preserve framebuffer settings
-Aspect(o3gl.FrameBuffer.prototype).around(["Viewport","DepthMask","DepthTest","ColorMask","ClearColor","ClearDepth"], function(pointcut, name, arguments) {
-	this._deffered = this._deffered | {};
+Aspect(o3gl.FrameBuffer.prototype).around(/^Viewport$|^DepthMask$|^DepthTest$|^ColorMask$|^ClearColor$|^ClearDepth$/, function (pointcut, name, arguments) {
+	if (!this._deffered) {
+		this._deffered = {};
+	}
 	this._deffered[name] = pointcut;
 	return pointcut();
 });
 
-Aspect(o3gl.FrameBuffer.prototype).after(/Bind/, function() {
+Aspect(o3gl.FrameBuffer.prototype).after(/^Bind$/, function() {
 	if (this._deffered) {
 		for (var name in this._deffered) {
 			this._deffered[name] ();
