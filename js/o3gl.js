@@ -2186,8 +2186,7 @@ o3gl.Program.prototype = {
 		Performs pointer size/type configuration
 	*/
 	Attribute1f : function(name, v1) {
-		if (v1 instanceof o3gl.Buffer) {
-			v1.targetArrayBuffer();
+		if (v1 instanceof o3gl.ArrayBuffer) {
 			this.VertexAttributePointer(name, v1.pointer().typeFloat().size(1));
 		} else if (v1 instanceof o3gl.ArrayBuffer.Pointer) {
 			this.VertexAttributePointer(name, v1.typeFloat().size(1));
@@ -2198,8 +2197,7 @@ o3gl.Program.prototype = {
 	}
 	,
 	Attribute2f : function(name, v1, v2) {
-		if (v1 instanceof o3gl.Buffer) {
-			v1.targetArrayBuffer();
+		if (v1 instanceof o3gl.ArrayBuffer) {
 			this.VertexAttributePointer(name, v1.pointer().typeFloat().size(2));
 		} else if (v1 instanceof o3gl.ArrayBuffer.Pointer) {
 			this.VertexAttributePointer(name, v1.typeFloat().size(2));
@@ -2210,8 +2208,7 @@ o3gl.Program.prototype = {
 	}
 	,
 	Attribute3f : function(name, v1, v2, v3) {
-		if (v1 instanceof o3gl.Buffer) {
-			v1.targetArrayBuffer();
+		if (v1 instanceof o3gl.ArrayBuffer) {
 			this.VertexAttributePointer(name, v1.pointer().typeFloat().size(3));
 		} else if (v1 instanceof o3gl.ArrayBuffer.Pointer) {
 			this.VertexAttributePointer(name, v1.typeFloat().size(3));
@@ -2222,8 +2219,7 @@ o3gl.Program.prototype = {
 	}
 	,
 	Attribute4f : function(name, v1, v2, v3, v4) {
-		if (v1 instanceof o3gl.Buffer) {
-			v1.targetArrayBuffer();
+		if (v1 instanceof o3gl.ArrayBuffer) {
 			this.VertexAttributePointer(name, v1.pointer().typeFloat().size(4));
 		} else if (v1 instanceof o3gl.ArrayBuffer.Pointer) {
 			this.VertexAttributePointer(name, v1.typeFloat().size(4));

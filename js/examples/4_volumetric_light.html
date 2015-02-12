@@ -107,7 +107,7 @@
 		programPhong = o3gl.
 			// Retain only essential shader variables and related code
 			sources(Shaders.Phong.Vertex, Shaders.Phong.Fragment). //short: sources(Shaders.Phong)
-			define(
+			createProgram(
 				"aPosition", 
 				"aNormal", 
 				"uMatrixV",
@@ -118,7 +118,7 @@
 				"uMaterialSpecular",
 				"uMaterialAmbient",
 				"uLightPosition"
-			).createProgram();
+			);
 			
 		programConvolution 	= o3gl.sources(Shaders.Convolution).createProgram();
 		programBlurRadial 	= o3gl.sources(Shaders.BlurRadial).createProgram();
