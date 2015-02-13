@@ -14,8 +14,6 @@
 <script type="text/javascript" src="../utils/utils.js"></script>
 <script type="text/javascript" src="../utils/primitives.js"></script>
 
-<script type="text/javascript" src="model/camaro/camaro.js"></script>
-
 <style type='text/css'>    
 	html, body {
 		width:  100%;
@@ -38,8 +36,46 @@
 	var matrixN 		= mat3.create();
 	
 	var program;
+
+
+	function getJSON(url, onReady) {
+		var client = new XMLHttpRequest();
+		client.open('GET', url);
+		client.onreadystatechange = function() {
+			onReady(JSON.parse(client.responseText));
+		}
+		client.send();
+	}
+	
 	function init() {				
+	
 		
+		getJSON("./model/Ironman/Ironman.gltf",function(gltf) {
+			
+			var result = {};
+
+			if (gltf.images) {
+				result.images = {};
+				for (var name in gltf.images) {
+					var image = new Image();
+					image.src = gltf.images[name].uri;
+					result.images[name] = image;
+				}
+			}
+
+			
+			if (gltf.textures) {
+				for (var textureName in gltf.textures) {
+					var textureData = gltf.textures[textureName];
+					
+					
+					
+				}
+			}
+		
+		});
+
+	
 		/*
 		var imageDiffuse 		= document.getElementById("diffuse");
 		var imageNormal 		= document.getElementById("normal");
@@ -87,83 +123,7 @@
 
 		
 		
-		program = o3gl.sources(Shaders.Phong.Vertex, Shaders.Phong.Fragment).createProgram(
-			"aPosition",
-			"aNormal",
-//			"aTangent",
-//			"aTextureCoord",
-			"uLightPosition",
-			"uMatrixV",
-			"uMatrixP",
-			"uMatrixM",
-			"uMatrixN"	,			
-			"uMaterialSpecular",
-				// Declare material traits
-			"uMaterialDiffuse"
-//			"uSamplerDiffuse",
-//			"uSamplerNormal",
-			"uSamplerCube", 
-		);
 
-		var cube = new Cube();
-			
-			
-		function getNthElement(elements, n, offsets) {
-			var result = [];
-			for (var i = 0; i < elements.length; ++i) {
-				var mod = i % n;
-				if (offsets.indexOf(mod) >= 0) {
-					result.push(elements[i]);
-				}
-			}
-			return result;
-		}	
-		
-		camaro = {
-			body : {
-				vertices : o3gl.createArrayBuffer().Data(camaro_body.vertices),
-				normals : o3gl.createArrayBuffer().Data(camaro_body.normals),
-//				uvs : o3gl.createArrayBuffer().Data(camaro_body.uvs[0]),
-				indexes :  o3gl.createElementArrayBuffer().Data(getNthElement(camaro_body.faces, 11, [1,2,3]))
-			}
-			,
-			bumper : {
-				vertices : o3gl.createArrayBuffer().Data(camaro_bumper.vertices),
-				normals : o3gl.createArrayBuffer().Data(camaro_bumper.normals),
-//				uvs : o3gl.createArrayBuffer().Data(camaro_bumper.uvs[0]),
-				indexes :  o3gl.createElementArrayBuffer().Data(getNthElement(camaro_bumper.faces, 8, [1,2,3]))
-			}
-			,
-			glass : {
-				vertices : o3gl.createArrayBuffer().Data(camaro_glass.vertices),
-				normals : o3gl.createArrayBuffer().Data(camaro_glass.normals),
-//				uvs : o3gl.createArrayBuffer().Data(camaro_glass.uvs[0]),
-				indexes :  o3gl.createElementArrayBuffer().Data(getNthElement(camaro_glass.faces, 11, [1,2,3]))
-			}
-			,
-			interior : {
-				vertices : o3gl.createArrayBuffer().Data(camaro_interior.vertices),
-				normals : o3gl.createArrayBuffer().Data(camaro_interior.normals),
-//				uvs : o3gl.createArrayBuffer().Data(camaro_interior.uvs[0]),
-				indexes :  o3gl.createElementArrayBuffer().Data(getNthElement(camaro_interior.faces, 11, [1,2,3]))
-			}
-		}
-		
-		program.
-			Set("uMatrixP", matrixP).
-			Set("uMatrixV", matrixV).
-			
-			Set("uLightPosition", 0, 0, 0, 1).
-			Set("uMaterialSpecular", 1, 1, 1, 1).
-			Set("uMaterialDiffuse", 1, 1, 0, 1);			
-			
-			/*
-			Set("aPosition", o3gl.createArrayBuffer().Data(cube.positions)).
-			Set("aNormal", o3gl.createArrayBuffer().Data(cube.normals)).
-			Set("aTextureCoord", o3gl.createArrayBuffer().Data(cube.textureCoords)).
-			Elements(o3gl.createElementArrayBuffer().Data(cube.indexes));
-			*/
-			
 	}
 	
 	function render() {
@@ -174,39 +134,6 @@
 		mat4.toInverseMat3(matrixMV, matrixN);
 		mat3.transpose(matrixN);
 
-		program.DepthTest(true).ClearColor(0.5,0.5,0.5,1.0).Viewport().Clear().
-			// Send matrices to the shader
-			Set("uMatrixM", 	matrixM).
-			Set("uMatrixN", 	matrixN);
-		
-		if (false)
-		program.
-			Set("aPosition", camaro.body.vertices).
-			Set("aNormal", camaro.body.normals).
-			Elements(camaro.body.indexes).
-			DrawTriangles();
-
-		if (true)			
-		program.
-			Set("aPosition", camaro.bumper.vertices).
-			Set("aNormal", camaro.bumper.normals).
-			Elements(camaro.bumper.indexes).
-			DrawTriangles();
-			
-		if (false)
-		program.
-			Set("aPosition", camaro.interior.vertices).
-			Set("aNormal", camaro.interior.normals).
-			Elements(camaro.interior.indexes).
-			DrawTriangles();
-
-		if (false)
-		program.
-			Set("aPosition", camaro.glass.vertices).
-			Set("aNormal", camaro.glass.normals).
-			Elements(camaro.glass.indexes).
-			DrawTriangles();
-			
     }
     
     function update() {

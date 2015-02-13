@@ -5,7 +5,7 @@
 <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
 
 <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
-<script type="text/javascript" src="../o3gl.js"></script>
+<script type="text/javascript" src="../../o3gl.js"></script>
 
 <script id="shader-fs" type="x-shader/x-fragment">
 
@@ -37,11 +37,15 @@
 <script type="text/javascript">
 
     var gl;
+	var o3gl;
     function initGL(canvas) {
         try {
             gl = canvas.getContext("experimental-webgl");
             gl.viewportWidth = canvas.width;
             gl.viewportHeight = canvas.height;
+			
+			o3gl = O3GL(gl);
+			
         } catch (e) {
         }
         if (!gl) {
@@ -57,21 +61,10 @@
     var shaderProgram;
 
     function initShaders() {
-		shaderProgram = new Program(
-			new VertexShader(document.getElementById("shader-vs").textContent),
-			new FragmentShader(document.getElementById("shader-fs").textContent)
+		shaderProgram = o3gl.createProgram(
+			o3gl.createShader(document.getElementById("shader-vs").textContent),
+			o3gl.createShader(document.getElementById("shader-fs").textContent)
 		);
-		shaderProgram.
-		useProgram().
-		uniformMatrix4fv("uPMatrix", pMatrix).
-		attribute3f("aVertexPosition", triangleVertexPositionBuffer).
-		attribute4f("aVertexColor", triangleVertexColorBuffer).
-		uniformMatrix4fv("uMVMatrix", mvMatrixTriangle).
-		drawArraysTriangles(0, 3).
-		attribute3f("aVertexPosition",squareVertexPositionBuffer).
-		attribute4f("aVertexColor", squareVertexColorBuffer).
-		uniformMatrix4fv("uMVMatrix", mvMatrixCube).
-		drawArraysTriangleStrip(0, 4);
     }
 
 	var triangleVertexPositionBuffer;
@@ -85,25 +78,25 @@
             -1.0, -1.0,  0.0,
              1.0, -1.0,  0.0
         ];
-		triangleVertexPositionBuffer = new ArrayBuffer(vertices);
+		triangleVertexPositionBuffer = o3gl.createArrayBuffer(vertices);
 		var colors = [
             1.0, 0.0, 0.0, 1.0,
             0.0, 1.0, 0.0, 1.0,
             0.0, 0.0, 1.0, 1.0
         ];
-		triangleVertexColorBuffer = new ArrayBuffer(colors);
+		triangleVertexColorBuffer = o3gl.createArrayBuffer(colors);
 		vertices = [
              1.0,  1.0,  0.0,
             -1.0,  1.0,  0.0,
              1.0, -1.0,  0.0,
             -1.0, -1.0,  0.0
         ];
-		squareVertexPositionBuffer = new ArrayBuffer(vertices);
+		squareVertexPositionBuffer = o3gl.createArrayBuffer(vertices);
 		colors = [];
         for (var i=0; i < 4; i++) {
             colors = colors.concat([0.5, 0.5, 1.0, 1.0]);
         }
-		squareVertexColorBuffer = new ArrayBuffer(colors);
+		squareVertexColorBuffer = o3gl.createArrayBuffer(colors);
     }
 
     function drawScene() {
@@ -115,8 +108,19 @@
         mat4.translate(mvMatrixTriangle, [-1.5, 0.0, -7.0]);
         mat4.identity(mvMatrixCube);
         mat4.translate(mvMatrixCube, [+1.5, 0.0, -7.0]);
+
+		shaderProgram.Viewport().Clear().
+		UniformMatrix4fv("uPMatrix", pMatrix).
+		Attribute3f("aVertexPosition", triangleVertexPositionBuffer).
+		Attribute4f("aVertexColor", triangleVertexColorBuffer).
+		AniformMatrix4fv("uMVMatrix", mvMatrixTriangle).
+		drawTriangles().
+		Attribute3f("aVertexPosition",squareVertexPositionBuffer).
+		Attribute4f("aVertexColor", squareVertexColorBuffer).
+		UniformMatrix4fv("uMVMatrix", mvMatrixCube).
+		DrawTriangleStrip();
+
 		
-		shaderProgram.run();
     }
 
     function webGLStart() {
