@@ -90,24 +90,24 @@
 		// Create mesh
 		var cube = new Cube();
 		vboCube = {
-			positions : 	o3gl.createArrayBuffer().Data(cube.positions),
-			normals : 		o3gl.createArrayBuffer().Data(cube.normals),				
-			tangents : 		o3gl.createArrayBuffer().Data(cube.tangents),				
-			textureCoords : o3gl.createArrayBuffer().Data(cube.textureCoords),				
-			indexes : 		o3gl.createElementArrayBuffer().Data(cube.indexes)			
+			positions : 	o3gl.CreateArrayBuffer().Data(cube.positions),
+			normals : 		o3gl.CreateArrayBuffer().Data(cube.normals),				
+			tangents : 		o3gl.CreateArrayBuffer().Data(cube.tangents),				
+			textureCoords : o3gl.CreateArrayBuffer().Data(cube.textureCoords),				
+			indexes : 		o3gl.CreateElementArrayBuffer().Data(cube.indexes)			
 		}
 
 		// Create offsreen rendering surface
 		var plane = new Plane2D(); // Post-process plane
 		vboPlane = {
-			positions : 	o3gl.createArrayBuffer().Data(plane.positions),
-			textureCoords : o3gl.createArrayBuffer().Data(plane.textureCoords)				
+			positions : 	o3gl.CreateArrayBuffer().Data(plane.positions),
+			textureCoords : o3gl.CreateArrayBuffer().Data(plane.textureCoords)				
 		}
 		
 		programPhong = o3gl.
 			// Retain only essential shader variables and related code
 			sources(Shaders.Phong.Vertex, Shaders.Phong.Fragment). //short: sources(Shaders.Phong)
-			createProgram(
+			CreateProgram(
 				"aPosition", 
 				"aNormal", 
 				"uMatrixV",
@@ -120,124 +120,27 @@
 				"uLightPosition"
 			);
 			
-		programConvolution 	= o3gl.sources(Shaders.Convolution).createProgram();
-		programBlurRadial 	= o3gl.sources(Shaders.BlurRadial).createProgram();
-		programBlend 		= o3gl.sources(Shaders.BlendAdditive).createProgram();
-		programFlush 		= o3gl.sources(Shaders.Default).createProgram();
+		programConvolution 	= o3gl.sources(Shaders.Convolution).CreateProgram();
+		programBlurRadial 	= o3gl.sources(Shaders.BlurRadial).CreateProgram();
+		programBlend 		= o3gl.sources(Shaders.BlendAdditive).CreateProgram();
+		programFlush 		= o3gl.sources(Shaders.Default).CreateProgram();
 
 		// Create frame buffer textures
 		var ppScale = 0.5;
-		textureScene 			= o3gl.createTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
-		textureEmissive			= o3gl.createTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
-		textureConvolutionPass1	= o3gl.createTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width * ppScale, viewport.height * ppScale);
-		textureConvolutionPass2	= o3gl.createTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width * ppScale, viewport.height * ppScale);
-		textureBlurRadial		= o3gl.createTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width * ppScale, viewport.height * ppScale);
+		textureScene 			= o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
+		textureEmissive			= o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
+		textureConvolutionPass1	= o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width * ppScale, viewport.height * ppScale);
+		textureConvolutionPass2	= o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width * ppScale, viewport.height * ppScale);
+		textureBlurRadial		= o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width * ppScale, viewport.height * ppScale);
 		
 		// Create offscreen buffers
-		rbDepth 				= o3gl.createRenderBufferDepth().Storage(viewport.width, viewport.height);
-		fbScene					= o3gl.createFrameBuffer().Color(textureScene).Depth(rbDepth);
-		fbEmissive				= o3gl.createFrameBuffer().Color(textureEmissive).Depth(rbDepth);
-		fbConvolutionPass1		= o3gl.createFrameBuffer().Color(textureConvolutionPass1);
-		fbConvolutionPass2		= o3gl.createFrameBuffer().Color(textureConvolutionPass2);
-		fbBlurRadial			= o3gl.createFrameBuffer().Color(textureBlurRadial);
-		fbDefault				= o3gl.createFrameBuffer();
-
-		
-		/*
-		useBufferTexture = new Program().
-		viewport(viewport).
-		enableDepthTest(true).
-		frameBuffer(new FrameBuffer().texture2D(textureMain).renderBuffer(bufferDepth)).
-		clearColor([0.0, 0.0, 0.0, 1.0]).clearColorBuffer().clearDepthBuffer();
-
-		useBufferTextureOcl = new Program().
-		frameBuffer(new FrameBuffer().texture2D(textureOcclusion).renderBuffer(bufferDepth)).
-		viewport(viewport).
-		clearColor([0.0, 0.0, 0.0, 1.0]).clearColorBuffer(). // do not clear depth buffer
-		enableDepthTest(true);
-		
-		initGeometry = Shaders.Phong.exclude(
-			"aDiffuse","aAmbient","aSpecular", 
-			"uSamplerCube",	
-			//"uMaterialDiffuse",
-			//"uMaterialSpecular",
-			//"uMaterialAmbient",
-			"uSamplerNormal",
-			"uSamplerDiffuse",
-			"uSamplerSpecular",			
-			"uSamplerAmbient"
-		).get().
-		useProgram().
-		attribute3f("aPosition", new ArrayBuffer(cube.positions)).
-		attribute3f("aNormal", new ArrayBuffer(cube.normals)).
-		uniformMatrix4fv("uMatrixV", 	matrixV). 		// View transformation
-		uniformMatrix4fv("uMatrixP", 	matrixP).		// Projection transformation
-		uniformf("uLightPosition", 		0.0, 0.0, 0.0);
-		
-		// Assign dynamic properties
-		drawGeometry = new Program(initGeometry).
-			uniformf("uMaterialDiffuse", 	diffuse).
-			uniformf("uMaterialSpecular", 	specular).
-			uniformf("uMaterialAmbient", 	ambient).
-			uniformMatrix4fv("uMatrixM", 	matrixM).
-			uniformMatrix3fv("uMatrixN", 	matrixN).
-			drawElementsTriangles(new ArrayBuffer(cube.indexes).typeUnsignedShort(1));
-				
-		var plane 				= new Plane2D(); // Post-process plane
-		var planePositions 		= new ArrayBuffer(plane.positions).typeFloat(2);
-		var planeTextureCoords 	= new ArrayBuffer(plane.textureCoords).typeFloat(2);
-		
-		
-		var blurSize = viewport.width / 2;
-		var blur = Shaders.Convolution.get().
-			useProgram().
-			attribute2f("aPosition", 	planePositions).
-			attribute2f("aTextureCoord", planeTextureCoords).
-			// First pass (horizontal)
-			uniformf("uStep", 1/blurSize, 0).							// Horizontal
-			uniformTexture("uSampler0", textureOcclusion).					// Source texture (our frame buffer)
-			frameBuffer(new FrameBuffer().texture2D(textureBlured)).			// Destination texture
-			drawArraysTriangles(0, 6).										// Render the first pass
-			// Second pass (vertical)
-			uniformf("uStep", 0, 1/blurSize * viewport.aspect).		// Vertical
-			uniformTexture("uSampler0", textureBlured).				// Source texture
-			drawArraysTriangles(0, 6);										// Render the second pass
-		
-		var godray = Shaders.BlurRadial.get().
-			useProgram().
-			attribute2f("aPosition", 	planePositions).
-			attribute2f("aTextureCoord", planeTextureCoords).
-			uniformTexture("uSampler0", textureBlured).				
-			uniformf("uCenter", blurCenter).				
-			frameBuffer(new FrameBuffer().texture2D(textureGodRay)).		
-			drawArraysTriangles(0, 6);
-
-		var blend = Shaders.BlendAdditive.get().
-			useProgram().
-			attribute2f("aPosition", 	planePositions).
-			attribute2f("aTextureCoord", planeTextureCoords).
-			uniformTexture("uSampler0", textureMain).
-			uniformTexture("uSampler1", textureGodRay).
-			frameBuffer(null).
-			drawArraysTriangles(0, 6);
-
-		var flush = new PostProcess().get().
-			useProgram().
-			attribute2f("aPosition", 	planePositions).
-			attribute2f("aTextureCoord", planeTextureCoords).
-			uniformTexture("uSampler0", textureGodRay).
-			frameBuffer(null).
-			drawArraysTriangles(0, 6);
-
-			
-		programPostProcess = new Program().			
-		enableDepthTest(false).
-		viewport(0, 0, viewport.width, viewport.height).
-		push(blur).
-		push(godray).
-//		push(flush);
-		push(blend);
-		*/
+		rbDepth 				= o3gl.CreateRenderBufferDepth().Storage(viewport.width, viewport.height);
+		fbScene					= o3gl.CreateFrameBuffer().Color(textureScene).Depth(rbDepth);
+		fbEmissive				= o3gl.CreateFrameBuffer().Color(textureEmissive).Depth(rbDepth);
+		fbConvolutionPass1		= o3gl.CreateFrameBuffer().Color(textureConvolutionPass1);
+		fbConvolutionPass2		= o3gl.CreateFrameBuffer().Color(textureConvolutionPass2);
+		fbBlurRadial			= o3gl.CreateFrameBuffer().Color(textureBlurRadial);
+		fbDefault				= o3gl.CreateFrameBuffer();
 	}
 	
 	function render() {		

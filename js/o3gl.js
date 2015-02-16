@@ -1574,7 +1574,9 @@ o3gl.VertexArrayObject.prototype = {
 	,
 	Elements :function(elementArrayBuffer) {
 		this.elementArrayBuffer = elementArrayBuffer;
-		this.elementArrayBuffer.Bind();
+		if (this.elementArrayBuffer) {
+			this.elementArrayBuffer.Bind();				
+		}
 		return this;
 	}
 	,
@@ -2440,7 +2442,7 @@ o3gl.ProgramSources.prototype = {
 		// TODO: Delete all the programs and shaders
 	}
 	,
-	createProgram : function(identifiers) {
+	CreateProgram : function(identifiers) {
 		var program = this.programs[arguments];
 		if (program == null) {
 			var vertexShaderSource 		= this.vertexShaderSource;
@@ -2457,9 +2459,9 @@ o3gl.ProgramSources.prototype = {
 				fragmentShaderSource = Preprocessor.excludeUndefined(fragmentShaderSource, defined);				
 			}		
 			// TODO: shaders cache
-			program = o3gl.createProgram(
-				o3gl.createShader(vertexShaderSource.join("\n")) , 
-				o3gl.createShader(fragmentShaderSource.join("\n"))
+			program = o3gl.CreateProgram(
+				o3gl.CreateShader(vertexShaderSource.join("\n")) , 
+				o3gl.CreateShader(fragmentShaderSource.join("\n"))
 			);	
 			
 			this.programs[arguments] = program;
@@ -2540,31 +2542,31 @@ Aspect(o3gl.FrameBuffer.prototype).after(/^Bind$/, function() {
 
 
 // Resource methods
-o3gl.createTexture2D = function() {
+o3gl.CreateTexture2D = function() {
 	return new o3gl.Texture2D();
 }
-o3gl.createTextureCubeMap = function() {
+o3gl.CreateTextureCubeMap = function() {
 	return new o3gl.TextureCubeMap();
 }
-o3gl.createArrayBuffer = function(data) {
+o3gl.CreateArrayBuffer = function(data) {
 	return new o3gl.ArrayBuffer(data);
 }
-o3gl.createElementArrayBuffer = function(data) {
+o3gl.CreateElementArrayBuffer = function(data) {
 	return new o3gl.ElementArrayBuffer(data);
 }
-o3gl.createFrameBuffer = function() {
+o3gl.CreateFrameBuffer = function() {
 	return new o3gl.FrameBuffer();
 }
-o3gl.createRenderBufferDepth = function() {
+o3gl.CreateRenderBufferDepth = function() {
 	return new o3gl.RenderBufferDepth();
 }
-o3gl.createRenderBufferStencil = function() {
+o3gl.CreateRenderBufferStencil = function() {
 	return new o3gl.RenderBufferDepth();
 }
-o3gl.createShader = function(sources) {
+o3gl.CreateShader = function(sources) {
 	return new o3gl.Shader(sources);
 }
-o3gl.createProgram = function(shader1,shader2) {
+o3gl.CreateProgram = function(shader1,shader2) {
 	return new o3gl.Program(shader1,shader2);
 }
 

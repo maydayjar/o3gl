@@ -125,9 +125,9 @@ void main() {
 			20, 21, 22,   20, 22, 23  // Left face
 		];
 		
-		program 	= o3gl.createProgram(o3gl.createShader(vertexShaderSource), o3gl.createShader(fragmentShaderSource));
-		positions 	= o3gl.createArrayBuffer().Data(cubeVertex);
-		indexes 	= o3gl.createElementArrayBuffer().Data(cubeIndex);
+		program 	= o3gl.CreateProgram(o3gl.CreateShader(vertexShaderSource), o3gl.CreateShader(fragmentShaderSource));
+		positions 	= o3gl.CreateArrayBuffer().Data(cubeVertex);
+		indexes 	= o3gl.CreateElementArrayBuffer().Data(cubeIndex);
 		
 		
 		// Set up program properties that won't change

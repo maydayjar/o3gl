@@ -6,7 +6,7 @@
 
 <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
-<script type="text/javascript" src="../o3gl.js"></script>
+<script type="text/javascript" src="../../o3gl.js"></script>
 
 <script id="shader-fs" type="x-shader/x-fragment">
     precision mediump float;
@@ -37,12 +37,15 @@
 <script type="text/javascript">
 
     var gl;
-
+	var o3gl;
+	
     function initGL(canvas) {
         try {
             gl = canvas.getContext("experimental-webgl");
             gl.viewportWidth = canvas.width;
             gl.viewportHeight = canvas.height;
+			
+			o3gl = O3GL(gl);
         } catch (e) {
         }
         if (!gl) {
@@ -51,29 +54,12 @@
     }
 
     var shaderProgram;
-    var drawTriangle;
-    var drawCube;
 
     function initShaders() {
-       	shaderProgram = new Program(
-			new VertexShader(document.getElementById("shader-vs").textContent),
-			new FragmentShader(document.getElementById("shader-fs").textContent)
+       	shaderProgram = o3gl.CreateProgram(
+			o3gl.CreateShader(document.getElementById("shader-vs").textContent),
+			o3gl.CreateShader(document.getElementById("shader-fs").textContent)
 		);
-		shaderProgram.
-		useProgram().
-		uniformMatrix4fv("uPMatrix", pMatrix);
-		
-		drawTriangle = new Program(shaderProgram).
-		attribute3f("aVertexPosition", triangleVertexPositionBuffer).
-		attribute4f("aVertexColor", triangleVertexColorBuffer).
-		uniformMatrix4fv("uMVMatrix", mvMatrix).
-		drawArraysTriangles(0, 3);
-		
-		drawCube = new Program(shaderProgram).
-		attribute3f("aVertexPosition",squareVertexPositionBuffer).
-		attribute4f("aVertexColor", squareVertexColorBuffer).
-		uniformMatrix4fv("uMVMatrix", mvMatrix).
-		drawArraysTriangleStrip(0, 4);
     }
 
 
@@ -109,25 +95,25 @@
             -1.0, -1.0,  0.0,
              1.0, -1.0,  0.0
         ];
-		triangleVertexPositionBuffer = new ArrayBuffer(vertices);
+		triangleVertexPositionBuffer = o3gl.CreateArrayBuffer().Data(vertices);
 		var colors = [
             1.0, 0.0, 0.0, 1.0,
             0.0, 1.0, 0.0, 1.0,
             0.0, 0.0, 1.0, 1.0
         ];
-		triangleVertexColorBuffer = new ArrayBuffer(colors);
+		triangleVertexColorBuffer = o3gl.CreateArrayBuffer().Data(colors);
 		vertices = [
              1.0,  1.0,  0.0,
             -1.0,  1.0,  0.0,
              1.0, -1.0,  0.0,
             -1.0, -1.0,  0.0
         ];
-		squareVertexPositionBuffer = new ArrayBuffer(vertices);
+		squareVertexPositionBuffer = o3gl.CreateArrayBuffer().Data(vertices);
 		colors = [];
         for (var i=0; i < 4; i++) {
             colors = colors.concat([0.5, 0.5, 1.0, 1.0]);
         }
-		squareVertexColorBuffer = new ArrayBuffer(colors);	
+		squareVertexColorBuffer = o3gl.CreateArrayBuffer().Data(colors);	
     }
 
 
@@ -136,27 +122,35 @@
     var rSquare = 0;
 
     function drawScene() {
-        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-		shaderProgram.run();
-		
         mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
 
-        mat4.identity(mvMatrix);
+		shaderProgram.
+			DepthTest(true).ClearColor(0,0,0,1).Viewport().Clear();
+		shaderProgram.
+			UniformMatrix4fv("uPMatrix", pMatrix);		
 
+        mat4.identity(mvMatrix);
         mat4.translate(mvMatrix, [-1.5, 0.0, -7.0]);
 
         mvPushMatrix();
-        mat4.rotate(mvMatrix, degToRad(rTri), [0, 1, 0]);
-		drawTriangle.run();
+        mat4.rotate(mvMatrix, degToRad(rTri), [0, 1, 0]);		
+		shaderProgram.
+			Attribute3f("aVertexPosition", triangleVertexPositionBuffer).
+			Attribute4f("aVertexColor", triangleVertexColorBuffer).
+			UniformMatrix4fv("uMVMatrix", mvMatrix).
+			DrawTriangles();
         mvPopMatrix();
 		
-        mat4.translate(mvMatrix, [3.0, 0.0, 0.0]);
-		
+        mat4.translate(mvMatrix, [3.0, 0.0, 0.0]);		
         mvPushMatrix();
         mat4.rotate(mvMatrix, degToRad(rSquare), [1, 0, 0]);
-		drawCube.run();
+		shaderProgram.
+			Attribute3f("aVertexPosition",squareVertexPositionBuffer).
+			Attribute4f("aVertexColor", squareVertexColorBuffer).
+			UniformMatrix4fv("uMVMatrix", mvMatrix).
+		DrawTriangleStrip(0, 4);
+
         mvPopMatrix();
     }
 
@@ -187,9 +181,6 @@
         initGL(canvas);
         initBuffers();
         initShaders()
-
-        gl.clearColor(0.0, 0.0, 0.0, 1.0);
-        gl.enable(gl.DEPTH_TEST);
 
         tick();
     }
