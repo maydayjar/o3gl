@@ -146,24 +146,26 @@ void main() {
 		// Create the programs
 		programDraw 		= o3gl.CreateProgram(o3gl.CreateShader(vertexShaderSource),o3gl.CreateShader(fragmentShaderSource));
 		programDefault 		= o3gl.CreateProgram(o3gl.CreateShader(Shaders.Default.Vertex),o3gl.CreateShader(Shaders.Default.Fragment));
+		/*
 		programConvolution 	= o3gl.CreateProgram(o3gl.CreateShader(Shaders.Convolution.Vertex),o3gl.CreateShader(Shaders.Convolution.Fragment));
 		programBlend 		= o3gl.CreateProgram(o3gl.CreateShader(Shaders.BlendAdditive.Vertex),o3gl.CreateShader(Shaders.BlendAdditive.Fragment));
 		
+		
 		programConvolution.
 			Set("aPosition",	vbo.plane.positions).
-			Set("aTextureCoord",vbo.plane.textureCoords).
-			DepthTest(false).
-			DepthMask(false);
+			Set("aTextureCoord",vbo.plane.textureCoords);
+//			DepthTest(false).
+//			DepthMask(false);
 
 		programBlend.
 			Set("uSampler0", fbTexturePass1).		
 			Set("uSampler1", fbTextureScene).		
 			Set("aPosition",	vbo.plane.positions).
 			Set("aTextureCoord",vbo.plane.textureCoords).			
-			DepthTest(false).
-			DepthMask(false).
+//			DepthTest(false).
+//			DepthMask(false).
 			FrameBuffer();		// Use default framebuffer
-
+		*/
 	}
 	
 	function render() {
@@ -189,7 +191,7 @@ void main() {
 		
 		// Clear the scene
 		fbScene.ClearColorBuffer(0,0,0,1).ClearDepthBuffer();
-		
+				
 		// Draw the scene
 		programDraw.
 			DepthTest(true).
@@ -205,24 +207,40 @@ void main() {
 			DrawTriangles();
 			
 		
+		programDefault.FrameBuffer().Clear();
+		programDefault.
+			Viewport().
+			DepthTest(false).
+			DepthMask(false).		
+			Set("uSampler0", 	fbTextureScene).
+			Set("aPosition",	vbo.plane.positions).
+			Set("aTextureCoord",vbo.plane.textureCoords).
+			DrawTriangles();
+			
+		
+		return;
+
 		programConvolution.
-			DepthTest(false).DepthMask(false).
 			FrameBuffer(fbPass1).Viewport().
+			DepthTest(false).DepthMask(false).
 			Set("uStep", 1/128, 0).							
 			Set("uSampler0", fbTextureScene).	
 			DrawTriangles();
 		
 		programConvolution.
-			DepthTest(false).DepthMask(false).
 			FrameBuffer(fbPass2).Viewport().
+			DepthTest(false).DepthMask(false).
 			Set("uStep", 0, 1/128).
 			Set("uSampler0", fbTexturePass1).		
 			DrawTriangles();
 			
+			
+		programBlend.FrameBuffer().Clear();
 		programBlend.
-			DepthTest(false).
+			DepthTest(false).DepthMask(false).
 			Viewport().
-			Set("uSampler0", fbTexturePass2).		
+			//Set("uSampler0", fbTexturePass2).		
+			Set("uSampler0", fbTextureScene).		
 			Set("uSampler1", fbTextureScene).		
 			DrawTriangles();
     }
