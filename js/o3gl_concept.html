@@ -210,190 +210,23 @@ program.DepthMask(true);		// Depth test and mask are program-specific features
 
 
 
+// BLEND, DEPTH, Clear
+
+program.Blend(false); // 
+program.Blend(true); // Default is 
+program.BlendFunc(BlendFactor.SrcAlpha, BlendFactor.One); // Same as program.Blend(true)
+
+program.BlendSourceFactor(BlendFactor.SrcAlpha, BlendFactor.One); // Same as program.Blend(true)
+
+program.DepthMask().DepthTest()
 
 
+// Draw 
+program.Blend(true)
+program.DepthTest(true).DepthMask(false)
 
 
-
-
-
-
-
-
-
-
-
-
-/*
-new Aspect(o3gl.FrameBufferDefault).
-deffer(
-	function() {
-		return isBound
-	}
-	,
-	"Viewport",
-	"ClearColorBuffer",
-	"ClearDepthBuffer",
-	"Clear",
-	"DepthMask",
-	"DepthTest",
-	"ColorMask",
-	"SetClearColor",
-	"SetClearDepth",
-	
-)
-
-
-"Viewport",
-"ClearColorBuffer",
-"ClearDepthBuffer",
-"Clear",
-"DepthMask",
-"DepthTest",
-"ColorMask",
-"SetClearColor",
-"SetClearDepth"
-)
-*/
-
-/**
-new Aspect(o3gl.Program.prototype).
-deffer("Set", "isUsed").
-after("Use").triggerDeffered()
-
-
-deffered(o3gl.Program.prototype).
-methods("Set").
-condition("isUsed").
-triggerAfter("Use")
-
-
-deffered(
-	o3gl.Program.prototype,
-	"Set", 
-	"isUsed",
-)
-
-
-if (this.isUsed()) {
-	method();
-} else {
-	
-}
-
-*/
-
-// Aspect builder
-/*
-	aspect(o).method(function(){}).before("f1");
-	aspect(o).method(function(){}).before("f1");
-	
-	aspect(o).deffer("Data").ifFalse("isBound").after("Bind");
-	
-	
-	aspect(o).
-*/
-
-
-function Aspect(object) {
-	var _object = object;
-	var _deffered = [];
-	
-	return {
-		advice : function(methodName, adviceBefore, adviceAfter) {
-			var method = _object[methodName];
-			// Wrapped
-			_object[methodName] = function() {
-				var args = arguments;
-				if (adviceBefore) {
-					adviceBefore.apply(this, args);					
-				}
-				var result = method.apply(this, args);
-				if (adviceAfter) {
-					adviceAfter.apply(this, args);					
-				}
-				return result;
-			}	
-			return this;
-		}
-		,
-		
-		before : function(methodNameRegExp, advice) {			
-			if (methodNameRegExp instanceof String) {
-				methodNameRegExp = new RegExp(methodNameRegExp);
-			}
-			for (var propertyName in _object) {
-				if (!propertyName.match(methodNameRegExp)) continue;
-				this.advice(propertyName, advice, null);				
-			}			
-			return this;
-		}
-		,
-		after : function(methodName, advice) {
-			
-			if (methodName instanceof String) {
-				methodName = new RegExp(methodName);
-			}
-			
-			for (var propertyName in _object) {
-				if (!propertyName.match(methodName)) continue;
-				this.advice(propertyName, null, advice);				
-			}			
-			return this;
-		}
-		,
-		around : function(methodName, advice) {
-						
-			if (methodName instanceof String) {
-				methodName = new RegExp(methodName);
-			}
-			
-			for (var propertyName in _object) {
-				if (!propertyName.match(methodName)) continue;
-				var property = _object[propertyName];
-				
-				_object[propertyName] = function() {
-					var args = arguments;
-					var that = this;
-					function pointcut() {
-						return property.apply(that, args);
-					}
-					return advice.call(this, pointcut)
-				}
-			}			
-			return this;
-		}
-	}
-}
-
-var o = {
-	m1 : function(a1, a2) {
-		console.log(a1, a2);
-		return a1;
-	}
-	,
-	m2 : function(a1, a2) {
-		console.log(a1, a2);
-		return a2;
-	}
-}
-
-Aspect(o).around("m1", function(pointcut) {
-	console.log("before m1");
-	var result = pointcut();
-	console.log("after m1");
-	return result;
-});
-
-Aspect(o).around("m2", function(pointcut) {
-	console.log("before m2");
-	var result = pointcut();
-	console.log("after m2");
-	return result;
-});
-
-
-o.m1(1,2);
-o.m2(1,2);
+// Blend, BlendFunc DepthMask, DepthTest, Viewport, ClearColor, ClearDepth, program bindings must trigger default settings for other programs ??? 
+// Push/Pop changed states ???
 
 </script>

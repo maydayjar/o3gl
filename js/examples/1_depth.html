@@ -132,11 +132,10 @@ void main() {
 		
 		// Set up program properties that won't change
 		program.
-			DepthTest(true).DepthMask(true).	// Enable depth test and mask
-			Viewport(). 						// Update default frame buffer viewport to it's max size every time
+			DepthTest(true).
+			DepthMask(true).
 			Set("aPosition", positions.pointer()).
-			Elements(indexes).
-			Set("uProjectionMatrix", 	pMatrix);
+			Elements(indexes);
 	}
 	
 	function render() {
@@ -153,11 +152,18 @@ void main() {
 		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 		*/
 		
+		// Clear default framebuffer
 		program.
-			// Clear buffers
-			ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer().
+			FrameBuffer().
+				ClearColorBuffer(0.0, 0.0, 0.0, 1.0).
+				ClearDepthBuffer();
+			
+		program.
+			// Set up viewport transformation to the default framebuffer size
+			Viewport().
 			// Update recalculated MV transformation
 			Set("uModelViewMatrix", 	mvMatrix).
+			Set("uProjectionMatrix", 	pMatrix).
 			// End up with drawcall
 			DrawTriangles();
     }

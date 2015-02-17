@@ -1367,27 +1367,22 @@ o3gl.FrameBuffer.prototype = {
 		}
 	}
 	,
-	Viewport : function(x,y,width,height) {
-		if (arguments.length === 0) {
-			gl.viewport(0, 0, this.getWidth(), this.getHeight());
-		} else {
-			gl.viewport(x,y,width,height);
-		}
-		return this;
-	}
-	,
 	ClearColorBuffer : function(r,g,b,a) {
 		if (arguments.length === 0) {
-			r = 0.0; g = 0.0; b = 0.0; a = 0.0; // Specification default values
+			gl.clearColor(0, 0, 0, 0);			// Specification default values
+		} else {
+			gl.clearColor(r, g, b, a);
 		}
-		gl.clearColor(r, g, b, a);
 		gl.clear(gl.COLOR_BUFFER_BIT);
 		return this;
 	}
 	,
 	ClearDepthBuffer : function(depth) {
-		if (depth === undefined) depth = 1.0; // Specification default values
-		gl.clearDepth(depth);
+		if (arguments.length == 0)  {
+			gl.clearDepth(1.0); // Specification default value
+		} else {
+			gl.clearDepth(depth);			
+		}
 		gl.clear(gl.DEPTH_BUFFER_BIT);
 		return this;
 	}	
@@ -1397,32 +1392,38 @@ o3gl.FrameBuffer.prototype = {
 		return this;
 	}
 	,
-	DepthMask : function(enable) {
-		gl.depthMask(enable);
-		return this;
-	}
-	,
-	DepthTest : function(enable) {
-		if (enable) 
-			gl.enable(gl.DEPTH_TEST);
-		else
-			gl.disable(gl.DEPTH_TEST);
-		return this;
-	}
-	,
-	ColorMask : function(r,g,b,a) {
-		gl.colorMask(r,g,b,a);
-		return this;
-	}
-	,
 	ClearColor : function(r,g,b,a) {
-		gl.clearColor(r,g,b,a);
+		if (arguments.length === 0) {
+			gl.clearColor(0, 0, 0, 0);			// Specification default values
+		} else {
+			gl.clearColor(r, g, b, a);
+		}
 		return this;
 	}
 	,
 	ClearDepth : function(value) {
-		// depth: floating-point number between 0.0 and 1.0, the default value is 1.0	
-		gl.clearDepth(value);
+		if (arguments.length == 0)  {
+			gl.clearDepth(1.0); // Specification default value
+		} else {
+			gl.clearDepth(value);			
+		}
+		return this;
+	}
+	,
+	ScissorTest : function (enable) {
+		if (enable) {
+			gl.enable(gl.SCISSOR_TEST);
+		} else {
+			gl.disable(gl.SCISSOR_TEST);
+		}
+		return this;
+	}
+	,
+	Scissor : function (x, y , width, height) {
+		// turn on the scissor test.
+		gl.enable(gl.SCISSOR_TEST);		
+		// set the scissor rectangle.
+		gl.scissor(x, y, width, height);
 		return this;
 	}
 };
@@ -1963,6 +1964,10 @@ o3gl.Program.prototype = {
 	isTypeSampler2D 	 : function(name) { return this.getType(name) === gl.SAMPLER_2D; 	},
 	isTypeSamplerCube 	 : function(name) { return this.getType(name) === gl.SAMPLER_CUBE; 	},	
 
+	instance : function() {
+		return Object.create(this);
+	}
+	,
 	VertexArray : function(value) {
 		if (value || value === null) {
 			this._vertexArrayObject = value;
@@ -1971,7 +1976,12 @@ o3gl.Program.prototype = {
 				this._vertexArrayObject = new o3gl.VertexArrayObjectDefault();
 			}
 		}
-		return this._vertexArrayObject;
+		
+		if (value) {
+			return this;
+		} else {
+			return this._vertexArrayObject;			
+		}		
 	}
 	,
 	FrameBuffer : function(value) {
@@ -1982,7 +1992,11 @@ o3gl.Program.prototype = {
 				this._frameBufferObject = new o3gl.FrameBuffer();
 			}
 		}
-		return this._frameBufferObject;
+		if (value) {
+			return this;
+		} else {
+			return this._frameBufferObject;			
+		}		
 	}
 	,
 	TextureUnit : function(value) {
@@ -1993,7 +2007,11 @@ o3gl.Program.prototype = {
 				this._textureUnitObject = new o3gl.TextureUnitObject();
 			}
 		}
-		return this._textureUnitObject;
+		if (value) {
+			return this;
+		} else {
+			return this._textureUnitObject;			
+		}		
 	}
 	,
 	//	Helper method that allows setting of the uniform or attribute pointer using retrospections capabilities.
@@ -2251,59 +2269,57 @@ o3gl.Program.prototype = {
 	}
 	,
 	Viewport : function(x,y,width,height) {
-		if (arguments.length == 4) {
-			// Set up viewport with the specified parameters
-			this.FrameBuffer().Viewport(x,y,width,height);
-		} else {
-			// Set up viewport to the maximum frame buffer size
-			this.FrameBuffer().Viewport();
+		if (arguments.length == 0) {
+			if (this._frameBufferObject) {
+				x 		= 0;
+				y 		= 0; 
+				width 	= this._frameBufferObject.getWidth();
+				height 	= this._frameBufferObject.getHeight();
+			} else {
+				//TODO:	It seems there is no way to detect gl context currently bound buffer size
+				throw new TypeError("Unable to get framebuffer size");
+			}
 		}
-		return this;
-	}
-	,
-	ClearColorBuffer : function(r,g,b,a) {
-		this.FrameBuffer().ClearColorBuffer(r,g,b,a);
-		return this;
-	}
-	,
-	ClearDepthBuffer : function(depth) {
-		this.FrameBuffer().ClearDepthBuffer(depth);
-		return this;
-	}	
-	,
-	Clear : function() {
-		this.FrameBuffer().Clear();
+		gl.viewport(x, y, width, height);
 		return this;
 	}
 	,
 	DepthMask : function(enable) {
-		this.FrameBuffer().DepthMask(enable);
+		gl.depthMask(enable);
 		return this;
 	}
 	,
 	DepthTest : function(enable) {
-		this.FrameBuffer().DepthTest(enable);
+		if (enable) 
+			gl.enable(gl.DEPTH_TEST);
+		else
+			gl.disable(gl.DEPTH_TEST);
 		return this;
 	}
 	,
 	ColorMask : function(r,g,b,a) {
-		this.FrameBuffer().ColorMask(r,g,b,a);
+		gl.colorMask(r,g,b,a);
 		return this;
 	}
 	,
-	ClearColor : function(r,g,b,a) {
-		this.FrameBuffer().ClearColor(r,g,b,a);
+	Blend : function(enable) {
+		if (enable)
+			gl.enable(gl.BLEND);
+		else 
+			gl.disable(gl.BLEND);
 		return this;
 	}
 	,
-	ClearDepth : function(value) {
-		this.FrameBuffer().ClearDepth(value);
+	BlendFunc : function(glBlendFactorSrc, glBlendFactorDst) {
+		gl.blendFunc(glBlendFactorSrc, glBlendFactorDst);
 		return this;
+	}
+	,
+	BlendFuncSrcAlphaOne : function() {
+		return this.BlendFunc(gl.SRC_ALPHA, gl.ONE);
 	}
 	,
 	_drawPrimitives : function(glMode, first, count) {
-		this.Use(); // assert current program
-
 		// Bind assotiated resources
 		if (this._vertexArrayObject) {
 			this._vertexArrayObject.Bind();		
@@ -2314,6 +2330,8 @@ o3gl.Program.prototype = {
 		if (this._textureUnitObject) {
 			this._textureUnitObject.Active(this);		
 		}
+		
+		this.Use(); // assert current program
 		
 		
 		var elementArrayBuffer = undefined;
@@ -2521,10 +2539,9 @@ Aspect(o3gl.ArrayBuffer.prototype).before(/^Data$/, 									function() { if (o3
 Aspect(o3gl.ElementArrayBuffer.prototype).before(/^Data$/, 								function() { if (o3gl._parameters[gl.ELEMENT_ARRAY_BUFFER_BINDING] !== this.Id()) this.Bind(); } );
 Aspect(o3gl.FrameBuffer.prototype).before(/^ClearColorBuffer$|^ClearDepthBuffer$|^Clear$|^Color$|^Depth$|^Stencil$/, function() { if (o3gl._parameters[gl.FRAMEBUFFER_BINDING] !== this.Id()) this.Bind(); } );
 Aspect(o3gl.RenderBuffer.prototype).before(/^Storage$/, 								function() { if (o3gl._parameters[gl.RENDERBUFFER_BINDING] != this.Id()) this.Bind(); } );
-Aspect(o3gl.Program.prototype).before(/^Set$|Uniform|Attribute/, 						function() { if (o3gl._parameters[gl.CURRENT_PROGRAM] != this.Id()) this.Use(); } );
+Aspect(o3gl.Program.prototype).before(/^Set$|^Uniform|^Attribute|^Clear|^Draw/, 		function() { if (o3gl._parameters[gl.CURRENT_PROGRAM] != this.Id()) this.Use(); } );
 
-// Preserve framebuffer settings
-Aspect(o3gl.FrameBuffer.prototype).around(/^Viewport$|^DepthMask$|^DepthTest$|^ColorMask$|^ClearColor$|^ClearDepth$/, function (pointcut, name, arguments) {
+Aspect(o3gl.Program.prototype).around(/^DepthMask$|^DepthTest$|^ColorMask$|^ClearColor$|^ClearDepth$|^Blend$|^BlendFunc$|^Viewport$/, function (pointcut, name, arguments) {
 	if (!this._deffered) {
 		this._deffered = {};
 	}
@@ -2532,7 +2549,7 @@ Aspect(o3gl.FrameBuffer.prototype).around(/^Viewport$|^DepthMask$|^DepthTest$|^C
 	return pointcut();
 });
 
-Aspect(o3gl.FrameBuffer.prototype).after(/^Bind$/, function() {
+Aspect(o3gl.Program.prototype).after(/^Use$/, function() {
 	if (this._deffered) {
 		for (var name in this._deffered) {
 			this._deffered[name] ();

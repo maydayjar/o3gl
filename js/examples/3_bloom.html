@@ -125,13 +125,13 @@ void main() {
 		fbTextureScene 		= o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
 		
         fbDepthScene 		= o3gl.CreateRenderBufferDepth().Storage(viewport.width, viewport.height);
-		fbScene 			= o3gl.CreateFrameBuffer().Color(fbTextureScene).Depth(fbDepthScene).DepthTest(true).DepthMask(true).Viewport();
+		fbScene 			= o3gl.CreateFrameBuffer().Color(fbTextureScene).Depth(fbDepthScene);
 
 		fbTexturePass1 		= o3gl.CreateTexture2D().FilterLinear().WrapClampToEdge().Image(128, 128);
-		fbPass1 			= o3gl.CreateFrameBuffer().Color(fbTexturePass1).Viewport().DepthTest(false).DepthMask(false);
+		fbPass1 			= o3gl.CreateFrameBuffer().Color(fbTexturePass1);
 
 		fbTexturePass2 		= o3gl.CreateTexture2D().FilterLinear().WrapClampToEdge().Image(128, 128);
-		fbPass2 			= o3gl.CreateFrameBuffer().Color(fbTexturePass2).Viewport().DepthTest(false).DepthMask(false);
+		fbPass2 			= o3gl.CreateFrameBuffer().Color(fbTexturePass2);
 
 		// Create vertex buffer objects
 		var cube = new Cube();
@@ -148,52 +148,22 @@ void main() {
 		programDefault 		= o3gl.CreateProgram(o3gl.CreateShader(Shaders.Default.Vertex),o3gl.CreateShader(Shaders.Default.Fragment));
 		programConvolution 	= o3gl.CreateProgram(o3gl.CreateShader(Shaders.Convolution.Vertex),o3gl.CreateShader(Shaders.Convolution.Fragment));
 		programBlend 		= o3gl.CreateProgram(o3gl.CreateShader(Shaders.BlendAdditive.Vertex),o3gl.CreateShader(Shaders.BlendAdditive.Fragment));
-
-		programDraw.FrameBuffer(fbScene);
-			
+		
 		programConvolution.
-			Set("aPosition",	vbo.plane.positions.pointer()).
-			Set("aTextureCoord",vbo.plane.textureCoords.pointer());
+			Set("aPosition",	vbo.plane.positions).
+			Set("aTextureCoord",vbo.plane.textureCoords).
+			DepthTest(false).
+			DepthMask(false);
 
-		programBlend.FrameBuffer().Viewport().DepthTest(false).DepthMask(false);
 		programBlend.
 			Set("uSampler0", fbTexturePass1).		
 			Set("uSampler1", fbTextureScene).		
-			Set("aPosition",	vbo.plane.positions.pointer()).
-			Set("aTextureCoord",vbo.plane.textureCoords.pointer());
-			
-			/*
-		programDefault.
-			Set("aPosition",	vbo.plane.positions.pointer()).
-			Set("aTextureCoord",vbo.plane.textureCoords.pointer());
-			*/
-		
-		/*
-		// Create buffers:
-		mesh = o3gl.iterator().modeTriangles().
-		elements(o3gl.createBuffer().Data(cube.indexes));
-		mesh.pointer("aPosition", o3gl.createBuffer().Data(cube.positions));
-		mesh.pointer("aTextureCoord", o3gl.createBuffer().Data(cube.textureCoords));
-		
-		// Create offsreen rendering surface
-		var plane = new Plane2D(); // Post-process plane
-		offscreenSurface = o3gl.iterator().modeTriangles();
-		offscreenSurface.pointer("aPosition", o3gl.createBuffer().Data(plane.positions));
-		offscreenSurface.pointer("aTextureCoord", o3gl.createBuffer().Data(plane.textureCoords));
-		*/
+			Set("aPosition",	vbo.plane.positions).
+			Set("aTextureCoord",vbo.plane.textureCoords).			
+			DepthTest(false).
+			DepthMask(false).
+			FrameBuffer();		// Use default framebuffer
 
-		/*
-		var plane = new Plane2D(); // Post-process plane
-		offscreenSurface = o3gl.iterator().modeTriangles();
-		offscreenSurface.pointer("aPosition", o3gl.createBuffer().Data(plane.positions));
-		offscreenSurface.pointer("aTextureCoord", o3gl.createBuffer().Data(plane.textureCoords));
-		*/
-		
-		/*
-		programConvolution.Use().
-			Set("aPosition",	vbo.plane.positions.pointer()).
-			Set("aTextureCoord",vbo.plane.textureCoords.pointer());
-		*/
 	}
 	
 	function render() {
@@ -218,37 +188,42 @@ void main() {
 		*/
 		
 		// Clear the scene
-		programDraw.
-			ClearColorBuffer(0.0, 0.0, 0.0, 1.0).
-			ClearDepthBuffer();
+		fbScene.ClearColorBuffer(0,0,0,1).ClearDepthBuffer();
 		
 		// Draw the scene
 		programDraw.
+			DepthTest(true).
+			DepthMask(true).
+			FrameBuffer(fbScene).
+			Viewport().			
 			Set("uMatrixP", 	matrixP).
 			Set("uMatrixMV", 	matrixMV).
 			Set("uSampler0", 	textureDiffuse).		
-			Set("aPosition",	vbo.cube.positions.pointer()).
-			Set("aTextureCoord",vbo.cube.textureCoords.pointer()).
+			Set("aPosition",	vbo.cube.positions).
+			Set("aTextureCoord",vbo.cube.textureCoords).
 			Elements(vbo.cube.indexes).
 			DrawTriangles();
 			
-		fbPass1.Bind();
-		programConvolution.FrameBuffer(fbPass1);
+		
 		programConvolution.
+			DepthTest(false).DepthMask(false).
+			FrameBuffer(fbPass1).Viewport().
 			Set("uStep", 1/128, 0).							
 			Set("uSampler0", fbTextureScene).	
 			DrawTriangles();
 		
-		programConvolution.FrameBuffer(fbPass2);
-		programConvolution.		
+		programConvolution.
+			DepthTest(false).DepthMask(false).
+			FrameBuffer(fbPass2).Viewport().
 			Set("uStep", 0, 1/128).
 			Set("uSampler0", fbTexturePass1).		
 			DrawTriangles();
 			
 		programBlend.
+			DepthTest(false).
+			Viewport().
 			Set("uSampler0", fbTexturePass2).		
 			Set("uSampler1", fbTextureScene).		
-
 			DrawTriangles();
     }
     

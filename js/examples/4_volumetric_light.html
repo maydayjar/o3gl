@@ -149,11 +149,7 @@
 
 		//fbScene.Bind().ClearDepth().ClearColor(0.0, 0.0, 0.0, 1.0).Viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 		
-		fbScene.Bind().DepthTest(true).DepthMask(true).
-		Viewport(); // Set viewport to the full framebuffer size
-//		Viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-        fbScene.ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer();
-		
+        fbScene.ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer();		
 		// Draw regular geometry
 		var step = 2.5;
 		for (var x=-1; x <= 1; x ++) 
@@ -175,7 +171,9 @@
 			var g = (y + 1) / 2;
 			var b = (z + 1) / 2;
 
-			programPhong.Use().
+			programPhong.
+				FrameBuffer(fbScene).Viewport().
+				DepthTest(true).DepthMask(true).
 				Set("uMatrixV", 	matrixV). 		
 				Set("uMatrixP", 	matrixP).		
 				Set("uMatrixM", 	matrixM).
@@ -206,8 +204,6 @@
 */
 		
 		// Draw emmissive geometry
-		fbEmissive.Bind().DepthTest(true).DepthMask(true).
-		Viewport();
         fbEmissive.ClearColorBuffer(0,0,0,1);
 		mat4.identity(matrixM);
 		mat4.translate(matrixM, [0, 0, 0]);
@@ -215,6 +211,8 @@
 		mat4.toInverseMat3(matrixMV, matrixN);		
 		mat3.transpose(matrixN);
 		programPhong.
+			FrameBuffer(fbEmissive).Viewport().
+			DepthTest(true).DepthMask(true).
 			Set("uMatrixV", 	matrixV). 		
 			Set("uMatrixP", 	matrixP).		
 			Set("uMatrixM", 	matrixM).
@@ -238,24 +236,26 @@
 */		
 
 
-		fbConvolutionPass1.Bind().DepthTest(false).Viewport();
 		programConvolution.
+			FrameBuffer(fbConvolutionPass1).Viewport().
+			DepthTest(false).
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uStep", 0.9/fbConvolutionPass1.getWidth(), 0).							
 			Set("uSampler0", textureEmissive).		
 			DrawTriangles();
 		
-		fbConvolutionPass2.Bind().DepthTest(false).Viewport();
 		programConvolution.
+			FrameBuffer(fbConvolutionPass2).Viewport().
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uStep", 0, 0.9/fbConvolutionPass2.getHeight()).
 			Set("uSampler0", textureConvolutionPass1).		
 			DrawTriangles();
 		
-		fbBlurRadial.Bind().DepthTest(false).Viewport();
 		programBlurRadial.
+			FrameBuffer(fbBlurRadial).Viewport().
+			DepthTest(false).
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uOrigin", 0.5, 0.5, 0.5, 0.5).
@@ -264,12 +264,10 @@
 //			Set("uSampler0", textureScene).		
 			DrawTriangles();
 	
-			// Flush to the screen
-		fbDefault.Bind().DepthTest(false).
-		// ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer().
-		Viewport();
-		
+		// Flush to the screen
 		programBlend.
+			FrameBuffer(fbDefault).Viewport().
+			DepthTest(false).
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uSampler0", textureBlurRadial).		

@@ -1,0 +1,16 @@
+	- Change "aspects" to the proxy objects ???
+	
+	- Frame buffer scissor test
+	
+	- Program automatic restore to the default settings
+	
+	- Program internal frame buffer cache.
+		
+		With multiple framebuffers generated for various color, depth and stencil attachements. 		
+		This eliminates external framebuffers manipulations.		
+		Allows simplified "render to texture" semantics. 
+		Use case: two convolution shader passes. 
+		Possible problem is deletion of the created framebuffer objects
+	
+	- Program instances concept
+		
