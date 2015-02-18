@@ -6,7 +6,7 @@
 
 <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
-<script type="text/javascript" src="../o3gl.js"></script>
+<script type="text/javascript" src="../../o3gl.js"></script>
 
 <script id="shader-fs" type="x-shader/x-fragment">
     precision mediump float;
@@ -42,12 +42,15 @@
 <script type="text/javascript">
 
     var gl;
+	var o3gl;
 
     function initGL(canvas) {
         try {
             gl = canvas.getContext("experimental-webgl");
             gl.viewportWidth = canvas.width;
             gl.viewportHeight = canvas.height;
+			
+			o3gl = O3GL(gl);
         } catch (e) {
         }
         if (!gl) {
@@ -58,19 +61,15 @@
     var shaderProgram;
 
     function initShaders() {
-		shaderProgram = new Program(
-			new VertexShader(document.getElementById("shader-vs").textContent),
-			new FragmentShader(document.getElementById("shader-fs").textContent)
+		shaderProgram = o3gl.CreateProgram(
+			o3gl.CreateShader(document.getElementById("shader-vs").textContent),
+			o3gl.CreateShader(document.getElementById("shader-fs").textContent)
 		);
+		
 		shaderProgram.
-		useProgram().
-		attribute3f("aVertexPosition", starVertexPositionBuffer).
-		attribute2f("aTextureCoord", starVertexTextureCoordBuffer).
-		uniformSampler("uSampler", new Texture2D(starImage).minFilterLinear().magFilterLinear()).		
-		uniformf("uColor", color).
-		uniformMatrix4fv("uPMatrix", pMatrix).
-		uniformMatrix4fv("uMVMatrix", mvMatrix).
-		drawArraysTriangleStrip(0,4);
+			Attribute3f("aVertexPosition", starVertexPositionBuffer).
+			Attribute2f("aTextureCoord", starVertexTextureCoordBuffer).
+			UniformSampler("uSampler", o3gl.CreateTexture2D().Image(starImage).FilterMinLinear().FilterMagLinear());
     }
 
     var starImage;
@@ -145,13 +144,13 @@
     var starVertexTextureCoordBuffer;
 
     function initBuffers() {
-        starVertexPositionBuffer = new ArrayBuffer([
+        starVertexPositionBuffer = o3gl.CreateArrayBuffer().Data([
             -1.0, -1.0,  0.0,
              1.0, -1.0,  0.0,
             -1.0,  1.0,  0.0,
              1.0,  1.0,  0.0
         ]);
-        starVertexTextureCoordBuffer = new ArrayBuffer([
+        starVertexTextureCoordBuffer = o3gl.CreateArrayBuffer().Data([
             0.0, 0.0,
             1.0, 0.0,
             0.0, 1.0,
@@ -179,23 +178,25 @@
         mat4.rotate(mvMatrix, degToRad(-this.angle), [0.0, 1.0, 0.0]);
         mat4.rotate(mvMatrix, degToRad(-tilt), [1.0, 0.0, 0.0]);
 
+		shaderProgram.UniformMatrix4fv("uPMatrix", pMatrix);
+		
         if (twinkle) {
             // Draw a non-rotating star in the alternate "twinkling" color
-			color[0] = this.twinkleR;
-			color[1] = this.twinkleG;
-			color[2] = this.twinkleB;
-			shaderProgram.run();
+			shaderProgram.
+				Uniform3f("uColor", this.twinkleR,this.twinkleG,this.twinkleB).
+				UniformMatrix4fv("uMVMatrix", mvMatrix).
+				DrawTriangleStrip();			
         }
 
         // All stars spin around the Z axis at the same rate
         mat4.rotate(mvMatrix, degToRad(spin), [0.0, 0.0, 1.0]);
 
         // Draw the star in its main color
-		color[0] = this.r;
-		color[1] = this.g;
-		color[2] = this.b;
-		shaderProgram.run();
-
+		shaderProgram.
+			Uniform3f("uColor", this.r, this.g, this.b).
+			UniformMatrix4fv("uMVMatrix", mvMatrix).
+			DrawTriangleStrip();
+		
         mvPopMatrix();
     };
 
@@ -244,13 +245,12 @@
 
 
     function drawScene() {
-        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		shaderProgram.FrameBuffer().Clear();
+		shaderProgram.Viewport();
 
         mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
 
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-        gl.enable(gl.BLEND);
+		shaderProgram.Blend(true).BlendFunc(gl.SRC_ALPHA, gl.ONE);
 
         mat4.identity(mvMatrix);
         mat4.translate(mvMatrix, [0.0, 0.0, zoom]);

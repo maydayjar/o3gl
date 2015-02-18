@@ -122,23 +122,19 @@
     var rSquare = 0;
 
     function drawScene() {
-
         mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
-
-		shaderProgram.
-			DepthTest(true).ClearColor(0,0,0,1).Viewport().Clear();
-		shaderProgram.
-			UniformMatrix4fv("uPMatrix", pMatrix);		
-
         mat4.identity(mvMatrix);
         mat4.translate(mvMatrix, [-1.5, 0.0, -7.0]);
+
+		shaderProgram.FrameBuffer().ClearColor(0,0,0,1).Clear();
 
         mvPushMatrix();
         mat4.rotate(mvMatrix, degToRad(rTri), [0, 1, 0]);		
 		shaderProgram.
+			UniformMatrix4fv("uPMatrix", pMatrix).	
+			UniformMatrix4fv("uMVMatrix", mvMatrix).		
 			Attribute3f("aVertexPosition", triangleVertexPositionBuffer).
 			Attribute4f("aVertexColor", triangleVertexColorBuffer).
-			UniformMatrix4fv("uMVMatrix", mvMatrix).
 			DrawTriangles();
         mvPopMatrix();
 		
@@ -146,11 +142,10 @@
         mvPushMatrix();
         mat4.rotate(mvMatrix, degToRad(rSquare), [1, 0, 0]);
 		shaderProgram.
+			UniformMatrix4fv("uMVMatrix", mvMatrix).
 			Attribute3f("aVertexPosition",squareVertexPositionBuffer).
 			Attribute4f("aVertexColor", squareVertexColorBuffer).
-			UniformMatrix4fv("uMVMatrix", mvMatrix).
-		DrawTriangleStrip(0, 4);
-
+			DrawTriangleStrip(0, 4);
         mvPopMatrix();
     }
 

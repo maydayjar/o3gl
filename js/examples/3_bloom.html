@@ -123,6 +123,9 @@ void main() {
 		
 		// Create framebuffers
 		fbTextureScene 		= o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
+
+		fbTextureTest 		= o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
+
 		
         fbDepthScene 		= o3gl.CreateRenderBufferDepth().Storage(viewport.width, viewport.height);
 		fbScene 			= o3gl.CreateFrameBuffer().Color(fbTextureScene).Depth(fbDepthScene);
@@ -146,9 +149,14 @@ void main() {
 		// Create the programs
 		programDraw 		= o3gl.CreateProgram(o3gl.CreateShader(vertexShaderSource),o3gl.CreateShader(fragmentShaderSource));
 		programDefault 		= o3gl.CreateProgram(o3gl.CreateShader(Shaders.Default.Vertex),o3gl.CreateShader(Shaders.Default.Fragment));
-		/*
 		programConvolution 	= o3gl.CreateProgram(o3gl.CreateShader(Shaders.Convolution.Vertex),o3gl.CreateShader(Shaders.Convolution.Fragment));
 		programBlend 		= o3gl.CreateProgram(o3gl.CreateShader(Shaders.BlendAdditive.Vertex),o3gl.CreateShader(Shaders.BlendAdditive.Fragment));
+		
+		// 
+		programDefault.
+			Set("aPosition",	vbo.plane.positions).
+			Set("aTextureCoord",vbo.plane.textureCoords).
+			FrameBuffer();
 		
 		
 		programConvolution.
@@ -165,7 +173,8 @@ void main() {
 //			DepthTest(false).
 //			DepthMask(false).
 			FrameBuffer();		// Use default framebuffer
-		*/
+			
+		fbScene.ClearColorBuffer(0,1,0,1).ClearDepthBuffer();
 	}
 	
 	function render() {
@@ -190,12 +199,12 @@ void main() {
 		*/
 		
 		// Clear the scene
+		
 		fbScene.ClearColorBuffer(0,0,0,1).ClearDepthBuffer();
-				
+
 		// Draw the scene
 		programDraw.
-			DepthTest(true).
-			DepthMask(true).
+			DepthTest(true).DepthMask(true).
 			FrameBuffer(fbScene).
 			Viewport().			
 			Set("uMatrixP", 	matrixP).
@@ -205,20 +214,7 @@ void main() {
 			Set("aTextureCoord",vbo.cube.textureCoords).
 			Elements(vbo.cube.indexes).
 			DrawTriangles();
-			
-		
-		programDefault.FrameBuffer().Clear();
-		programDefault.
-			Viewport().
-			DepthTest(false).
-			DepthMask(false).		
-			Set("uSampler0", 	fbTextureScene).
-			Set("aPosition",	vbo.plane.positions).
-			Set("aTextureCoord",vbo.plane.textureCoords).
-			DrawTriangles();
-			
-		
-		return;
+
 
 		programConvolution.
 			FrameBuffer(fbPass1).Viewport().
@@ -226,7 +222,7 @@ void main() {
 			Set("uStep", 1/128, 0).							
 			Set("uSampler0", fbTextureScene).	
 			DrawTriangles();
-		
+			
 		programConvolution.
 			FrameBuffer(fbPass2).Viewport().
 			DepthTest(false).DepthMask(false).
@@ -241,8 +237,17 @@ void main() {
 			Viewport().
 			//Set("uSampler0", fbTexturePass2).		
 			Set("uSampler0", fbTextureScene).		
-			Set("uSampler1", fbTextureScene).		
+			Set("uSampler1", fbTexturePass2).		
 			DrawTriangles();
+		
+		return;
+		
+		programDefault.
+			Set("uSampler0", fbTextureScene).
+			Viewport().
+			DrawTriangles();
+			
+
     }
     
     function update() {
@@ -320,7 +325,7 @@ void main() {
 </head>
 
 
-<body onload="webGLStart();" style="overflow: hidden">
+<body onload="webGLStart();" style="overflow: hidden; background-color:#F00">
 	<img id="diffuse" 	src = "texture/diffuse.png" 	hidden />
 	<img id="normal" 	src = "texture/normal.png" 	hidden />
 	<img id="specular" 	src = "texture/ao.png" 		hidden />

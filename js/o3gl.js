@@ -459,21 +459,6 @@ var Parameters = {
 		return gl.getExtension('OES_texture_half_float') != null;
 	}
 }
-
-function BlendFactor() {
-	return {
-		One 				: gl.ONE,
-		Zero 				: gl.ZERO,
-		SrcColor 			: gl.SRC_COLOR,
-		SrcAlpha 			: gl.SRC_ALPHA,
-		DstColor 			: gl.DST_COLOR,
-		DstAlpha 			: gl.DST_ALPHA,
-		OneMinusSrcColor 	: gl.ONE_MINUS_SRC_COLOR,
-		OneMinusSrcAlpha 	: gl.ONE_MINUS_SRC_ALPHA,
-		OneMinusDstColor 	: gl.ONE_MINUS_DST_COLOR,
-		OneMinusDstAlpha 	: gl.ONE_MINUS_DST_ALPHA
-	}
-}
 		
 var o3gl = {		
 };
@@ -1368,6 +1353,12 @@ o3gl.FrameBuffer.prototype = {
 	}
 	,
 	ClearColorBuffer : function(r,g,b,a) {
+		var isR = (r !== null);
+		var isG = (g !== null);
+		var isB = (b !== null);
+		var isA = (a !== null);
+		gl.colorMask(isR, isG, isB, isA);
+		
 		if (arguments.length === 0) {
 			gl.clearColor(0, 0, 0, 0);			// Specification default values
 		} else {
@@ -1378,6 +1369,8 @@ o3gl.FrameBuffer.prototype = {
 	}
 	,
 	ClearDepthBuffer : function(depth) {
+		gl.depthMask(true);	// Without this set to true no effect will take place
+
 		if (arguments.length == 0)  {
 			gl.clearDepth(1.0); // Specification default value
 		} else {
@@ -1388,11 +1381,13 @@ o3gl.FrameBuffer.prototype = {
 	}	
 	,
 	Clear : function() {
+		gl.colorMask(true, true, true, true);
+		gl.depthMask(true);	// Without this set to true no effect will take place
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);		
 		return this;
 	}
 	,
-	ClearColor : function(r,g,b,a) {
+	ClearColor : function(r,g,b,a) {		
 		if (arguments.length === 0) {
 			gl.clearColor(0, 0, 0, 0);			// Specification default values
 		} else {
@@ -1401,7 +1396,7 @@ o3gl.FrameBuffer.prototype = {
 		return this;
 	}
 	,
-	ClearDepth : function(value) {
+	ClearDepth : function(value) {		
 		if (arguments.length == 0)  {
 			gl.clearDepth(1.0); // Specification default value
 		} else {
@@ -1424,6 +1419,24 @@ o3gl.FrameBuffer.prototype = {
 		gl.enable(gl.SCISSOR_TEST);		
 		// set the scissor rectangle.
 		gl.scissor(x, y, width, height);
+		return this;
+	}	
+	,
+		DepthMask : function(enable) {
+		gl.depthMask(enable);
+		return this;
+	}
+	,
+	DepthTest : function(enable) {
+		if (enable) 
+			gl.enable(gl.DEPTH_TEST);
+		else
+			gl.disable(gl.DEPTH_TEST);
+		return this;
+	}
+	,
+	ColorMask : function(r,g,b,a) {
+		gl.colorMask(r,g,b,a);
 		return this;
 	}
 };
@@ -1770,9 +1783,18 @@ o3gl.Program = function(shader1,shader2) {
 	// Assotiate new `TUO` with program;
 	this._textureUnitObject = undefined;
 }
-
-
-
+o3gl.BlendFactor = {
+	One 				: gl.ONE,
+	Zero 				: gl.ZERO,
+	SrcColor 			: gl.SRC_COLOR,
+	SrcAlpha 			: gl.SRC_ALPHA,
+	DstColor 			: gl.DST_COLOR,
+	DstAlpha 			: gl.DST_ALPHA,
+	OneMinusSrcColor 	: gl.ONE_MINUS_SRC_COLOR,
+	OneMinusSrcAlpha 	: gl.ONE_MINUS_SRC_ALPHA,
+	OneMinusDstColor 	: gl.ONE_MINUS_DST_COLOR,
+	OneMinusDstAlpha 	: gl.ONE_MINUS_DST_ALPHA
+}
 
 o3gl.Program.prototype = {
 	Id : function() {
@@ -2518,13 +2540,13 @@ isElementArrayBufferBinding : function() {
 
 
 // Client state tracking
-Aspect(o3gl.Texture2D.prototype).after("Bind", 			function() { o3gl._parameters[gl.TEXTURE_BINDING_2D] = this.Id(); });
-Aspect(o3gl.TextureCubeMap.prototype).after("Bind", 	function() { o3gl._parameters[gl.TEXTURE_BINDING_CUBE_MAP] = this.Id();});
-Aspect(o3gl.ArrayBuffer.prototype).after("Bind", 		function() { o3gl._parameters[gl.ARRAY_BUFFER_BINDING] = this.Id();});
-Aspect(o3gl.ElementArrayBuffer.prototype).after("Bind", function() { o3gl._parameters[gl.ELEMENT_ARRAY_BUFFER_BINDING] = this.Id();});
-Aspect(o3gl.FrameBuffer.prototype).after("Bind", 		function() { o3gl._parameters[gl.FRAMEBUFFER_BINDING] = this.Id();});
-Aspect(o3gl.RenderBuffer.prototype).after("Bind", 		function() { o3gl._parameters[gl.RENDERBUFFER_BINDING] = this.Id();});
-Aspect(o3gl.Program.prototype).after("Use", 			function() { o3gl._parameters[gl.CURRENT_PROGRAM] = this.Id();});
+Aspect(o3gl.Texture2D.prototype).after("Bind", 			function() { o3gl.TEXTURE_BINDING_2D = this; });
+Aspect(o3gl.TextureCubeMap.prototype).after("Bind", 	function() { o3gl.TEXTURE_BINDING_CUBE_MAP = this;});
+Aspect(o3gl.ArrayBuffer.prototype).after("Bind", 		function() { o3gl.ARRAY_BUFFER_BINDING = this;});
+Aspect(o3gl.ElementArrayBuffer.prototype).after("Bind", function() { o3gl.ELEMENT_ARRAY_BUFFER_BINDING = this;});
+Aspect(o3gl.FrameBuffer.prototype).after("Bind", 		function() { o3gl.FRAMEBUFFER_BINDING = this;});
+Aspect(o3gl.RenderBuffer.prototype).after("Bind", 		function() { o3gl.RENDERBUFFER_BINDING = this;});
+Aspect(o3gl.Program.prototype).after("Use", 			function() { o3gl.CURRENT_PROGRAM = this;});
 
 
 var bindingTexture2D = /^GenerateMipmap|^Filter|^Wrap|^Image/;
@@ -2533,13 +2555,13 @@ var bindingArrayBuffer = /^Data/;
 var bindingElementArrayBuffer = /^Data/;
 
 // Automatic resources bindings check
-Aspect(o3gl.Texture2D.prototype).before(/^GenerateMipmap$|^Filter|^Wrap|^Image$/, 		function() { if (o3gl._parameters[gl.TEXTURE_BINDING_2D] !== this.Id()) this.Bind(); } );
-Aspect(o3gl.TextureCubeMap.prototype).before(/^GenerateMipmap$|^Filter|^Wrap|^Image$/, 	function() { if (o3gl._parameters[gl.TEXTURE_BINDING_CUBE_MAP] !== this.Id()) this.Bind(); } );
-Aspect(o3gl.ArrayBuffer.prototype).before(/^Data$/, 									function() { if (o3gl._parameters[gl.ARRAY_BUFFER_BINDING] !== this.Id()) this.Bind(); } );
-Aspect(o3gl.ElementArrayBuffer.prototype).before(/^Data$/, 								function() { if (o3gl._parameters[gl.ELEMENT_ARRAY_BUFFER_BINDING] !== this.Id()) this.Bind(); } );
-Aspect(o3gl.FrameBuffer.prototype).before(/^ClearColorBuffer$|^ClearDepthBuffer$|^Clear$|^Color$|^Depth$|^Stencil$/, function() { if (o3gl._parameters[gl.FRAMEBUFFER_BINDING] !== this.Id()) this.Bind(); } );
-Aspect(o3gl.RenderBuffer.prototype).before(/^Storage$/, 								function() { if (o3gl._parameters[gl.RENDERBUFFER_BINDING] != this.Id()) this.Bind(); } );
-Aspect(o3gl.Program.prototype).before(/^Set$|^Uniform|^Attribute|^Clear|^Draw/, 		function() { if (o3gl._parameters[gl.CURRENT_PROGRAM] != this.Id()) this.Use(); } );
+Aspect(o3gl.Texture2D.prototype).before(/^GenerateMipmap$|^Filter|^Wrap|^Image$/, 		function() { if (o3gl.TEXTURE_BINDING_2D !== this) this.Bind(); } );
+Aspect(o3gl.TextureCubeMap.prototype).before(/^GenerateMipmap$|^Filter|^Wrap|^Image$/, 	function() { if (o3gl.TEXTURE_BINDING_CUBE_MAP !== this) this.Bind(); } );
+Aspect(o3gl.ArrayBuffer.prototype).before(/^Data$/, 									function() { if (o3gl.ARRAY_BUFFER_BINDING !== this) this.Bind(); } );
+Aspect(o3gl.ElementArrayBuffer.prototype).before(/^Data$/, 								function() { if (o3gl.ELEMENT_ARRAY_BUFFER_BINDING !== this) this.Bind(); } );
+Aspect(o3gl.FrameBuffer.prototype).before(/^ClearColorBuffer$|^ClearDepthBuffer$|^Clear$|^Color$|^Depth$|^Stencil$/, function() { if (o3gl.FRAMEBUFFER_BINDING !== this) this.Bind(); } );
+Aspect(o3gl.RenderBuffer.prototype).before(/^Storage$/, 								function() { if (o3gl.RENDERBUFFER_BINDING !== this) this.Bind(); } );
+Aspect(o3gl.Program.prototype).before(/^Set$|^Uniform|^Attribute|^Clear|^Draw/, 		function() { if (o3gl.CURRENT_PROGRAM !== this) this.Use(); } );
 
 Aspect(o3gl.Program.prototype).around(/^DepthMask$|^DepthTest$|^ColorMask$|^ClearColor$|^ClearDepth$|^Blend$|^BlendFunc$|^Viewport$/, function (pointcut, name, arguments) {
 	if (!this._deffered) {

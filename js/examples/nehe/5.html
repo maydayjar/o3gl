@@ -68,8 +68,7 @@
 			Attribute3f("aVertexPosition",cubeVertexPositionBuffer).
 			Attribute2f("aTextureCoord",cubeVertexTextureCoordBuffer).
 			UniformSampler("uSampler", o3gl.CreateTexture2D().Image(neheTexture)).
-			Elements(cubeVertexIndexBuffer).
-			DrawTriangles();
+			Elements(cubeVertexIndexBuffer);
     }
 
     var neheTexture;
@@ -191,15 +190,12 @@
         ]);
     }
 
-
     var xRot = 0;
     var yRot = 0;
     var zRot = 0;
 
     function drawScene() {
-		shaderProgram.
-			ClearColor(0,0,0,1).DepthTest(true).Viewport().Clear();
-
+		shaderProgram.FrameBuffer().ClearColor(0,0,0,1).Clear();
 	
         mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
         mat4.identity(mvMatrix);
@@ -209,6 +205,7 @@
         mat4.rotate(mvMatrix, degToRad(zRot), [0, 0, 1]);
 
 		shaderProgram.
+			DepthTest(true).Viewport().
 			UniformMatrix4fv("uPMatrix", pMatrix).
 			UniformMatrix4fv("uMVMatrix", mvMatrix).
 			DrawTriangles();

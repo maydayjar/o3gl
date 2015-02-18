@@ -106,16 +106,19 @@
         mat4.identity(mvMatrixCube);
         mat4.translate(mvMatrixCube, [+1.5, 0.0, -7.0]);
 
-		shaderProgram.Use(). DepthTest(true).ClearColor(0.0, 0.0, 0.0, 1.0).Viewport().Clear().
-		UniformMatrix4fv("uPMatrix", pMatrix).
-		Attribute3f("aVertexPosition", triangleVertexPositionBuffer).
-		Attribute4f("aVertexColor", triangleVertexColorBuffer).
-		UniformMatrix4fv("uMVMatrix", mvMatrixTriangle).
-		DrawTriangles().
-		Attribute3f("aVertexPosition",squareVertexPositionBuffer).
-		Attribute4f("aVertexColor", squareVertexColorBuffer).
-		UniformMatrix4fv("uMVMatrix", mvMatrixCube).
-		DrawTriangleStrip();
+		shaderProgram.FrameBuffer().ClearColor(0.0, 0.0, 0.0, 1.0).Clear();
+		
+		shaderProgram.
+			DepthTest(true).Viewport().
+			UniformMatrix4fv("uPMatrix", pMatrix).
+			Attribute3f("aVertexPosition", triangleVertexPositionBuffer).
+			Attribute4f("aVertexColor", triangleVertexColorBuffer).
+			UniformMatrix4fv("uMVMatrix", mvMatrixTriangle).
+			DrawTriangles().
+			Attribute3f("aVertexPosition",squareVertexPositionBuffer).
+			Attribute4f("aVertexColor", squareVertexColorBuffer).
+			UniformMatrix4fv("uMVMatrix", mvMatrixCube).
+			DrawTriangleStrip();
     }
 
     function webGLStart() {

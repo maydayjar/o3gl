@@ -7,7 +7,7 @@
 <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
 <script type="text/javascript" src="webgl-debug.js"></script>
-<script type="text/javascript" src="../o3gl.js"></script>
+<script type="text/javascript" src="../../o3gl.js"></script>
 
 <script id="per-fragment-lighting-fs" type="x-shader/x-fragment">
 	precision mediump float;
@@ -100,7 +100,7 @@
 <script type="text/javascript">
 
     var gl;
-
+	var o3gl;
     function initGL(canvas) {
         try {
 			//gl = WebGLDebugUtils.makeDebugContext(canvas.getContext("experimental-webgl"));
@@ -108,118 +108,34 @@
             gl = canvas.getContext("experimental-webgl");
             gl.viewportWidth = canvas.width;
             gl.viewportHeight = canvas.height;
+			
+			o3gl = O3GL(gl);
         } catch (e) {
         }
         if (!gl) {
             alert("Could not initialise WebGL, sorry :-(");
         }
     }
-	var drawMoon, drawCube;
-	var renderLaptopScreenImage;	
-	var renderLaptopBody;
-	var renderLaptop;
+	
+	
+	var shaderProgram;
+	var frameBufferScreen;
+	var frameBufferDefault;
 	
     function initShaders() {
 		// Root shader program
-		var shaderProgram = new Program(
-			new VertexShader(document.getElementById("per-fragment-lighting-vs").textContent),
-			new FragmentShader(document.getElementById("per-fragment-lighting-fs").textContent)
+		shaderProgram = o3gl.CreateProgram(
+			o3gl.CreateShader(document.getElementById("per-fragment-lighting-vs").textContent),
+			o3gl.CreateShader(document.getElementById("per-fragment-lighting-fs").textContent)
 		);
-		
-		var setMatrixUniforms = new Program(shaderProgram);
-		setMatrixUniforms.
-		uniformMatrix4fv("uPMatrix", pMatrix).
-		uniformMatrix4fv("uMVMatrix", mvMatrix).
-		uniformMatrix3fv("uNMatrix", function() {
-			var normalMatrix = mat3.create();
-			mat4.toInverseMat3(mvMatrix, normalMatrix);
-			mat3.transpose(normalMatrix);
-			return normalMatrix;
-		});
-		
+
 		// Render target texture
-		var rttTexture = new Texture2D(512,512).magFilterLinear().minFilterLinearMipmapNearest().generateMipmap();
-		// Subprograms
-		drawMoon = new Program(shaderProgram).push(setMatrixUniforms);
-		drawCube = new Program(shaderProgram).push(setMatrixUniforms);
-
-		renderLaptopScreenImage = new Program(shaderProgram);
-		renderLaptopScreenImage.
-		useProgram().
-		frameBuffer(new FrameBuffer().
-			texture2D(rttTexture).
-			renderBuffer(new RenderBufferDepth(512, 512))
-		).
-		viewport(0, 0, 512, 512).
-		clearColorBuffer().clearDepthBuffer().
-		uniformi("uUseTextures", true).
-		uniformi("uShowSpecularHighlights", false).
-		uniformf("uAmbientLightingColor", 0.2, 0.2, 0.2).
-		uniformf("uPointLightingLocation", 0, 0, -5).
-		uniformf("uPointLightingDiffuseColor", 0.8, 0.8, 0.8).
-        uniformf("uMaterialAmbientColor", 1.0, 1.0, 1.0).
-        uniformf("uMaterialDiffuseColor", 1.0, 1.0, 1.0).
-        uniformf("uMaterialSpecularColor", 0.0, 0.0, 0.0).
-        uniformf("uMaterialShininess", 0).
-        uniformf("uMaterialEmissiveColor", 0.0, 0.0, 0.0).
-		push(function() {
-			// Initialize matricies
-		    mat4.perspective(45, laptopScreenAspectRatio, 0.1, 100.0, pMatrix);
-			mat4.identity(mvMatrix);
-			mat4.translate(mvMatrix, [0, 0, -5]);
-			mat4.rotate(mvMatrix, degToRad(30), [1, 0, 0]);
-			
-			mvPushMatrix();
-			mat4.rotate(mvMatrix, degToRad(moonAngle), [0, 1, 0]);
-			mat4.translate(mvMatrix, [2, 0, 0]);
-			drawMoon.run();
-			mvPopMatrix();
-			
-			mvPushMatrix();
-			mat4.rotate(mvMatrix, degToRad(cubeAngle), [0, 1, 0]);
-			mat4.translate(mvMatrix, [1.25, 0, 0]);
-			drawCube.run();
-			mvPopMatrix();
-		});
-
-		renderLaptopBody = new Program(shaderProgram);
+//		rttTexture = o3gl.CreateTexture2D().Image(512,512).FilterMagLinear().FilterMinLinearMipmapNearest().GenerateMipmap();	
+		rttTexture = o3gl.CreateTexture2D().Image(512,512).FilterLinear().WrapClampToEdge();	
 		
-		renderLaptop = new Program(shaderProgram);
-		renderLaptop.
-			useProgram().
-			frameBuffer(null).
-			viewport(0, 0, gl.viewportWidth, gl.viewportHeight).
-			clearColorBuffer().clearDepthBuffer().
-			// Update laptop transformations
-			push(setMatrixUniforms).
-			// Configure light
-			uniformi("uShowSpecularHighlights", true).
-			uniformf("uPointLightingLocation", -1, 2, -1).
-			uniformf("uPointLightingDiffuseColor", 0.8, 0.8, 0.8).
-			uniformf("uPointLightingSpecularColor", 0.8, 0.8, 0.8).
-			// Render screen
-			uniformi("uUseTextures", true).
-			generateMipmap(rttTexture).
-			uniformSampler("uSampler", rttTexture).
-			uniformf("uAmbientLightingColor", 0.2, 0.2, 0.2).
-			uniformf("uMaterialAmbientColor", 0.0, 0.0, 0.0).
-			uniformf("uMaterialDiffuseColor", 0.0, 0.0, 0.0).
-			uniformf("uMaterialSpecularColor", 0.5, 0.5, 0.5).
-			uniformf("uMaterialShininess", 20).
-			uniformf("uMaterialEmissiveColor", 1.5, 1.5, 1.5).
-			attribute3f("aVertexPosition", laptopScreenVertexPositionBuffer).
-			attribute3f("aVertexNormal", laptopScreenVertexNormalBuffer).
-			attribute2f("aTextureCoord", laptopScreenVertexTextureCoordBuffer).
-			drawArraysTriangleStrip(0, 4).
-			// Render body
-			uniformi("uUseTextures", false).
-			uniformf("uAmbientLightingColor", 0.2, 0.2, 0.2).
-			uniformf("uMaterialAmbientColor", 1.0, 1.0, 1.0).
-			uniformf("uMaterialDiffuseColor", 1.0, 1.0, 1.0).
-			uniformf("uMaterialSpecularColor", 1.5, 1.5, 1.5).
-			uniformf("uMaterialShininess", 5).
-			uniformf("uMaterialEmissiveColor", 0.0, 0.0, 0.0).
-			push(renderLaptopBody); // Geometry rendering configuration is deffered. See handleLoadedLaptop() function
+		frameBufferScreen = o3gl.CreateFrameBuffer().Color(rttTexture).Depth(o3gl.CreateRenderBufferDepth().Storage(512,512));
+		frameBufferDefault = o3gl.CreateFrameBuffer();
+		
     }
 
     function initTextures() {
@@ -227,23 +143,8 @@
 		moon.onload = function() {
 			var crate = new Image();
 			crate.onload = function() {
-				drawMoon.
-				uniformSampler("uSampler", 
-					new Texture2D(moon).magFilterLinear().minFilterLinearMipmapNearest().generateMipmap()
-				).
-				attribute3f("aVertexPosition", moonVertexPositionBuffer).
-				attribute3f("aVertexNormal", moonVertexNormalBuffer).
-				attribute2f("aTextureCoord", moonVertexTextureCoordBuffer).
-				drawElementsTriangles(moonVertexIndexBuffer);
-				
-				drawCube.
-				uniformSampler("uSampler", 
-					new Texture2D(crate).magFilterLinear().minFilterLinearMipmapNearest().generateMipmap()
-				).
-				attribute3f("aVertexPosition", cubeVertexPositionBuffer).
-				attribute3f("aVertexNormal", cubeVertexNormalBuffer).
-				attribute2f("aTextureCoord", cubeVertexTextureCoordBuffer).
-				drawElementsTriangles(cubeVertexIndexBuffer);
+				moonTexture = o3gl.CreateTexture2D().Image(moon).FilterMagLinear().FilterMinLinearMipmapNearest().GenerateMipmap();
+				crateTexture = o3gl.CreateTexture2D().Image(crate).FilterMagLinear().FilterMinLinearMipmapNearest().GenerateMipmap();			
 			}
 			crate.src = "crate.gif";
 		}		
@@ -285,8 +186,17 @@
     var laptopScreenVertexNormalBuffer;
     var laptopScreenVertexTextureCoordBuffer;
 
+	var	laptopBodyVertexPositionBuffer;
+	var	laptopBodyVertexNormalBuffer;
+	var	laptopBodyVertexTextureCoordBuffer;
+	var	laptopBodyIndexBuffer;
+
+	var moonTexture;
+	var crateTexture;
+	var rttTexture;
+	
     function initBuffers() {
-        cubeVertexPositionBuffer = new ArrayBuffer([
+        cubeVertexPositionBuffer = o3gl.CreateArrayBuffer().Data([
             // Front face
             -1.0, -1.0,  1.0,
              1.0, -1.0,  1.0,
@@ -324,7 +234,7 @@
             -1.0,  1.0, -1.0,
         ]);
 
-        cubeVertexNormalBuffer = new ArrayBuffer([
+        cubeVertexNormalBuffer = o3gl.CreateArrayBuffer().Data([
             // Front face
              0.0,  0.0,  1.0,
              0.0,  0.0,  1.0,
@@ -362,7 +272,7 @@
             -1.0,  0.0,  0.0,
         ]);
 
-        cubeVertexTextureCoordBuffer = new ArrayBuffer([
+        cubeVertexTextureCoordBuffer = o3gl.CreateArrayBuffer().Data([
             // Front face
             0.0, 0.0,
             1.0, 0.0,
@@ -400,7 +310,7 @@
             0.0, 1.0
         ]);
 
-        cubeVertexIndexBuffer = new ArrayBuffer([
+        cubeVertexIndexBuffer = o3gl.CreateElementArrayBuffer().Data([
             0, 1, 2,      0, 2, 3,    // Front face
             4, 5, 6,      4, 6, 7,    // Back face
             8, 9, 10,     8, 10, 11,  // Top face
@@ -458,24 +368,24 @@
             }
         }
 
-        moonVertexNormalBuffer = new ArrayBuffer(normalData);
-        moonVertexTextureCoordBuffer = new ArrayBuffer(textureCoordData);
-        moonVertexPositionBuffer = new ArrayBuffer(vertexPositionData);
-        moonVertexIndexBuffer = new ArrayBuffer(indexData);
+        moonVertexNormalBuffer = o3gl.CreateArrayBuffer().Data(normalData);
+        moonVertexTextureCoordBuffer = o3gl.CreateArrayBuffer().Data(textureCoordData);
+        moonVertexPositionBuffer = o3gl.CreateArrayBuffer().Data(vertexPositionData);
+        moonVertexIndexBuffer = o3gl.CreateElementArrayBuffer().Data(indexData);
 		
-        laptopScreenVertexPositionBuffer = new ArrayBuffer([
+        laptopScreenVertexPositionBuffer = o3gl.CreateArrayBuffer().Data([
              0.580687, 0.659, 0.813106,
             -0.580687, 0.659, 0.813107,
              0.580687, 0.472, 0.113121,
             -0.580687, 0.472, 0.113121,
         ]);
-		laptopScreenVertexNormalBuffer = new ArrayBuffer([
+		laptopScreenVertexNormalBuffer = o3gl.CreateArrayBuffer().Data([
              0.000000, -0.965926, 0.258819,
              0.000000, -0.965926, 0.258819,
              0.000000, -0.965926, 0.258819,
              0.000000, -0.965926, 0.258819,
         ]);
-        laptopScreenVertexTextureCoordBuffer = new ArrayBuffer([
+        laptopScreenVertexTextureCoordBuffer = o3gl.CreateArrayBuffer().Data([
             1.0, 1.0,
             0.0, 1.0,
             1.0, 0.0,
@@ -484,12 +394,10 @@
     }
 
     function handleLoadedLaptop(laptopData) {
-		// Append geometry rendering
-		renderLaptopBody.
-		attribute3f("aVertexPosition", new ArrayBuffer(laptopData.vertexPositions)).
-		attribute3f("aVertexNormal", new ArrayBuffer(laptopData.vertexNormals)).
-		attribute2f("aTextureCoord", new ArrayBuffer(laptopData.vertexTextureCoords)).
-		drawElementsTriangles(new ArrayBuffer(laptopData.indices));
+		laptopBodyVertexPositionBuffer = o3gl.CreateArrayBuffer().Data(laptopData.vertexPositions);
+		laptopBodyVertexNormalBuffer = o3gl.CreateArrayBuffer().Data(laptopData.vertexNormals);
+		laptopBodyVertexTextureCoordBuffer = o3gl.CreateArrayBuffer().Data(laptopData.vertexTextureCoords);
+		laptopBodyIndexBuffer = o3gl.CreateElementArrayBuffer().Data(laptopData.indices);
     }
 
 
@@ -514,8 +422,77 @@
     var laptopAngle = 0;
 
     function drawScene() {
-		// Run fully configured offscreen rendering
-		renderLaptopScreenImage.run();
+	
+		frameBufferScreen.ClearColorBuffer(0,0,1,1).ClearDepthBuffer();
+		
+		frameBufferDefault.ClearColorBuffer(0,0,1,1).ClearDepthBuffer();
+		shaderProgram.
+			FrameBuffer(frameBufferDefault).
+			Viewport(512, 512).
+			Uniform1i("uUseTextures", true).
+			Uniform1i("uShowSpecularHighlights", false).
+			Uniform3f("uAmbientLightingColor", 0.2, 0.2, 0.2).
+			Uniform3f("uPointLightingLocation", 0, 0, -5).
+			Uniform3f("uPointLightingDiffuseColor", 0.8, 0.8, 0.8).
+			Uniform3f("uMaterialAmbientColor", 1.0, 1.0, 1.0).
+			Uniform3f("uMaterialDiffuseColor", 1.0, 1.0, 1.0).
+			Uniform3f("uMaterialSpecularColor", 0.0, 0.0, 0.0).
+			Uniform1f("uMaterialShininess", 0).
+			Uniform3f("uMaterialEmissiveColor", 0.0, 0.0, 0.0);
+
+		// Initialize matricies
+		mat4.perspective(45, laptopScreenAspectRatio, 0.1, 100.0, pMatrix);
+		mat4.identity(mvMatrix);
+		mat4.translate(mvMatrix, [0, 0, -5]);
+		mat4.rotate(mvMatrix, degToRad(30), [1, 0, 0]);
+
+		var normalMatrix = mat3.create();		
+		mvPushMatrix();
+
+		mat4.rotate(mvMatrix, degToRad(moonAngle), [0, 1, 0]);
+		mat4.translate(mvMatrix, [2, 0, 0]);
+		mat4.toInverseMat3(mvMatrix, normalMatrix);
+		mat3.transpose(normalMatrix);		
+		
+		shaderProgram.
+			UniformMatrix4fv("uPMatrix", pMatrix).
+			UniformMatrix4fv("uMVMatrix", mvMatrix).
+			UniformMatrix3fv("uNMatrix", normalMatrix).			
+			UniformSampler("uSampler", moonTexture).
+			Attribute3f("aVertexPosition", moonVertexPositionBuffer).
+			Attribute3f("aVertexNormal", moonVertexNormalBuffer).
+			Attribute2f("aTextureCoord", moonVertexTextureCoordBuffer).
+			Elements(moonVertexIndexBuffer).			
+			DrawTriangles();
+
+		mvPopMatrix();
+		
+		mvPushMatrix();
+		mat4.rotate(mvMatrix, degToRad(cubeAngle), [0, 1, 0]);
+		mat4.translate(mvMatrix, [1.25, 0, 0]);
+		mat4.toInverseMat3(mvMatrix, normalMatrix);
+		mat3.transpose(normalMatrix);		
+
+		shaderProgram.
+			UniformMatrix4fv("uPMatrix", pMatrix).
+			UniformMatrix4fv("uMVMatrix", mvMatrix).
+			UniformMatrix3fv("uNMatrix", normalMatrix).
+			UniformSampler("uSampler", crateTexture).
+			Attribute3f("aVertexPosition", cubeVertexPositionBuffer).
+			Attribute3f("aVertexNormal", cubeVertexNormalBuffer).
+			Attribute2f("aTextureCoord", cubeVertexTextureCoordBuffer).
+			Elements(cubeVertexIndexBuffer).			
+			DrawTriangles();
+
+		mvPopMatrix();
+		
+		return;
+		
+		
+		
+		
+		
+		
 		// Configure matricies
         mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
         mat4.identity(mvMatrix);
@@ -523,8 +500,56 @@
         mat4.translate(mvMatrix, [0, -0.4, -2.2]);
         mat4.rotate(mvMatrix, degToRad(laptopAngle), [0, 1, 0]);
         mat4.rotate(mvMatrix, degToRad(-90), [1, 0, 0]);
-		// Run default render target (screen) rendering
-		renderLaptop.run();		
+		
+		frameBufferDefault.ClearColorBuffer(0,0,0,1).ClearDepthBuffer();
+
+		shaderProgram.
+			FrameBuffer(frameBufferDefault).
+			Viewport(0, 0, gl.viewportWidth, gl.viewportHeight).
+		// Configure light
+			Uniform1i("uShowSpecularHighlights", true).
+			Uniform3f("uPointLightingLocation", -1, 2, -1).
+			Uniform3f("uPointLightingDiffuseColor", 0.8, 0.8, 0.8).
+			Uniform3f("uPointLightingSpecularColor", 0.8, 0.8, 0.8);
+
+		shaderProgram.
+			UniformMatrix4fv("uPMatrix", pMatrix).
+			UniformMatrix4fv("uMVMatrix", mvMatrix).
+			UniformMatrix3fv("uNMatrix", normalMatrix);
+
+			
+		// Render screen
+		
+		shaderProgram.	
+			Uniform1i("uUseTextures", true).
+			UniformSampler("uSampler", rttTexture).
+			Uniform3f("uAmbientLightingColor", 0.2, 0.2, 0.2).
+			Uniform3f("uMaterialAmbientColor", 0.0, 0.0, 0.0).
+			Uniform3f("uMaterialDiffuseColor", 0.0, 0.0, 0.0).
+			Uniform3f("uMaterialSpecularColor", 0.5, 0.5, 0.5).
+			Uniform1f("uMaterialShininess", 20).
+			Uniform3f("uMaterialEmissiveColor", 1.5, 1.5, 1.5).
+			Attribute3f("aVertexPosition", laptopScreenVertexPositionBuffer).
+			Attribute3f("aVertexNormal", laptopScreenVertexNormalBuffer).
+			Attribute2f("aTextureCoord", laptopScreenVertexTextureCoordBuffer).
+			Elements(null).
+			DrawTriangleStrip();
+		
+		// Render body
+		shaderProgram.
+			Uniform1i("uUseTextures", false).
+			Uniform3f("uAmbientLightingColor", 0.2, 0.2, 0.2).
+			Uniform3f("uMaterialAmbientColor", 1.0, 1.0, 1.0).
+			Uniform3f("uMaterialDiffuseColor", 1.0, 1.0, 1.0).
+			Uniform3f("uMaterialSpecularColor", 1.5, 1.5, 1.5).
+			Uniform1f("uMaterialShininess", 5).
+			Uniform3f("uMaterialEmissiveColor", 0.0, 0.0, 0.0).
+			Attribute3f("aVertexPosition", laptopBodyVertexPositionBuffer).
+			Attribute3f("aVertexNormal", laptopBodyVertexNormalBuffer).
+			Attribute2f("aTextureCoord", laptopBodyVertexTextureCoordBuffer).
+			Elements(laptopBodyIndexBuffer).
+			DrawTriangles();
+
 		mvPopMatrix();
     }
 

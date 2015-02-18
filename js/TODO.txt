@@ -2,6 +2,8 @@
 	
 	- Frame buffer scissor test
 	
+	- Depth mask and color mask must be set in frame buffer ClearXXXX methods. Should them be used as Program methods ???
+	
 	- Program automatic restore to the default settings
 	
 	- Program internal frame buffer cache.
@@ -14,3 +16,10 @@
 	
 	- Program instances concept
 		
+	- Nehe examples texture deffered loading causes texture initialization error
+	
+	- Framebuffer texture available settings
+	
+	- Various webgl 2.0 features
+	
+	- uniformf and uniformfv methods overloading

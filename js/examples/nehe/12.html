@@ -6,7 +6,7 @@
 
 <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
-<script type="text/javascript" src="../o3gl.js"></script>
+<script type="text/javascript" src="../../o3gl.js"></script>
 
 <script id="shader-fs" type="x-shader/x-fragment">
     precision mediump float;
@@ -62,12 +62,15 @@
 <script type="text/javascript">
 
     var gl;
-
+	var o3gl;
+	
     function initGL(canvas) {
         try {
             gl = canvas.getContext("experimental-webgl");
             gl.viewportWidth = canvas.width;
             gl.viewportHeight = canvas.height;
+			
+			o3gl = O3GL(gl);
         } catch (e) {
         }
         if (!gl) {
@@ -76,71 +79,12 @@
     }
 
     var shaderProgram;
-    var cubeProgram;
-    var moonProgram;
 
     function initShaders() {
-		shaderProgram = new Program(
-			new VertexShader(document.getElementById("shader-vs").textContent),
-			new FragmentShader(document.getElementById("shader-fs").textContent)
+		shaderProgram = o3gl.CreateProgram(
+			o3gl.CreateShader(document.getElementById("shader-vs").textContent),
+			o3gl.CreateShader(document.getElementById("shader-fs").textContent)
 		);
-		cubeProgram = new Program(shaderProgram);
-		moonProgram = new Program(shaderProgram);		
-		var setMatrixUniforms = new Program(shaderProgram).
-			uniformMatrix4fv("uPMatrix", pMatrix).
-			uniformMatrix4fv("uMVMatrix", mvMatrix).
-			uniformMatrix3fv("uNMatrix", function() {
-				var normalMatrix = mat3.create();
-				mat4.toInverseMat3(mvMatrix, normalMatrix);
-				mat3.transpose(normalMatrix);
-				return normalMatrix;
-			});
-
-		
-		shaderProgram.
-		viewport(0, 0, gl.viewportWidth, gl.viewportHeight).clearColorBuffer().clearDepthBuffer().
-		useProgram().
-		uniformi("uUseLighting", function() {
-			 return document.getElementById("lighting").checked;
-		}).
-		uniform3fv("uPointLightingLocation", function() {
-			return [
-                parseFloat(document.getElementById("lightPositionX").value),
-                parseFloat(document.getElementById("lightPositionY").value),
-                parseFloat(document.getElementById("lightPositionZ").value)
-            ];
-		}).
-		uniformf("uAmbientColor", function() {
-			return [
-				parseFloat(document.getElementById("ambientR").value),
-                parseFloat(document.getElementById("ambientG").value),
-                parseFloat(document.getElementById("ambientB").value)
-			]
-		}).
-		uniformf("uPointLightingColor", function() {
-			return [
-				parseFloat(document.getElementById("pointR").value),
-                parseFloat(document.getElementById("pointG").value),
-                parseFloat(document.getElementById("pointB").value)
-			]
-		});
-		
-		cubeProgram.
-			uniformSampler("uSampler", function() { return crateTexture; }). 	// Deffered initialization texture callback
-			push(setMatrixUniforms).
-			attribute3f("aVertexPosition",cubeVertexPositionBuffer).
-			attribute3f("aVertexNormal",cubeVertexNormalBuffer).
-			attribute2f("aTextureCoord",cubeVertexTextureCoordBuffer).
-			drawElementsTriangles(cubeVertexIndexBuffer); 
-			
-		moonProgram.
-			uniformSampler("uSampler", function() { return moonTexture; }).		// Deffered initialization texture callback
-			push(setMatrixUniforms).
-			attribute3f("aVertexPosition",moonVertexPositionBuffer).
-			attribute3f("aVertexNormal",moonVertexNormalBuffer).
-			attribute2f("aTextureCoord",moonVertexTextureCoordBuffer).
-			drawElementsTriangles(moonVertexIndexBuffer); 
-
     }
 	
     var moonTexture;
@@ -149,13 +93,13 @@
     function initTextures() {
         var image1 = new Image();
         image1.onload = function () {
-			moonTexture = new Texture2D(image1).magFilterLinear().minFilterLinearMipmapNearest()
+			moonTexture = o3gl.CreateTexture2D().Image(image1).FilterMagLinear().FilterMinLinearMipmapNearest()
         }
         image1.src = "moon.gif";
 
 		var image2 = new Image();
         image2.onload = function () {
-			crateTexture = new Texture2D(image2).magFilterLinear().minFilterLinearMipmapNearest()
+			crateTexture = o3gl.CreateTexture2D().Image(image2).FilterMagLinear().FilterMinLinearMipmapNearest()
         }
         image2.src = "crate.gif";
     }
@@ -194,7 +138,7 @@
     var moonVertexIndexBuffer;
 
     function initBuffers() {
-        cubeVertexPositionBuffer = new ArrayBuffer([
+        cubeVertexPositionBuffer = o3gl.CreateArrayBuffer().Data([
             // Front face
             -1.0, -1.0,  1.0,
              1.0, -1.0,  1.0,
@@ -232,7 +176,7 @@
             -1.0,  1.0, -1.0
         ]);
 
-        cubeVertexNormalBuffer = new ArrayBuffer([
+        cubeVertexNormalBuffer = o3gl.CreateArrayBuffer().Data([
             // Front face
              0.0,  0.0,  1.0,
              0.0,  0.0,  1.0,
@@ -270,7 +214,7 @@
             -1.0,  0.0,  0.0,
         ]);
 
-        cubeVertexTextureCoordBuffer = new ArrayBuffer([
+        cubeVertexTextureCoordBuffer = o3gl.CreateArrayBuffer().Data([
             // Front face
             0.0, 0.0,
             1.0, 0.0,
@@ -308,7 +252,7 @@
             0.0, 1.0,
         ]);
 
-        cubeVertexIndexBuffer = new ArrayBuffer([
+        cubeVertexIndexBuffer = o3gl.CreateElementArrayBuffer().Data([
             0, 1, 2,      0, 2, 3,    // Front face
             4, 5, 6,      4, 6, 7,    // Back face
             8, 9, 10,     8, 10, 11,  // Top face
@@ -366,10 +310,10 @@
             }
         }
 
-		moonVertexNormalBuffer = new ArrayBuffer(normalData);
-        moonVertexTextureCoordBuffer = new ArrayBuffer(textureCoordData);
-        moonVertexPositionBuffer = new ArrayBuffer(vertexPositionData);
-		moonVertexIndexBuffer = new ArrayBuffer(indexData);
+		moonVertexNormalBuffer = o3gl.CreateArrayBuffer().Data(normalData);
+        moonVertexTextureCoordBuffer = o3gl.CreateArrayBuffer().Data(textureCoordData);
+        moonVertexPositionBuffer = o3gl.CreateArrayBuffer().Data(vertexPositionData);
+		moonVertexIndexBuffer = o3gl.CreateElementArrayBuffer().Data(indexData);
     }
 
 
@@ -377,21 +321,71 @@
     var cubeAngle = 0;
 
     function drawScene() {
-		shaderProgram.run(); // Perform common actions/initialization
+		shaderProgram.FrameBuffer().Clear();
+		shaderProgram.Viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+		
         mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
         mat4.identity(mvMatrix);
         mat4.translate(mvMatrix, [0, 0, -20]);
 
+		// Common settings
+		shaderProgram.
+			Uniform1i("uUseLighting", document.getElementById("lighting").checked).
+			Uniform3f("uPointLightingLocation",
+				parseFloat(document.getElementById("lightPositionX").value),
+				parseFloat(document.getElementById("lightPositionY").value),
+				parseFloat(document.getElementById("lightPositionZ").value)
+			).
+			Uniform3f("uAmbientColor", 
+				parseFloat(document.getElementById("ambientR").value),
+				parseFloat(document.getElementById("ambientG").value),
+				parseFloat(document.getElementById("ambientB").value)
+			).
+			Uniform3f("uPointLightingColor", 
+				parseFloat(document.getElementById("pointR").value),
+				parseFloat(document.getElementById("pointG").value),
+				parseFloat(document.getElementById("pointB").value)
+			);
+		
         mvPushMatrix();
+		
 		mat4.rotate(mvMatrix, degToRad(moonAngle), [0, 1, 0]);
         mat4.translate(mvMatrix, [5, 0, 0]);
-		moonProgram.run();
+		var normalMatrix = mat3.create();
+		mat4.toInverseMat3(mvMatrix, normalMatrix);
+		mat3.transpose(normalMatrix);
+
+		shaderProgram.
+			UniformMatrix4fv("uPMatrix", pMatrix).
+			UniformMatrix4fv("uMVMatrix", mvMatrix).
+			UniformMatrix3fv("uNMatrix", normalMatrix).
+			UniformSampler("uSampler", moonTexture).
+			Attribute3f("aVertexPosition",moonVertexPositionBuffer).
+			Attribute3f("aVertexNormal",moonVertexNormalBuffer).
+			Attribute2f("aTextureCoord",moonVertexTextureCoordBuffer).
+			Elements(moonVertexIndexBuffer).
+			DrawTriangles();
+		
         mvPopMatrix();
 
         mvPushMatrix();
         mat4.rotate(mvMatrix, degToRad(cubeAngle), [0, 1, 0]);
         mat4.translate(mvMatrix, [5, 0, 0]);
-		cubeProgram.run();
+		normalMatrix = mat3.create();
+		mat4.toInverseMat3(mvMatrix, normalMatrix);
+		mat3.transpose(normalMatrix);
+		
+		shaderProgram.
+			UniformMatrix4fv("uPMatrix", pMatrix).
+			UniformMatrix4fv("uMVMatrix", mvMatrix).
+			UniformMatrix3fv("uNMatrix", normalMatrix).
+			UniformSampler("uSampler", crateTexture).
+			Attribute3f("aVertexPosition",cubeVertexPositionBuffer).
+			Attribute3f("aVertexNormal",cubeVertexNormalBuffer).
+			Attribute2f("aTextureCoord",cubeVertexTextureCoordBuffer).
+			Elements(cubeVertexIndexBuffer).
+			DrawTriangles(); 
+		
         mvPopMatrix();
     }
 

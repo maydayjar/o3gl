@@ -208,16 +208,17 @@
 
     function drawScene() {
         mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
-		shaderProgram.Viewport().Clear().UniformMatrix4fv("uPMatrix", pMatrix);
-
         mat4.identity(mvMatrix);
         mat4.translate(mvMatrix, [-1.5, 0.0, -8.0]);
+		
+		shaderProgram.FrameBuffer().Clear();
 
         mvPushMatrix();
         mat4.rotate(mvMatrix, degToRad(rPyramid), [0, 1, 0]);
 		shaderProgram.
 			Attribute3f("aVertexPosition", pyramidVertexPositionBuffer).
 			Attribute4f("aVertexColor", pyramidVertexColorBuffer).
+			UniformMatrix4fv("uPMatrix", pMatrix).
 			UniformMatrix4fv("uMVMatrix", mvMatrix).
 			Elements(null).
 			DrawTriangles();
@@ -229,6 +230,7 @@
 		shaderProgram.
 			Attribute3f("aVertexPosition",cubeVertexPositionBuffer).
 			Attribute4f("aVertexColor", cubeVertexColorBuffer).
+			UniformMatrix4fv("uPMatrix", pMatrix).
 			UniformMatrix4fv("uMVMatrix", mvMatrix).
 			Elements(cubeVertexIndexBuffer).
 			DrawTriangles();

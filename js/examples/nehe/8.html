@@ -288,7 +288,8 @@
 
 
     function drawScene() {
-		shaderProgram.ClearColor(0,0,0,1).Viewport().Clear();
+		shaderProgram.FrameBuffer().ClearColor(0,0,0,1).Clear();
+		shaderProgram.Viewport();
 		
         mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
         mat4.identity(mvMatrix);
@@ -298,13 +299,18 @@
 
         var blending = document.getElementById("blending").checked;
         if (blending) {
+			/*
             gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
             gl.enable(gl.BLEND);
             gl.disable(gl.DEPTH_TEST);
 			gl.depthFunc(gl.LESS);
+			*/
+			shaderProgram.DepthTest(false).Blend(true).BlendFunc(gl.SRC_ALPHA, gl.ONE);
+			
         } else {
-            gl.disable(gl.BLEND);
-            gl.enable(gl.DEPTH_TEST);
+			shaderProgram.DepthTest(true).Blend(false);
+            // gl.disable(gl.BLEND);
+            // gl.enable(gl.DEPTH_TEST);
         }
 
 		var normalMatrix = mat3.create();

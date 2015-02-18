@@ -6,7 +6,7 @@
 
 <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
-<script type="text/javascript" src="../o3gl.js"></script>
+<script type="text/javascript" src="../../o3gl.js"></script>
 
 <script id="shader-fs" type="x-shader/x-fragment">
     precision mediump float;
@@ -39,12 +39,15 @@
 <script type="text/javascript">
 
     var gl;
-
+	var o3gl;
+	
     function initGL(canvas) {
         try {
             gl = canvas.getContext("experimental-webgl");
             gl.viewportWidth = canvas.width;
             gl.viewportHeight = canvas.height;
+			
+			o3gl = O3GL(gl);
         } catch (e) {
         }
         if (!gl) {
@@ -53,27 +56,16 @@
     }
 
     var shaderProgram;
-    var geometryProgram;
-    var textureProgram;
 
     function initShaders() {
-		shaderProgram = new Program(
-			new VertexShader(document.getElementById("shader-vs").textContent),
-			new FragmentShader(document.getElementById("shader-fs").textContent)
-		);
-		geometryProgram = new Program(shaderProgram);
-		textureProgram = new Program(shaderProgram);
-		
-		shaderProgram.useProgram().
-		uniformMatrix4fv("uPMatrix", pMatrix).
-		uniformMatrix4fv("uMVMatrix", mvMatrix).
-		// Deffered initialization:
-		push(textureProgram).
-		push(geometryProgram);
+		shaderProgram = o3gl.CreateProgram(
+			o3gl.CreateShader(document.getElementById("shader-vs").textContent),
+			o3gl.CreateShader(document.getElementById("shader-fs").textContent)
+		);		
 	}
 
     function handleLoadedTexture(texture) {
-		textureProgram.uniformSampler("uSampler", new Texture2D(texture).wrapRepeat());
+		shaderProgram.UniformSampler("uSampler", o3gl.CreateTexture2D().Image(texture).WrapRepeat());
     }
 
     function initTexture() {
@@ -184,10 +176,9 @@
             }
         }
 		
-		geometryProgram.
-			attribute3f("aVertexPosition", new ArrayBuffer(vertexPositions)).
-			attribute2f("aTextureCoord", new ArrayBuffer(vertexTextureCoords)).
-			drawArraysTriangles(0, vertexPositions.length/3);
+		shaderProgram.
+			Attribute3f("aVertexPosition", o3gl.CreateArrayBuffer().Data(vertexPositions)).
+			Attribute2f("aTextureCoord", o3gl.CreateArrayBuffer().Data(vertexTextureCoords));
 		
 		document.getElementById("loadingtext").textContent = "";
     }
@@ -207,18 +198,19 @@
 
 
     function drawScene() {
-        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		shaderProgram.FrameBuffer().ClearColorBuffer(1,0,0,1).ClearDepthBuffer();
+		shaderProgram.Viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
 
         mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
-
         mat4.identity(mvMatrix);
-
         mat4.rotate(mvMatrix, degToRad(-pitch), [1, 0, 0]);
         mat4.rotate(mvMatrix, degToRad(-yaw), [0, 1, 0]);
         mat4.translate(mvMatrix, [-xPos, -yPos, -zPos]);
 
-		shaderProgram.run();
+		shaderProgram.
+			UniformMatrix4fv("uPMatrix", pMatrix).
+			UniformMatrix4fv("uMVMatrix", mvMatrix).
+			DrawTriangles();
     }
 
 
