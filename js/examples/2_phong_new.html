@@ -9,7 +9,7 @@
 <script type="text/javascript" src="stats.min.js"></script>
 <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
-<script type="text/javascript" src="../o3gl2.js"></script>
+<script type="text/javascript" src="../o3gl.js"></script>
 <script type="text/javascript" src="../shaders/phong.js"></script>
 <script type="text/javascript" src="../utils/utils.js"></script>
 <script type="text/javascript" src="../utils/primitives.js"></script>
@@ -36,6 +36,24 @@
 	var matrixP 		= mat4.create();
 	var matrixN 		= mat3.create();
 	
+	
+	function getBuffers(mesh) {
+		normalize(mesh.positions);
+		return {
+			positions : 	o3gl.createArrayBuffer(mesh.positions),
+			normals : 		o3gl.createArrayBuffer(mesh.normals),				
+			tangents : 		o3gl.createArrayBuffer(mesh.tangents),				
+			textureCoords : o3gl.createArrayBuffer(mesh.textureCoords),				
+			indexes : 		o3gl.createElementArrayBuffer(mesh.indexes)
+		}
+	}
+	
+	var cube;
+	var sphere;
+	var teapot;
+	var phongSources;
+	
+	
 	var models = [];
 	function init() {				
 		
@@ -55,12 +73,12 @@
 		var materialSpecular 	= [1.0, 1.0, 1.0, 1.0];
 		var materialAmbient 	= [0.0, 0.0, 0.0, 1.0];
 				
-		var textureNormal 		= o3gl.createTexture2D().FilterLinearMipmapLinear().Image(imageNormal);
-		var textureDiffuse		= o3gl.createTexture2D().Image(imageDiffuse);
-		var textureAmbient 		= o3gl.createTexture2D().Image(imageAmbient);
-		var textureSpecular		= o3gl.createTexture2D().Image(imageSpecular);
+		var textureNormal 		= o3gl.CreateTexture2D().FilterLinearMipmapLinear().Image(imageNormal);
+		var textureDiffuse		= o3gl.CreateTexture2D().Image(imageDiffuse);
+		var textureAmbient 		= o3gl.CreateTexture2D().Image(imageAmbient);
+		var textureSpecular		= o3gl.CreateTexture2D().Image(imageSpecular);
 
-		var textureCubeMap	 	= o3gl.createTextureCubeMap().
+		var textureCubeMap	 	= o3gl.CreateTextureCubeMap().
 			positiveX().Image(imagePX).
 			negativeX().Image(imageNX).
 			positiveY().Image(imagePY).
@@ -81,28 +99,30 @@
 		function getBuffers(mesh) {
 			normalize(mesh.positions);
 			return {
-				positions : 	o3gl.createArrayBuffer(mesh.positions),
-				normals : 		o3gl.createArrayBuffer(mesh.normals),				
-				tangents : 		o3gl.createArrayBuffer(mesh.tangents),				
-				textureCoords : o3gl.createArrayBuffer(mesh.textureCoords),				
-				indexes : 		o3gl.createElementArrayBuffer(mesh.indexes)
+				positions : 	o3gl.CreateArrayBuffer(mesh.positions),
+				normals : 		o3gl.CreateArrayBuffer(mesh.normals),				
+				tangents : 		o3gl.CreateArrayBuffer(mesh.tangents),				
+				textureCoords : o3gl.CreateArrayBuffer(mesh.textureCoords),				
+				indexes : 		o3gl.CreateElementArrayBuffer(mesh.indexes)
 			}
 		}
 		
-		var cube = getBuffers(new Cube());
-		var sphere = getBuffers(new Sphere(32,32));
-		var teapot = getBuffers(new Teapot());
-		
-		var phongSources = o3gl.sources(Shaders.Phong.Vertex, Shaders.Phong.Fragment);
-		
-		models[0] = [];
-		models[1] = [];
-		models[2] = [];
+		cube = getBuffers(new Cube());
+		sphere = getBuffers(new Sphere(32,32));
+		teapot = getBuffers(new Teapot());
+		phongSources = o3gl.sources(Shaders.Phong.Vertex, Shaders.Phong.Fragment);
+	}
+	
+	function render() {
+		gl.enable(gl.DEPTH_TEST);
+		gl.clearColor(0.5, 0.5, 0.5, 1.0);
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
+		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+	
+	
+
 		for (var i = 0; i < 3; ++i) {
 			for (var j = 0; j < 3; ++j) {
-				var model = {};
-				models[i][j] = model;
-			
 				if (i===0) mesh = cube;
 				if (i===1) mesh = sphere;
 				if (i===2) mesh = teapot;
@@ -124,32 +144,44 @@
 				model["uMaterialSpecular"] = [1.0, 1.0, 1.0, 1.0];
 
 				// Declare material traits
-				if (i === 0) program.Set("uMaterialDiffuse", 1.0, 0.0, 0.0, 1.0);
-				if (i === 1) program.Set("uSamplerDiffuse", 	textureDiffuse);
+				if (i === 0) model["uMaterialDiffuse"] = [1.0, 0.0, 0.0, 1.0];
+				if (i === 1) model["uSamplerDiffuse"] = textureDiffuse;
 				if (i === 2) {
-					program.Set("uMaterialDiffuse", 0.0, 1.0, 0.0, 1.0);
-					program.Set("uSamplerDiffuse", 	textureDiffuse);
+					model["uMaterialDiffuse"] = [0.0, 1.0, 0.0, 1.0];
+					model["uSamplerDiffuse"] = 	textureDiffuse;
 				}
-				if (j === 0) program.Set("uSamplerNormal", 	textureNormal);
-				if (j === 1) program.Set("uSamplerCube", 	textureCubeMap);
+				if (j === 0) model["uSamplerNormal"] = textureNormal;
+				if (j === 1) model["uSamplerCube"] = textureCubeMap;
 				if (j === 2) {
-					program.Set("uSamplerNormal", textureNormal);
-					program.Set("uSamplerCube", textureCubeMap);
+					model["uSamplerNormal"] = textureNormal;
+					model["uSamplerCube"] = textureCubeMap;
 				}
 				
-				programs[i][j] = program;
+				var declaredVariables = [];
+				for (var name in model) {
+					declaredVariables.push(name);
+				}
+				
+				program = phongSources.CreateProgram(declaredVariables);
+				program.Elements(mesh.indexes);
+				for (var name in model) {
+					var value = model[name];
+					if (value instanceof Array) {
+						if (value.length === 1) program.Set(name, value[0]);
+						if (value.length === 2) program.Set(name, value[0], value[1]);
+						if (value.length === 3) program.Set(name, value[0], value[1], value[2]);
+						if (value.length === 4) program.Set(name, value[0], value[1], value[2], value[3]);
+					} else {
+						program.Set(name, value);
+					}
+				}
 			}
 		}
-	}
 	
-	function render() {
-		gl.enable(gl.DEPTH_TEST);
-		gl.clearColor(0.5, 0.5, 0.5, 1.0);
-		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
-		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 	
-		for (var i = 0; i < programs.length; ++i) {
-			for (var j = 0; j < programs[i].length; ++j) {
+	
+		for (var i = 0; i < models.length; ++i) {
+			for (var j = 0; j < models[i].length; ++j) {
 			
 				mat4.identity(matrixM);
 				mat4.translate(matrixM, [ (i - 1) * 3 , (j - 1) * 3 , 0]);
@@ -161,6 +193,14 @@
 				mat4.toInverseMat3(matrixMV, matrixN);
 				mat3.transpose(matrixN);
 
+				var model = models[i][j];
+				
+				for (var name in model) {
+					
+				}
+				
+				model.program	
+				
 				programs[i][j].Use().
 				// Send matrices to the shader
 //				Set("uMatrixV", 	matrixV).
@@ -192,7 +232,7 @@
 	
         var canvas = document.getElementById("canvas");
 		var gl = WebGLUtils.setupWebGL(canvas);
-		o3gl = O3GL(gl)
+		o3gl = O3GL(gl);
 		init();
         update();
 		

@@ -103,6 +103,35 @@ Shaders.BlurRadial.Fragment = [
 	"}"
 ];
 
+Shaders.BlurStroke = {};
+Shaders.BlurStroke.Vertex = Shaders.Default.Vertex;
+Shaders.BlurStroke.Fragment = [
+"	precision mediump float;                                                                                                   						",
+"	uniform sampler2D uSampler0;                                                                                         							",
+"	uniform int uViewportWidth;                                                                                               						",
+"	uniform int uViewportHeight;                                                                                              						",
+"	varying vec2 vTextureCoord;                                                                                                  					",
+"	void main(void)                                                                                                            						",
+"	{                                                                                                                          						",
+"		float width = (float(uViewportWidth) - 1.0);                                                                  								",
+"		float height = (float(uViewportHeight) - 1.0);                                                                  							",
+"		vec4 color = vec4(0.0,0.0,0.0,1.0);                                                                  										",
+"		for(int i = -3; i<=3 ;++i)                                                                                             						",
+"		{                                                                                                                      						",
+"			for(int j = -3; j<=3; ++j)                                                                                         						",
+"			{                                                                                                                  						",
+"				// if(i == 0 && j == 0)                                                                                        						",
+"				//  continue;       																												",
+"				vec2 offset = vec2(float(i) / width, float(j) / height);                                                                     		",
+"				color += texture2D(uSampler0, vTextureCoord + offset);                                  											",
+"			}                                                                                                                  						",
+"		}                                                                                                                      						",
+"		gl_FragColor = color / 49.0;                                                                                                  				",
+"		return;                                                                                                                						",
+"	}                                                                                                                          						"
+];
+
+
 Shaders.BlendAdditive = {};
 Shaders.BlendAdditive.Vertex = Shaders.Default.Vertex;
 Shaders.BlendAdditive.Fragment = [
@@ -165,6 +194,7 @@ Shaders.BlendMultiply.Fragment = [
 	"	gl_FragColor = min(src * dst, 1.0);",
 	"}"
 ];
+
 
 Shaders.RadialBlur = {};
 Shaders.RadialBlur.Vertex = Shaders.Default.Vertex;

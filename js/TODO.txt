@@ -23,3 +23,5 @@
 	- Various webgl 2.0 features
 	
 	- uniformf and uniformfv methods overloading
+	
+	- BlurStroke shader

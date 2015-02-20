@@ -465,20 +465,46 @@ var o3gl = {
 
 // client state tracking variables
 // querying the GL for such information (like currently bound texture id) should be avoided because it has an important performance cost
-o3gl._programs 			= [];
-o3gl._textures 			= [];
-o3gl._buffers 			= [];
-o3gl._framebuffers 		= [];
-o3gl._renderbuffers 	= [];
+o3gl.programs 			= [];
+o3gl.textures 			= [];
+o3gl.buffers 			= [];
+o3gl.framebuffers 		= [];
+o3gl.renderbuffers 	= [];
+o3gl.vertexArrayObjects = [];
 
-o3gl._parameters = [];
-o3gl._parameters[gl.ARRAY_BUFFER_BINDING] 			= undefined;
-o3gl._parameters[gl.ELEMENT_ARRAY_BUFFER_BINDING] 	= undefined;
-o3gl._parameters[gl.FRAMEBUFFER_BINDING] 			= undefined;
-o3gl._parameters[gl.RENDERBUFFER_BINDING] 			= undefined;
-o3gl._parameters[gl.TEXTURE_BINDING_2D] 			= undefined;
-o3gl._parameters[gl.TEXTURE_BINDING_CUBE_MAP] 		= undefined;
-o3gl._parameters[gl.CURRENT_PROGRAM] 				= undefined;
+o3gl.ARRAY_BUFFER_BINDING 			= undefined;
+o3gl.ELEMENT_ARRAY_BUFFER_BINDING 	= undefined;
+o3gl.FRAMEBUFFER_BINDING 			= undefined;
+o3gl.RENDERBUFFER_BINDING			= undefined;
+o3gl.TEXTURE_BINDING_2D 			= undefined;
+o3gl.TEXTURE_BINDING_CUBE_MAP 		= undefined;
+o3gl.CURRENT_PROGRAM 				= undefined;
+
+
+/*
+    ANGLE_instanced_arrays (google) (registry)
+    EXT_blend_minmax (google) (registry)
+    EXT_frag_depth (google) (registry)
+    EXT_shader_texture_lod (google) (registry)
+    EXT_texture_filter_anisotropic (google) (registry)
+    OES_element_index_uint (google) (registry)
+    OES_standard_derivatives (google) (registry)
+    OES_texture_float (google) (registry)
+    OES_texture_float_linear (google) (registry)
+    OES_texture_half_float (google) (registry)
+    OES_texture_half_float_linear (google) (registry)
+    OES_vertex_array_object (google) (registry)
+    WEBGL_color_buffer_float (google) (registry)
+    WEBGL_compressed_texture_s3tc (google) (registry)
+    WEBGL_debug_renderer_info (google) (registry)
+    WEBGL_debug_shaders (google) (registry)
+    WEBGL_depth_texture (google) (registry)
+    WEBGL_draw_buffers (google) (registry)
+    WEBGL_lose_context (google) (registry)
+    MOZ_WEBGL_lose_context (google) (registry)
+    MOZ_WEBGL_compressed_texture_s3tc (google) (registry)
+    MOZ_WEBGL_depth_texture (google) (registry)
+*/
 
 
 function Extend(functionDerived, functionBase, properties) {
@@ -1076,6 +1102,7 @@ o3gl.ArrayBuffer.Pointer = function(buffer) {
     this._offset = 0;			// Offset in bytes
 	this._size = 4; 			// Specifies the number of components per generic vertex attribute. Must be 1, 2, 3, 4. Additionally, the symbolic constant GL_BGRA is accepted by glVertexAttribPointer. The initial value is 4.
 	this._normalized = false;	// as
+	this._count = null;
 	
 	this._divisor = 0;	// Extensions ANGLE_instanced_arrays, 
 	
@@ -1139,6 +1166,11 @@ o3gl.ArrayBuffer.Pointer.prototype = {
 	,
 	size : function(value) {
 		this._size = value;
+		return this;
+	}
+	,
+	count : function(value) {
+		this._count = value;
 		return this;
 	}
 	,
@@ -1278,13 +1310,28 @@ o3gl.FrameBuffer.prototype = {
 			gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBufferId);
 		}
 	
-		var COLOR_ATTACHEMENT = [
-			gl.COLOR_ATTACHMENT0,
-			gl.COLOR_ATTACHMENT1,
-			gl.COLOR_ATTACHMENT2,
-			gl.COLOR_ATTACHMENT3				
-		];
+		var ext = gl.getExtension('WEBGL_draw_buffers');
 	
+		// WebGL 2.0 constants
+		var COLOR_ATTACHEMENT = [		
+			ext.COLOR_ATTACHMENT0_WEBGL | gl.COLOR_ATTACHMENT0,
+			ext.COLOR_ATTACHMENT1_WEBGL | gl.COLOR_ATTACHMENT1,
+			ext.COLOR_ATTACHMENT2_WEBGL | gl.COLOR_ATTACHMENT2,
+			ext.COLOR_ATTACHMENT3_WEBGL | gl.COLOR_ATTACHMENT3,
+			gl.COLOR_ATTACHMENT4,
+			gl.COLOR_ATTACHMENT5,
+			gl.COLOR_ATTACHMENT6,
+			gl.COLOR_ATTACHMENT7,
+			gl.COLOR_ATTACHMENT8,
+			gl.COLOR_ATTACHMENT9,
+			gl.COLOR_ATTACHMENT10,
+			gl.COLOR_ATTACHMENT11,
+			gl.COLOR_ATTACHMENT12,
+			gl.COLOR_ATTACHMENT13,
+			gl.COLOR_ATTACHMENT14,
+			gl.COLOR_ATTACHMENT15			
+		];
+		
 		for (var i=0; i<arguments.length; ++i) {
 			var attachment 	= arguments[i];
 
@@ -2510,6 +2557,25 @@ o3gl.ProgramSources.prototype = {
 		return program;
 	}
 }
+
+
+
+/*************************************************
+WebGL 2 classes
+https://www.khronos.org/registry/webgl/specs/latest/2.0/
+**************************************************/
+function Query() {
+}
+
+function Sampler() {
+}
+
+function TransformFeedback() {
+}
+
+//function VertexArrayObject() {}
+
+
 
 
 
