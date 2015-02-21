@@ -55,9 +55,9 @@
     var shaderProgram;
 
     function initShaders() {	
-		shaderProgram = o3gl.createProgram(
-			o3gl.createShader(document.getElementById("shader-vs").textContent),
-			o3gl.createShader(document.getElementById("shader-fs").textContent)
+		shaderProgram = o3gl.CreateProgram(
+			o3gl.CreateShader(document.getElementById("shader-vs").textContent),
+			o3gl.CreateShader(document.getElementById("shader-fs").textContent)
 		);
     }
 
@@ -65,12 +65,12 @@
     var squareVertexPositionBuffer;
 
     function initBuffers() {
-		triangleVertexPositionBuffer = o3gl.createArrayBuffer().Data([
+		triangleVertexPositionBuffer = o3gl.CreateArrayBuffer().Data([
 			0.0,  1.0,  0.0,
             -1.0, -1.0,  0.0,
              1.0, -1.0,  0.0
 		]);
-		squareVertexPositionBuffer =  o3gl.createArrayBuffer().Data([
+		squareVertexPositionBuffer =  o3gl.CreateArrayBuffer().Data([
 			 1.0,  1.0,  0.0,
             -1.0,  1.0,  0.0,
              1.0, -1.0,  0.0,
@@ -79,18 +79,17 @@
     }
 
     function drawScene() {
-        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
         mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
         mat4.identity(mvMatrixTriangle);
         mat4.translate(mvMatrixTriangle, [-1.5, 0.0, -7.0]);
         mat4.identity(mvMatrixCube);
         mat4.translate(mvMatrixCube, [+1.5, 0.0, -7.0]);
-
-		shaderProgram.Viewport().Clear();
 		
+		shaderProgram.FrameBuffer().ClearColor(0.0, 0.0, 0.0, 1.0).Clear();
+
 		shaderProgram.
+			DepthTest(true).
+			Viewport().
 			UniformMatrix4fv("uPMatrix", pMatrix).
 			Attribute3f("aVertexPosition", triangleVertexPositionBuffer).
 			UniformMatrix4fv("uMVMatrix", mvMatrixTriangle).
@@ -106,9 +105,6 @@
         initGL(canvas);
         initBuffers();
         initShaders();
-
-        gl.clearColor(0.0, 0.0, 0.0, 1.0);
-        gl.enable(gl.DEPTH_TEST);
 
         drawScene();
     }

@@ -116,3 +116,63 @@ Shaders.Phong.Fragment = [
 	"	gl_FragColor = color;",
 	"}"
 ];
+
+/*
+Shaders.Phong.PositionNormalDepth.attribute = [
+	"attribute vec3 aPosition;",
+	"attribute vec2 aTextureCoord;",
+	"attribute vec3 aNormal;",
+	"attribute vec3 aTangent;",
+];
+Shaders.Phong.PositionNormalDepth.uniform = [
+	"uniform mat4 uMatrixM;",
+	"uniform mat4 uMatrixV;",
+	"uniform mat4 uMatrixP;",
+	"uniform mat3 uMatrixN;",
+	"uniform sampler2D uSamplerNormal;", 
+];
+Shaders.Phong.PositionNormalDepth.varying = [
+	"varying vec4 vPosition;",
+	"varying vec2 vTextureCoord;", 
+	"varying vec3 vNormal;",
+	"varying vec3 vTangent;", 
+	"varying vec3 vBitangent;", 
+	"varying float vDepth;", 
+];
+
+Shaders.Phong.PositionNormalDepth = {};
+Shaders.Phong.PositionNormalDepth.Vertex = 	[
+	Shaders.Phong.attribute,
+	Shaders.Phong.uniform,
+	Shaders.Phong.varying,
+	"void main(void) {",
+	"	vPosition 		= uMatrixV * uMatrixM * vec4(aPosition, 1.0);",
+	"	vTextureCoord	= vec2(aTextureCoord.x, aTextureCoord.y);",
+	"	vNormal 		= uMatrixN * aNormal;",
+	"	vTangent		= uMatrixN * aTangent;",
+	"	vBitangent		= cross(vNormal, vTangent);",
+	"	gl_Position		= uMatrixP * vPosition;",
+	"	vDepth = 		(gl_Position.z / gl_Position.w);"
+	"}"
+];
+Shaders.Phong.PositionNormalDepth.Fragment = [
+	"#extension GL_EXT_draw_buffers : require",
+	"#ifdef GL_ES",
+	"precision highp float;",
+	"#endif",
+	Shaders.PositionNormalDepth.uniform,
+	Shaders.PositionNormalDepth.varying,
+	"void main(void) {",
+	// Unpack tangent-space normal from texture
+	"	vec3 normal;",
+	"	normal 				= vNormal;",
+	"	vec3 texelNormal	= texture2D(uSamplerNormal, vec2(vTextureCoord.s, vTextureCoord.t)).xyz;",
+	"	texelNormal			= normalize(2.0 * (texelNormal - 0.5));",
+	"	normal 				= texelNormal.x * vTangent + texelNormal.y * vBitangent + texelNormal.z * vNormal;",
+	"	gl_FragData[0] = vPosition;"
+	"	gl_FragData[1] = normal;"
+	"	gl_FragData[2] = vec4(vec3((vDepth)), 1.0);"
+	"}"
+];
+
+*/

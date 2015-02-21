@@ -459,41 +459,52 @@ var Parameters = {
 		return gl.getExtension('OES_texture_half_float') != null;
 	}
 }
-
-function BlendFactor() {
-	return {
-		One 				: gl.ONE,
-		Zero 				: gl.ZERO,
-		SrcColor 			: gl.SRC_COLOR,
-		SrcAlpha 			: gl.SRC_ALPHA,
-		DstColor 			: gl.DST_COLOR,
-		DstAlpha 			: gl.DST_ALPHA,
-		OneMinusSrcColor 	: gl.ONE_MINUS_SRC_COLOR,
-		OneMinusSrcAlpha 	: gl.ONE_MINUS_SRC_ALPHA,
-		OneMinusDstColor 	: gl.ONE_MINUS_DST_COLOR,
-		OneMinusDstAlpha 	: gl.ONE_MINUS_DST_ALPHA
-	}
-}
 		
 var o3gl = {		
 };
 
 // client state tracking variables
 // querying the GL for such information (like currently bound texture id) should be avoided because it has an important performance cost
-o3gl._programs 			= [];
-o3gl._textures 			= [];
-o3gl._buffers 			= [];
-o3gl._framebuffers 		= [];
-o3gl._renderbuffers 	= [];
+o3gl.programs 			= [];
+o3gl.textures 			= [];
+o3gl.buffers 			= [];
+o3gl.framebuffers 		= [];
+o3gl.renderbuffers 	= [];
+o3gl.vertexArrayObjects = [];
 
-o3gl._parameters = [];
-o3gl._parameters[gl.ARRAY_BUFFER_BINDING] 			= undefined;
-o3gl._parameters[gl.ELEMENT_ARRAY_BUFFER_BINDING] 	= undefined;
-o3gl._parameters[gl.FRAMEBUFFER_BINDING] 			= undefined;
-o3gl._parameters[gl.RENDERBUFFER_BINDING] 			= undefined;
-o3gl._parameters[gl.TEXTURE_BINDING_2D] 			= undefined;
-o3gl._parameters[gl.TEXTURE_BINDING_CUBE_MAP] 		= undefined;
-o3gl._parameters[gl.CURRENT_PROGRAM] 				= undefined;
+o3gl.ARRAY_BUFFER_BINDING 			= undefined;
+o3gl.ELEMENT_ARRAY_BUFFER_BINDING 	= undefined;
+o3gl.FRAMEBUFFER_BINDING 			= undefined;
+o3gl.RENDERBUFFER_BINDING			= undefined;
+o3gl.TEXTURE_BINDING_2D 			= undefined;
+o3gl.TEXTURE_BINDING_CUBE_MAP 		= undefined;
+o3gl.CURRENT_PROGRAM 				= undefined;
+
+
+/*
+    ANGLE_instanced_arrays (google) (registry)
+    EXT_blend_minmax (google) (registry)
+    EXT_frag_depth (google) (registry)
+    EXT_shader_texture_lod (google) (registry)
+    EXT_texture_filter_anisotropic (google) (registry)
+    OES_element_index_uint (google) (registry)
+    OES_standard_derivatives (google) (registry)
+    OES_texture_float (google) (registry)
+    OES_texture_float_linear (google) (registry)
+    OES_texture_half_float (google) (registry)
+    OES_texture_half_float_linear (google) (registry)
+    OES_vertex_array_object (google) (registry)
+    WEBGL_color_buffer_float (google) (registry)
+    WEBGL_compressed_texture_s3tc (google) (registry)
+    WEBGL_debug_renderer_info (google) (registry)
+    WEBGL_debug_shaders (google) (registry)
+    WEBGL_depth_texture (google) (registry)
+    WEBGL_draw_buffers (google) (registry)
+    WEBGL_lose_context (google) (registry)
+    MOZ_WEBGL_lose_context (google) (registry)
+    MOZ_WEBGL_compressed_texture_s3tc (google) (registry)
+    MOZ_WEBGL_depth_texture (google) (registry)
+*/
 
 
 function Extend(functionDerived, functionBase, properties) {
@@ -1148,6 +1159,7 @@ o3gl.ArrayBuffer.Pointer = function(buffer) {
     this._offset = 0;			// Offset in bytes
 	this._size = 4; 			// Specifies the number of components per generic vertex attribute. Must be 1, 2, 3, 4. Additionally, the symbolic constant GL_BGRA is accepted by glVertexAttribPointer. The initial value is 4.
 	this._normalized = false;	// as
+	this._count = null;
 	
 	this._divisor = 0;	// Extensions ANGLE_instanced_arrays, 
 	
@@ -1211,6 +1223,11 @@ o3gl.ArrayBuffer.Pointer.prototype = {
 	,
 	size : function(value) {
 		this._size = value;
+		return this;
+	}
+	,
+	count : function(value) {
+		this._count = value;
 		return this;
 	}
 	,
@@ -1350,13 +1367,28 @@ o3gl.FrameBuffer.prototype = {
 			gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBufferId);
 		}
 	
-		var COLOR_ATTACHEMENT = [
-			gl.COLOR_ATTACHMENT0,
-			gl.COLOR_ATTACHMENT1,
-			gl.COLOR_ATTACHMENT2,
-			gl.COLOR_ATTACHMENT3				
-		];
+		var ext = gl.getExtension('WEBGL_draw_buffers');
 	
+		// WebGL 2.0 constants
+		var COLOR_ATTACHEMENT = [		
+			ext.COLOR_ATTACHMENT0_WEBGL | gl.COLOR_ATTACHMENT0,
+			ext.COLOR_ATTACHMENT1_WEBGL | gl.COLOR_ATTACHMENT1,
+			ext.COLOR_ATTACHMENT2_WEBGL | gl.COLOR_ATTACHMENT2,
+			ext.COLOR_ATTACHMENT3_WEBGL | gl.COLOR_ATTACHMENT3,
+			gl.COLOR_ATTACHMENT4,
+			gl.COLOR_ATTACHMENT5,
+			gl.COLOR_ATTACHMENT6,
+			gl.COLOR_ATTACHMENT7,
+			gl.COLOR_ATTACHMENT8,
+			gl.COLOR_ATTACHMENT9,
+			gl.COLOR_ATTACHMENT10,
+			gl.COLOR_ATTACHMENT11,
+			gl.COLOR_ATTACHMENT12,
+			gl.COLOR_ATTACHMENT13,
+			gl.COLOR_ATTACHMENT14,
+			gl.COLOR_ATTACHMENT15			
+		];
+		
 		for (var i=0; i<arguments.length; ++i) {
 			var attachment 	= arguments[i];
 
@@ -1424,37 +1456,77 @@ o3gl.FrameBuffer.prototype = {
 		}
 	}
 	,
-	Viewport : function(x,y,width,height) {
-		if (arguments.length === 0) {
-			gl.viewport(0, 0, this.getWidth(), this.getHeight());
-		} else {
-			gl.viewport(x,y,width,height);
-		}
-		return this;
-	}
-	,
 	ClearColorBuffer : function(r,g,b,a) {
+		var isR = (r !== null);
+		var isG = (g !== null);
+		var isB = (b !== null);
+		var isA = (a !== null);
+		gl.colorMask(isR, isG, isB, isA);
+		
 		if (arguments.length === 0) {
-			r = 0.0; g = 0.0; b = 0.0; a = 0.0; // Specification default values
+			gl.clearColor(0, 0, 0, 0);			// Specification default values
+		} else {
+			gl.clearColor(r, g, b, a);
 		}
-		gl.clearColor(r, g, b, a);
 		gl.clear(gl.COLOR_BUFFER_BIT);
 		return this;
 	}
 	,
 	ClearDepthBuffer : function(depth) {
-		if (depth === undefined) depth = 1.0; // Specification default values
-		gl.clearDepth(depth);
+		gl.depthMask(true);	// Without this set to true no effect will take place
+
+		if (arguments.length == 0)  {
+			gl.clearDepth(1.0); // Specification default value
+		} else {
+			gl.clearDepth(depth);			
+		}
 		gl.clear(gl.DEPTH_BUFFER_BIT);
 		return this;
 	}	
 	,
 	Clear : function() {
+		gl.colorMask(true, true, true, true);
+		gl.depthMask(true);	// Without this set to true no effect will take place
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);		
 		return this;
 	}
 	,
-	DepthMask : function(enable) {
+	ClearColor : function(r,g,b,a) {		
+		if (arguments.length === 0) {
+			gl.clearColor(0, 0, 0, 0);			// Specification default values
+		} else {
+			gl.clearColor(r, g, b, a);
+		}
+		return this;
+	}
+	,
+	ClearDepth : function(value) {		
+		if (arguments.length == 0)  {
+			gl.clearDepth(1.0); // Specification default value
+		} else {
+			gl.clearDepth(value);			
+		}
+		return this;
+	}
+	,
+	ScissorTest : function (enable) {
+		if (enable) {
+			gl.enable(gl.SCISSOR_TEST);
+		} else {
+			gl.disable(gl.SCISSOR_TEST);
+		}
+		return this;
+	}
+	,
+	Scissor : function (x, y , width, height) {
+		// turn on the scissor test.
+		gl.enable(gl.SCISSOR_TEST);		
+		// set the scissor rectangle.
+		gl.scissor(x, y, width, height);
+		return this;
+	}	
+	,
+		DepthMask : function(enable) {
 		gl.depthMask(enable);
 		return this;
 	}
@@ -1469,17 +1541,6 @@ o3gl.FrameBuffer.prototype = {
 	,
 	ColorMask : function(r,g,b,a) {
 		gl.colorMask(r,g,b,a);
-		return this;
-	}
-	,
-	ClearColor : function(r,g,b,a) {
-		gl.clearColor(r,g,b,a);
-		return this;
-	}
-	,
-	ClearDepth : function(value) {
-		// depth: floating-point number between 0.0 and 1.0, the default value is 1.0	
-		gl.clearDepth(value);
 		return this;
 	}
 };
@@ -1631,7 +1692,9 @@ o3gl.VertexArrayObject.prototype = {
 	,
 	Elements :function(elementArrayBuffer) {
 		this.elementArrayBuffer = elementArrayBuffer;
-		this.elementArrayBuffer.Bind();
+		if (this.elementArrayBuffer) {
+			this.elementArrayBuffer.Bind();				
+		}
 		return this;
 	}
 	,
@@ -1824,9 +1887,18 @@ o3gl.Program = function(shader1,shader2) {
 	// Assotiate new `TUO` with program;
 	this._textureUnitObject = undefined;
 }
-
-
-
+o3gl.BlendFactor = {
+	One 				: gl.ONE,
+	Zero 				: gl.ZERO,
+	SrcColor 			: gl.SRC_COLOR,
+	SrcAlpha 			: gl.SRC_ALPHA,
+	DstColor 			: gl.DST_COLOR,
+	DstAlpha 			: gl.DST_ALPHA,
+	OneMinusSrcColor 	: gl.ONE_MINUS_SRC_COLOR,
+	OneMinusSrcAlpha 	: gl.ONE_MINUS_SRC_ALPHA,
+	OneMinusDstColor 	: gl.ONE_MINUS_DST_COLOR,
+	OneMinusDstAlpha 	: gl.ONE_MINUS_DST_ALPHA
+}
 
 o3gl.Program.prototype = {
 	Id : function() {
@@ -2018,6 +2090,10 @@ o3gl.Program.prototype = {
 	isTypeSampler2D 	 : function(name) { return this.getType(name) === gl.SAMPLER_2D; 	},
 	isTypeSamplerCube 	 : function(name) { return this.getType(name) === gl.SAMPLER_CUBE; 	},	
 
+	instance : function() {
+		return Object.create(this);
+	}
+	,
 	VertexArray : function(value) {
 		if (value || value === null) {
 			this._vertexArrayObject = value;
@@ -2026,7 +2102,12 @@ o3gl.Program.prototype = {
 				this._vertexArrayObject = new o3gl.VertexArrayObjectDefault();
 			}
 		}
-		return this._vertexArrayObject;
+		
+		if (value) {
+			return this;
+		} else {
+			return this._vertexArrayObject;			
+		}		
 	}
 	,
 	FrameBuffer : function(value) {
@@ -2037,7 +2118,11 @@ o3gl.Program.prototype = {
 				this._frameBufferObject = new o3gl.FrameBuffer();
 			}
 		}
-		return this._frameBufferObject;
+		if (value) {
+			return this;
+		} else {
+			return this._frameBufferObject;			
+		}		
 	}
 	,
 	TextureUnit : function(value) {
@@ -2048,7 +2133,11 @@ o3gl.Program.prototype = {
 				this._textureUnitObject = new o3gl.TextureUnitObject();
 			}
 		}
-		return this._textureUnitObject;
+		if (value) {
+			return this;
+		} else {
+			return this._textureUnitObject;			
+		}		
 	}
 	,
 	//	Helper method that allows setting of the uniform or attribute pointer using retrospections capabilities.
@@ -2306,59 +2395,57 @@ o3gl.Program.prototype = {
 	}
 	,
 	Viewport : function(x,y,width,height) {
-		if (arguments.length == 4) {
-			// Set up viewport with the specified parameters
-			this.FrameBuffer().Viewport(x,y,width,height);
-		} else {
-			// Set up viewport to the maximum frame buffer size
-			this.FrameBuffer().Viewport();
+		if (arguments.length == 0) {
+			if (this._frameBufferObject) {
+				x 		= 0;
+				y 		= 0; 
+				width 	= this._frameBufferObject.getWidth();
+				height 	= this._frameBufferObject.getHeight();
+			} else {
+				//TODO:	It seems there is no way to detect gl context currently bound buffer size
+				throw new TypeError("Unable to get framebuffer size");
+			}
 		}
-		return this;
-	}
-	,
-	ClearColorBuffer : function(r,g,b,a) {
-		this.FrameBuffer().ClearColorBuffer(r,g,b,a);
-		return this;
-	}
-	,
-	ClearDepthBuffer : function(depth) {
-		this.FrameBuffer().ClearDepthBuffer(depth);
-		return this;
-	}	
-	,
-	Clear : function() {
-		this.FrameBuffer().Clear();
+		gl.viewport(x, y, width, height);
 		return this;
 	}
 	,
 	DepthMask : function(enable) {
-		this.FrameBuffer().DepthMask(enable);
+		gl.depthMask(enable);
 		return this;
 	}
 	,
 	DepthTest : function(enable) {
-		this.FrameBuffer().DepthTest(enable);
+		if (enable) 
+			gl.enable(gl.DEPTH_TEST);
+		else
+			gl.disable(gl.DEPTH_TEST);
 		return this;
 	}
 	,
 	ColorMask : function(r,g,b,a) {
-		this.FrameBuffer().ColorMask(r,g,b,a);
+		gl.colorMask(r,g,b,a);
 		return this;
 	}
 	,
-	ClearColor : function(r,g,b,a) {
-		this.FrameBuffer().ClearColor(r,g,b,a);
+	Blend : function(enable) {
+		if (enable)
+			gl.enable(gl.BLEND);
+		else 
+			gl.disable(gl.BLEND);
 		return this;
 	}
 	,
-	ClearDepth : function(value) {
-		this.FrameBuffer().ClearDepth(value);
+	BlendFunc : function(glBlendFactorSrc, glBlendFactorDst) {
+		gl.blendFunc(glBlendFactorSrc, glBlendFactorDst);
 		return this;
+	}
+	,
+	BlendFuncSrcAlphaOne : function() {
+		return this.BlendFunc(gl.SRC_ALPHA, gl.ONE);
 	}
 	,
 	_drawPrimitives : function(glMode, first, count) {
-		this.Use(); // assert current program
-
 		// Bind assotiated resources
 		if (this._vertexArrayObject) {
 			this._vertexArrayObject.Bind();		
@@ -2369,6 +2456,8 @@ o3gl.Program.prototype = {
 		if (this._textureUnitObject) {
 			this._textureUnitObject.Active(this);		
 		}
+		
+		this.Use(); // assert current program
 		
 		
 		var elementArrayBuffer = undefined;
@@ -2497,7 +2586,7 @@ o3gl.ProgramSources.prototype = {
 		// TODO: Delete all the programs and shaders
 	}
 	,
-	createProgram : function(identifiers) {
+	CreateProgram : function(identifiers) {
 		var program = this.programs[arguments];
 		if (program == null) {
 			var vertexShaderSource 		= this.vertexShaderSource;
@@ -2514,9 +2603,9 @@ o3gl.ProgramSources.prototype = {
 				fragmentShaderSource = Preprocessor.excludeUndefined(fragmentShaderSource, defined);				
 			}		
 			// TODO: shaders cache
-			program = o3gl.createProgram(
-				o3gl.createShader(vertexShaderSource.join("\n")) , 
-				o3gl.createShader(fragmentShaderSource.join("\n"))
+			program = o3gl.CreateProgram(
+				o3gl.CreateShader(vertexShaderSource.join("\n")) , 
+				o3gl.CreateShader(fragmentShaderSource.join("\n"))
 			);	
 			
 			this.programs[arguments] = program;
@@ -2525,6 +2614,25 @@ o3gl.ProgramSources.prototype = {
 		return program;
 	}
 }
+
+
+
+/*************************************************
+WebGL 2 classes
+https://www.khronos.org/registry/webgl/specs/latest/2.0/
+**************************************************/
+function Query() {
+}
+
+function Sampler() {
+}
+
+function TransformFeedback() {
+}
+
+//function VertexArrayObject() {}
+
+
 
 
 
@@ -2555,13 +2663,13 @@ isElementArrayBufferBinding : function() {
 
 
 // Client state tracking
-Aspect(o3gl.Texture2D.prototype).after("Bind", 			function() { o3gl._parameters[gl.TEXTURE_BINDING_2D] = this.Id(); });
-Aspect(o3gl.TextureCubeMap.prototype).after("Bind", 	function() { o3gl._parameters[gl.TEXTURE_BINDING_CUBE_MAP] = this.Id();});
-Aspect(o3gl.ArrayBuffer.prototype).after("Bind", 		function() { o3gl._parameters[gl.ARRAY_BUFFER_BINDING] = this.Id();});
-Aspect(o3gl.ElementArrayBuffer.prototype).after("Bind", function() { o3gl._parameters[gl.ELEMENT_ARRAY_BUFFER_BINDING] = this.Id();});
-Aspect(o3gl.FrameBuffer.prototype).after("Bind", 		function() { o3gl._parameters[gl.FRAMEBUFFER_BINDING] = this.Id();});
-Aspect(o3gl.RenderBuffer.prototype).after("Bind", 		function() { o3gl._parameters[gl.RENDERBUFFER_BINDING] = this.Id();});
-Aspect(o3gl.Program.prototype).after("Use", 			function() { o3gl._parameters[gl.CURRENT_PROGRAM] = this.Id();});
+Aspect(o3gl.Texture2D.prototype).after("Bind", 			function() { o3gl.TEXTURE_BINDING_2D = this; });
+Aspect(o3gl.TextureCubeMap.prototype).after("Bind", 	function() { o3gl.TEXTURE_BINDING_CUBE_MAP = this;});
+Aspect(o3gl.ArrayBuffer.prototype).after("Bind", 		function() { o3gl.ARRAY_BUFFER_BINDING = this;});
+Aspect(o3gl.ElementArrayBuffer.prototype).after("Bind", function() { o3gl.ELEMENT_ARRAY_BUFFER_BINDING = this;});
+Aspect(o3gl.FrameBuffer.prototype).after("Bind", 		function() { o3gl.FRAMEBUFFER_BINDING = this;});
+Aspect(o3gl.RenderBuffer.prototype).after("Bind", 		function() { o3gl.RENDERBUFFER_BINDING = this;});
+Aspect(o3gl.Program.prototype).after("Use", 			function() { o3gl.CURRENT_PROGRAM = this;});
 
 
 var bindingTexture2D = /^GenerateMipmap|^Filter|^Wrap|^Image/;
@@ -2570,16 +2678,15 @@ var bindingArrayBuffer = /^Data/;
 var bindingElementArrayBuffer = /^Data/;
 
 // Automatic resources bindings check
-Aspect(o3gl.Texture2D.prototype).before(/^GenerateMipmap$|^Filter|^Wrap|^Image$/, 		function() { if (o3gl._parameters[gl.TEXTURE_BINDING_2D] !== this.Id()) this.Bind(); } );
-Aspect(o3gl.TextureCubeMap.prototype).before(/^GenerateMipmap$|^Filter|^Wrap|^Image$/, 	function() { if (o3gl._parameters[gl.TEXTURE_BINDING_CUBE_MAP] !== this.Id()) this.Bind(); } );
-Aspect(o3gl.ArrayBuffer.prototype).before(/^Data$/, 									function() { if (o3gl._parameters[gl.ARRAY_BUFFER_BINDING] !== this.Id()) this.Bind(); } );
-Aspect(o3gl.ElementArrayBuffer.prototype).before(/^Data$/, 								function() { if (o3gl._parameters[gl.ELEMENT_ARRAY_BUFFER_BINDING] !== this.Id()) this.Bind(); } );
-Aspect(o3gl.FrameBuffer.prototype).before(/^ClearColorBuffer$|^ClearDepthBuffer$|^Clear$|^Color$|^Depth$|^Stencil$/, function() { if (o3gl._parameters[gl.FRAMEBUFFER_BINDING] !== this.Id()) this.Bind(); } );
-Aspect(o3gl.RenderBuffer.prototype).before(/^Storage$/, 								function() { if (o3gl._parameters[gl.RENDERBUFFER_BINDING] != this.Id()) this.Bind(); } );
-Aspect(o3gl.Program.prototype).before(/^Set$|Uniform|Attribute/, 						function() { if (o3gl._parameters[gl.CURRENT_PROGRAM] != this.Id()) this.Use(); } );
+Aspect(o3gl.Texture2D.prototype).before(/^GenerateMipmap$|^Filter|^Wrap|^Image$/, 		function() { if (o3gl.TEXTURE_BINDING_2D !== this) this.Bind(); } );
+Aspect(o3gl.TextureCubeMap.prototype).before(/^GenerateMipmap$|^Filter|^Wrap|^Image$/, 	function() { if (o3gl.TEXTURE_BINDING_CUBE_MAP !== this) this.Bind(); } );
+Aspect(o3gl.ArrayBuffer.prototype).before(/^Data$/, 									function() { if (o3gl.ARRAY_BUFFER_BINDING !== this) this.Bind(); } );
+Aspect(o3gl.ElementArrayBuffer.prototype).before(/^Data$/, 								function() { if (o3gl.ELEMENT_ARRAY_BUFFER_BINDING !== this) this.Bind(); } );
+Aspect(o3gl.FrameBuffer.prototype).before(/^ClearColorBuffer$|^ClearDepthBuffer$|^Clear$|^Color$|^Depth$|^Stencil$/, function() { if (o3gl.FRAMEBUFFER_BINDING !== this) this.Bind(); } );
+Aspect(o3gl.RenderBuffer.prototype).before(/^Storage$/, 								function() { if (o3gl.RENDERBUFFER_BINDING !== this) this.Bind(); } );
+Aspect(o3gl.Program.prototype).before(/^Set$|^Uniform|^Attribute|^Clear|^Draw/, 		function() { if (o3gl.CURRENT_PROGRAM !== this) this.Use(); } );
 
-// Preserve framebuffer settings
-Aspect(o3gl.FrameBuffer.prototype).around(/^Viewport$|^DepthMask$|^DepthTest$|^ColorMask$|^ClearColor$|^ClearDepth$/, function (pointcut, name, arguments) {
+Aspect(o3gl.Program.prototype).around(/^DepthMask$|^DepthTest$|^ColorMask$|^ClearColor$|^ClearDepth$|^Blend$|^BlendFunc$|^Viewport$/, function (pointcut, name, arguments) {
 	if (!this._deffered) {
 		this._deffered = {};
 	}
@@ -2587,7 +2694,7 @@ Aspect(o3gl.FrameBuffer.prototype).around(/^Viewport$|^DepthMask$|^DepthTest$|^C
 	return pointcut();
 });
 
-Aspect(o3gl.FrameBuffer.prototype).after(/^Bind$/, function() {
+Aspect(o3gl.Program.prototype).after(/^Use$/, function() {
 	if (this._deffered) {
 		for (var name in this._deffered) {
 			this._deffered[name] ();
@@ -2597,31 +2704,31 @@ Aspect(o3gl.FrameBuffer.prototype).after(/^Bind$/, function() {
 
 
 // Resource methods
-o3gl.createTexture2D = function() {
+o3gl.CreateTexture2D = function() {
 	return new o3gl.Texture2D();
 }
-o3gl.createTextureCubeMap = function() {
+o3gl.CreateTextureCubeMap = function() {
 	return new o3gl.TextureCubeMap();
 }
-o3gl.createArrayBuffer = function(data) {
+o3gl.CreateArrayBuffer = function(data) {
 	return new o3gl.ArrayBuffer(data);
 }
-o3gl.createElementArrayBuffer = function(data) {
+o3gl.CreateElementArrayBuffer = function(data) {
 	return new o3gl.ElementArrayBuffer(data);
 }
-o3gl.createFrameBuffer = function() {
+o3gl.CreateFrameBuffer = function() {
 	return new o3gl.FrameBuffer();
 }
-o3gl.createRenderBufferDepth = function() {
+o3gl.CreateRenderBufferDepth = function() {
 	return new o3gl.RenderBufferDepth();
 }
-o3gl.createRenderBufferStencil = function() {
+o3gl.CreateRenderBufferStencil = function() {
 	return new o3gl.RenderBufferDepth();
 }
-o3gl.createShader = function(sources) {
+o3gl.CreateShader = function(sources) {
 	return new o3gl.Shader(sources);
 }
-o3gl.createProgram = function(shader1,shader2) {
+o3gl.CreateProgram = function(shader1,shader2) {
 	return new o3gl.Program(shader1,shader2);
 }
 

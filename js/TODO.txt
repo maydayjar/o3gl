@@ -1,0 +1,27 @@
+	- Change "aspects" to the proxy objects ???
+	
+	- Frame buffer scissor test
+	
+	- Depth mask and color mask must be set in frame buffer ClearXXXX methods. Should them be used as Program methods ???
+	
+	- Program automatic restore to the default settings
+	
+	- Program internal frame buffer cache.
+		
+		With multiple framebuffers generated for various color, depth and stencil attachements. 		
+		This eliminates external framebuffers manipulations.		
+		Allows simplified "render to texture" semantics. 
+		Use case: two convolution shader passes. 
+		Possible problem is deletion of the created framebuffer objects
+	
+	- Program instances concept
+		
+	- Nehe examples texture deffered loading causes texture initialization error
+	
+	- Framebuffer texture available settings
+	
+	- Various webgl 2.0 features
+	
+	- uniformf and uniformfv methods overloading
+	
+	- BlurStroke shader

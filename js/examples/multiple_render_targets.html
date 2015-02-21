@@ -15,6 +15,7 @@
 <script type="text/javascript" src="../o3gl.js"></script>
 <script type="text/javascript" src="../utils/utils.js"></script>
 <script type="text/javascript" src="../utils/primitives.js"></script>
+<script type="text/javascript" src="../shaders/postprocess.js"></script>
 
 <style type='text/css'>    
 	html, body {
@@ -26,23 +27,32 @@
 
 <script id="vs" type="x-shader/x-vertex">
 attribute vec3 	aPosition;
-uniform mat4 	uModelViewMatrix;
-uniform mat4 	uProjectionMatrix;
+attribute vec3 	aNormal;
+uniform mat3 	uMatrixP;
+uniform mat4 	uModelM;
+uniform mat4 	uModelV;
+uniform mat3 	uMatrixN;
+
 varying vec4 	vPosition;
+varying vec3 	vNormal;
 
 void main() {
-	vPosition 	= uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
+	vPosition 	= uMatrixV * uMatrixM * vec4(aPosition, 1.0);
+	vNormal 	= uMatrixN * aNormal;
 	gl_Position = vPosition;
 }
 </script>
 <script id="fs" type="x-shader/x-fragment">
+#extension GL_EXT_draw_buffers : require
 #ifdef GL_ES
 precision highp float;
 #endif
 varying vec4 vPosition;
+varying vec3 vNormal;
 void main() {
-	vec4 pos = (vPosition / vPosition.w + 1.0) / 2.0;
-	gl_FragColor = vec4(pos.z, pos.z, pos.z, 1.0);
+	gl_FragData[0] = vPosition;
+	gl_FragData[1] = vNormal;
+	gl_FragData[2] = vNormal;
 }
 </script>
 

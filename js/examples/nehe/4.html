@@ -6,7 +6,7 @@
 
 <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
-<script type="text/javascript" src="../o3gl.js"></script>
+<script type="text/javascript" src="../../o3gl.js"></script>
 
 <script id="shader-fs" type="x-shader/x-fragment">
     precision mediump float;
@@ -37,12 +37,14 @@
 <script type="text/javascript">
 
     var gl;
-
+	var o3gl;
+	
     function initGL(canvas) {
         try {
             gl = canvas.getContext("experimental-webgl");
             gl.viewportWidth = canvas.width;
             gl.viewportHeight = canvas.height;
+			o3gl = O3GL(gl);
         } catch (e) {
         }
         if (!gl) {
@@ -51,29 +53,12 @@
     }
 
     var shaderProgram;
-    var drawPyramid;
-    var drawCube;
 
     function initShaders() {
-       	shaderProgram = new Program(
-			new VertexShader(document.getElementById("shader-vs").textContent),
-			new FragmentShader(document.getElementById("shader-fs").textContent)
-		);
-		shaderProgram.
-		useProgram().
-		uniformMatrix4fv("uPMatrix", pMatrix);
-		
-		drawPyramid = new Program(shaderProgram).
-		attribute3f("aVertexPosition", pyramidVertexPositionBuffer).
-		attribute4f("aVertexColor", pyramidVertexColorBuffer).
-		uniformMatrix4fv("uMVMatrix", mvMatrix).
-		drawArraysTriangles(0, 12);
-		
-		drawCube = new Program(shaderProgram).
-		attribute3f("aVertexPosition",cubeVertexPositionBuffer).
-		attribute4f("aVertexColor", cubeVertexColorBuffer).
-		uniformMatrix4fv("uMVMatrix", mvMatrix).
-		drawElementsTriangles(cubeVertexIndexBuffer);
+       	shaderProgram = o3gl.CreateProgram(
+			o3gl.CreateShader(document.getElementById("shader-vs").textContent),
+			o3gl.CreateShader(document.getElementById("shader-fs").textContent)
+		);		
     }
 
 
@@ -126,7 +111,7 @@
             -1.0, -1.0, -1.0,
             -1.0, -1.0,  1.0
         ];
-		pyramidVertexPositionBuffer = new ArrayBuffer(vertices);
+		pyramidVertexPositionBuffer = o3gl.CreateArrayBuffer().Data(vertices);
         var colors = [
             // Front face
             1.0, 0.0, 0.0, 1.0,
@@ -148,7 +133,7 @@
             0.0, 0.0, 1.0, 1.0,
             0.0, 1.0, 0.0, 1.0
         ];
-        pyramidVertexColorBuffer = new ArrayBuffer(colors);
+        pyramidVertexColorBuffer = o3gl.CreateArrayBuffer().Data(colors);
 
         vertices = [
             // Front face
@@ -187,7 +172,7 @@
             -1.0,  1.0,  1.0,
             -1.0,  1.0, -1.0
         ];
-        cubeVertexPositionBuffer = new ArrayBuffer(vertices);
+        cubeVertexPositionBuffer = o3gl.CreateArrayBuffer().Data(vertices);
 
         colors = [
             [1.0, 0.0, 0.0, 1.0], // Front face
@@ -204,7 +189,7 @@
                 unpackedColors = unpackedColors.concat(color);
             }
         }
-		cubeVertexColorBuffer = new ArrayBuffer(unpackedColors);
+		cubeVertexColorBuffer = o3gl.CreateArrayBuffer().Data(unpackedColors);
 
         var cubeVertexIndices = [
             0, 1, 2,      0, 2, 3,    // Front face
@@ -214,7 +199,7 @@
             16, 17, 18,   16, 18, 19, // Right face
             20, 21, 22,   20, 22, 23  // Left face
         ];
-		cubeVertexIndexBuffer = new ArrayBuffer(cubeVertexIndices).typeUnsignedShort(1);
+		cubeVertexIndexBuffer = o3gl.CreateElementArrayBuffer().Data(cubeVertexIndices);
     }
 
 
@@ -222,28 +207,33 @@
     var rCube = 0;
 
     function drawScene() {
-        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
         mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
-
         mat4.identity(mvMatrix);
-
         mat4.translate(mvMatrix, [-1.5, 0.0, -8.0]);
-
-		shaderProgram.run();
 		
+		shaderProgram.FrameBuffer().Clear();
+
         mvPushMatrix();
         mat4.rotate(mvMatrix, degToRad(rPyramid), [0, 1, 0]);
-		drawPyramid.run();
+		shaderProgram.
+			Attribute3f("aVertexPosition", pyramidVertexPositionBuffer).
+			Attribute4f("aVertexColor", pyramidVertexColorBuffer).
+			UniformMatrix4fv("uPMatrix", pMatrix).
+			UniformMatrix4fv("uMVMatrix", mvMatrix).
+			Elements(null).
+			DrawTriangles();
         mvPopMatrix();
 
-
         mat4.translate(mvMatrix, [3.0, 0.0, 0.0]);
-
         mvPushMatrix();
         mat4.rotate(mvMatrix, degToRad(rCube), [1, 1, 1]);
-		drawCube.run();
+		shaderProgram.
+			Attribute3f("aVertexPosition",cubeVertexPositionBuffer).
+			Attribute4f("aVertexColor", cubeVertexColorBuffer).
+			UniformMatrix4fv("uPMatrix", pMatrix).
+			UniformMatrix4fv("uMVMatrix", mvMatrix).
+			Elements(cubeVertexIndexBuffer).
+			DrawTriangles();
         mvPopMatrix();
     }
 
