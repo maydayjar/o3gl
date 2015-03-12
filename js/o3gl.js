@@ -469,8 +469,10 @@ o3gl.programs 			= [];
 o3gl.textures 			= [];
 o3gl.buffers 			= [];
 o3gl.framebuffers 		= [];
-o3gl.renderbuffers 	= [];
+o3gl.renderbuffers 		= [];
 o3gl.vertexArrayObjects = [];
+
+o3gl.ACTIVE_TEXTURE 	= 0;
 
 o3gl.ARRAY_BUFFER_BINDING 			= undefined;
 o3gl.ELEMENT_ARRAY_BUFFER_BINDING 	= undefined;
@@ -949,10 +951,6 @@ Extend(o3gl.TextureCubeMap.Target, o3gl.Texture2D.Target,
 	}
 });
 
-/**
-* This class implements deffered target and type resolve,
-* relying on the buffer's usage context
-*/
 o3gl.Buffer = function() {
 	this._bufferId 		= gl.createBuffer();	
 	// Basically usage parameter is a hint to OpenGL/WebGL how you intent to use the buffer. The OpenGL/WebGL can then optimize the buffer depending of your hint.
@@ -1309,15 +1307,23 @@ o3gl.FrameBuffer.prototype = {
 			this.frameBufferId = gl.createFramebuffer();
 			gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBufferId);
 		}
-	
+
 		var ext = gl.getExtension('WEBGL_draw_buffers');
-	
+		
 		// WebGL 2.0 constants
-		var COLOR_ATTACHEMENT = [		
+		var COLOR_ATTACHEMENT = ext ?
+		[
 			ext.COLOR_ATTACHMENT0_WEBGL | gl.COLOR_ATTACHMENT0,
 			ext.COLOR_ATTACHMENT1_WEBGL | gl.COLOR_ATTACHMENT1,
 			ext.COLOR_ATTACHMENT2_WEBGL | gl.COLOR_ATTACHMENT2,
-			ext.COLOR_ATTACHMENT3_WEBGL | gl.COLOR_ATTACHMENT3,
+			ext.COLOR_ATTACHMENT3_WEBGL | gl.COLOR_ATTACHMENT3
+		]
+		:
+		[		
+			gl.COLOR_ATTACHMENT0,
+			gl.COLOR_ATTACHMENT1,
+			gl.COLOR_ATTACHMENT2,
+			gl.COLOR_ATTACHMENT3,
 			gl.COLOR_ATTACHMENT4,
 			gl.COLOR_ATTACHMENT5,
 			gl.COLOR_ATTACHMENT6,
@@ -1331,7 +1337,10 @@ o3gl.FrameBuffer.prototype = {
 			gl.COLOR_ATTACHMENT14,
 			gl.COLOR_ATTACHMENT15			
 		];
-		
+	
+
+
+	
 		for (var i=0; i<arguments.length; ++i) {
 			var attachment 	= arguments[i];
 
@@ -1754,45 +1763,29 @@ o3gl.UniformBufferObject.prototype = {
 }
 
 /*
-Virtual texture unit object
-Holds 
+Helper object that incorporates texture unit bindings
 */
 
 o3gl.TextureUnitObject = function () {
-	// Auto assigned sampler indicies
-	this.textureIndex = {};
-
-	this._texture = {};	// Texture reference by name
-	this._index = {};	// Texture index by name
+	this._textures = [];	// Textures referenced by texture unit index
 }
 
 o3gl.TextureUnitObject.prototype = {
-	set : function (name, texture) {
-		this._texture[name] = texture;
-		
-		if (!this._index[name]) {
-			var maxIndex = -1;
-			for (var i in this._index) {
-				if (!this._index.hasOwnProperty(i)) continue;
-				var index = this._index[i];
-				if (maxIndex < index) maxIndex = index;
-			}
-			
-			maxIndex++;
-			this._index[name] = maxIndex;
-		}
+	Active : function (index, texture) {
+		this._textures[index] = texture;
+		gl.activeTexture(gl.TEXTURE0 + index);
+		texture.Bind();		
 	}
 	,
-	Active : function (program) {
-		for (var name in this._texture) {
-			var texture = this._texture[name];
-			var index = this._index[name];
-			var uniformLocation = program.getUniformLocation(name);
-			gl.activeTexture(gl.TEXTURE0 + index);
-			texture.Bind();
-			gl.uniform1i(uniformLocation, index);
+	Bind : function () {
+		for (var index = 0; index <  this._textures.length; ++index) {
+			var texture = this._textures[index];
+			if (texture) {
+				gl.activeTexture(gl.TEXTURE0 + index);
+				texture.Bind();
+			}
 		}
-	}	
+	}
 }
 
 /**
@@ -1808,8 +1801,9 @@ o3gl.Program = function(shader1,shader2) {
 	this._attachShader(shader1, shader2)._link();
 
 	// Uniform and attribute cache
-	this.attributes = undefined; // {name:...; location:...; type:...; size:...;}	
-	this.uniforms = undefined; // {name:...; location:...; type:...; size:...;}	
+	this._attributes = undefined; // {name:...; location:...; type:...; size:...;}	
+	this._uniforms = undefined; // {name:...; location:...; type:...; size:...;}	
+	this._samplers = undefined; // {name:...; location:...; type:...; size:...;}	
 	
 	/*
 	Specification:
@@ -1916,15 +1910,15 @@ o3gl.Program.prototype = {
 	}
 	,
 	_initializeVariables : function() {
-		// Initialize attributes and uniforms cache
-		if (!this.uniforms) {
-			this.uniforms = {};
+		// Initialize uniforms cache
+		if (!this._uniforms) {
+			this._uniforms = {};
 			for (var idx = 0; idx < gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS); ++idx) {
 				// Get information about an active uniform variable
 				var variable = gl.getActiveUniform(this.Id(), idx);
 				var location = gl.getUniformLocation(this.Id(), variable.name);
 				var setter	 = this._getUniformSetter(variable.type, variable.size);
-				this.uniforms[variable.name] = {
+				this._uniforms[variable.name] = {
 					name : variable.name,
 					type : variable.type,
 					size : variable.size,
@@ -1933,14 +1927,15 @@ o3gl.Program.prototype = {
 				}
 			}
 		}
-		if (!this.attributes) {
-			this.attributes = {};
+		// Initialize attributes cache
+		if (!this._attributes) {
+			this._attributes = {};
 			for (var idx = 0; idx < gl.getProgramParameter(this.Id(), gl.ACTIVE_ATTRIBUTES); ++idx) {
 				// Get information about an active attribute variable
 				var variable = gl.getActiveAttrib(this.Id(), idx);
 				var location = gl.getAttribLocation(this.Id(), variable.name);
 				var setter	 = this._getAttributeSetter(variable.type, variable.size);
-				this.attributes[variable.name] = {
+				this._attributes[variable.name] = {
 					name : variable.name,
 					type : variable.type,
 					size : variable.size,
@@ -1951,7 +1946,7 @@ o3gl.Program.prototype = {
 		}
 	}
 	,
-	getActiveUniforms : function() { 
+	GetActiveUniforms : function() { 
 		var result = [];
 		var activeUniformsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS);
 		for (var idx = 0; idx < activeUniformsCount; ++idx) {
@@ -1962,7 +1957,7 @@ o3gl.Program.prototype = {
 		return result;
 	}
 	,
-	getActiveAttributes : function() {
+	GetActiveAttributes : function() {
 		var result = [];
 		var activeAttribsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_ATTRIBUTES);
 		for (var idx = 0; idx < activeAttribsCount; ++idx) {
@@ -1979,40 +1974,37 @@ o3gl.Program.prototype = {
 	}
 	,
 	getUniformLocation : function (name) {
-		return this.uniforms[name].location;
+		return this._uniforms[name].location;
 	}
 	,
 	getAttribLocation : function (name) {
-		return this.attributes[name].location;
+		return this._attributes[name].location;
 	}
 	,
-	BindAttribLocation : function (name, index) {
-		/*
-			More than one name can be bound to the same vertex index, but multiple indexes cannot be bound to the same name.
-			If name is a matrix attribute, then index points to the first column of the matrix. Additional matrix columns are automatically bound to index+1, index+2, and so forth based on matrix variable (mat2,mat3,mat4).
-		*/
+	BindAttribLocation : function (name, index) {		
+		// More than one name can be bound to the same vertex index, but multiple indexes cannot be bound to the same name.
+		// If name is a matrix attribute, then index points to the first column of the matrix. 
+		// Additional matrix columns are automatically bound to index+1, index+2, and so forth based on matrix variable (mat2,mat3,mat4).
 		gl.bindAttribLocation(this.programId, index, name);
-		this.attributes[name].location = index;
+		this._attributes[name].location = index;
 		return this;
 	}
+	/*	
 	,
 	getSize : function(name) { 
-		/*
-			Size is array length.
-			Arrays seem to be available only for uniforms.
-		*/
-		
-		if (this.uniforms[name]) 
-			return this.uniforms[name].size;
+		// Size is array length.
+		// Arrays seem to be available only for uniforms.
+		if (this._uniforms[name]) 
+			return this._uniforms[name].size;
 		else
-			return this.attributes[name].size;
+			return this._attributes[name].size;
 	}
 	,	
 	getType : function(name) { 
 		if (this.uniforms[name]) 
-			return this.uniforms[name].type;
+			return this._uniforms[name].type;
 		else
-			return this.attributes[name].type;
+			return this._attributes[name].type;
 	}
 	,
 	isTypeFloat			 : function(name) { return this.getType(name) === gl.FLOAT; 		},
@@ -2032,7 +2024,8 @@ o3gl.Program.prototype = {
 	isTypeFloatMat4 	 : function(name) { return this.getType(name) === gl.FLOAT_MAT4; 	},
 	isTypeSampler2D 	 : function(name) { return this.getType(name) === gl.SAMPLER_2D; 	},
 	isTypeSamplerCube 	 : function(name) { return this.getType(name) === gl.SAMPLER_CUBE; 	},	
-
+	*/
+	,
 	instance : function() {
 		return Object.create(this);
 	}
@@ -2087,11 +2080,11 @@ o3gl.Program.prototype = {
 	//	Overloaded in strong types languages
 	Set : function (name, v1, v2, v3, v4) {	
 		var setter = undefined;
-		if (this.uniforms[name]) {
-			setter = this.uniforms[name].setter;
+		if (this._uniforms[name]) {
+			setter = this._uniforms[name].setter;
 		}
-		if (this.attributes[name]) {
-			setter = this.attributes[name].setter;			
+		if (this._attributes[name]) {
+			setter = this._attributes[name].setter;			
 		}
 		return setter.apply(this, arguments);
 	}
@@ -2217,16 +2210,27 @@ o3gl.Program.prototype = {
 		return this;
 	}
 	,
-	UniformSampler : function(name, texture) {
-		this.TextureUnit().set(name, texture);		
-		/*
-		var index 			= this.getTextureIndex(name);
-		var glTextureId 	= Utils.getGLTextureId(index);
-		var uniformLocation = this.getUniformLocation(name);
-		gl.activeTexture(glTextureId);
-		texture.Bind();
-		gl.uniform1i(uniformLocation, index);
-		*/
+	/**
+	* Helper method
+	*/
+	UniformSampler : function(name, texture) {			
+		// Default samplers assignment
+		if (!this._samplers) {
+			this._samplers = [];			
+			var index = 0;
+			for (var uniformName in this._uniforms) {
+				var uniformType 	= this._uniforms[uniformName].type;
+				var uniformLocation = this._uniforms[uniformName].location;
+				if (uniformType === gl.SAMPLER_2D || uniformType === gl.SAMPLER_CUBE) {
+					gl.uniform1i(uniformLocation, index);
+					this._samplers[uniformName] = index;
+					index++;
+				}
+			}
+		}
+		
+		var index = this._samplers[name];
+		this.TextureUnit().Active(index, texture);
 		return this;
 	}
 	,
@@ -2390,6 +2394,12 @@ o3gl.Program.prototype = {
 	,
 	_drawPrimitives : function(glMode, first, count) {
 		// Bind assotiated resources
+		
+		// TODO: WebGL 2.0. not yet implemented
+		if (this._uniformBufferObject) {
+			this._uniformBufferObject.Bind();		
+		}
+
 		if (this._vertexArrayObject) {
 			this._vertexArrayObject.Bind();		
 		}
@@ -2397,7 +2407,16 @@ o3gl.Program.prototype = {
 			this._frameBufferObject.Bind();		
 		}
 		if (this._textureUnitObject) {
-			this._textureUnitObject.Active(this);		
+			/*
+			for (var name in this._samplers) {
+				var index = this._samplers[name];
+				var texture = this._textureUnitObject._textures[index];
+				gl.activeTexture(gl.TEXTURE0 + index);
+				texture.Bind();
+				this.Uniform1i(name, index);
+			}
+			*/
+			this._textureUnitObject.Bind();		
 		}
 		
 		this.Use(); // assert current program

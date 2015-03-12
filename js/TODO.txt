@@ -1,10 +1,10 @@
-	- Change "aspects" to the proxy objects ???
+	? Change "aspects" to the proxy objects
 	
 	- Frame buffer scissor test
 	
-	- Depth mask and color mask must be set in frame buffer ClearXXXX methods. Should them be used as Program methods ???
+	+ Depth mask and color mask must be set in frame buffer ClearXXXX methods. Should them be used as Program methods? No they are more related to the frame buffer Clear() method.
 	
-	- Program automatic restore to the default settings
+	- Program automatic restore to the default settings ???
 	
 	- Program internal frame buffer cache.
 		
@@ -18,10 +18,30 @@
 		
 	- Nehe examples texture deffered loading causes texture initialization error
 	
-	- Framebuffer texture available settings
+	? Framebuffer texture available settings
 	
 	- Various webgl 2.0 features
 	
 	- uniformf and uniformfv methods overloading
 	
 	- BlurStroke shader
+	
+	- ANGLE_instanced_arrays
+	
+	+ TextureUnitObject helper class. Default sampler uniforms sequential values assignment. https://www.khronos.org/webgl/wiki/TextureState.
+	
+	- Resources cleanup. Like disabling vertex arrays, unbinding textures from texture units etc
+	
+	- Embedded matrices builder module
+	
+	- UniformBufferObject helper implementation
+	
+	? ProgramSources proxy mode. 
+	
+	? `Uber shader program` (with list of uniforms like useLighting, useAlphaMap) in most cases are not good.
+	
+	? Multiple textures demo
+	
+	- GLTF loader
+	
+	- Array buffer `View` helper object instead of pointer. With _count property. 
