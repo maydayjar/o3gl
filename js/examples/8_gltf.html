@@ -47,13 +47,22 @@
 		client.send();
 	}
 	
+	function getText(url, onReady) {
+		var client = new XMLHttpRequest();
+		client.open('GET', url);
+		client.onreadystatechange = function() {
+			onReady(client.responseText);
+		}
+		client.send();
+	}
+
+	
 	function getArrayBuffer(url, onReady) {
 		var xhr = new XMLHttpRequest();
 		xhr.open('GET', url, true);
 		xhr.responseType = 'arraybuffer';
 
 		xhr.onload = function(e) {
-			if (this.status == 200) {
 			var uInt8Array = new ArrayBuffer(this.response);
 			onReady(arrayBuffer);
 		}
@@ -88,7 +97,7 @@
 						var textureWrapS 			= gltf.samplers[textureSampler].wrapS;
 						var textureWrapT 			= gltf.samplers[textureSampler].wrapT;
 					
-						texture = o3gl.createTexture2D();
+						texture = o3gl.CreateTexture2D();
 						
 						texture._format = textureFormat;
 						texture._internalFormat = textureInternalFormat;
@@ -126,17 +135,32 @@
 					}
 					if (target === 34962) {
 						var bufferView 			= new Float32Array(arrayBuffer, byteOffset, byteLength / 4);
-						var arrayBuffer 		= o3gl.createArrayBuffer().Data(bufferView);
+						var arrayBuffer 		= o3gl.CreateArrayBuffer().Data(bufferView);
 						gltf.bufferViews[name] 	= arrayBuffer;
 					}
 					if (target === 34963) {
 						var bufferView 			= new Uint16Array(arrayBuffer, byteOffset, byteLength / 2);
-						var elementArrayBuffer 	= o3gl.createElementArrayBuffer().Data(bufferView);
+						var elementArrayBuffer 	= o3gl.CreateElementArrayBuffer().Data(bufferView);
 						gltf.bufferViews[name] 	= elementArrayBuffer;
 					}
 				}
 			}
 
+			if (gltf.shaders) {
+				for (var name in gltf.shaders) {					
+					var uri = gltf.shaders[name].uri;
+					
+					getText(uri, function(shaderSource) {
+						gltf.shaders[name] = o3gl.CreateShader(shaderSource);
+						
+						console.log("\nShader name:" + name);
+						console.log("\nShader source:" + shaderSource);
+					});
+					
+				}
+			}
+
+			/*
 			if (gltf.accessors) {
 				for (var name in gltf.accessors) {
 					var bufferView 		= gltf.accessors[name].bufferView;
@@ -152,7 +176,7 @@
 					gltf.accessors[name] = 
 				}
 			}
-
+			*/
 			
 		
 		});
