@@ -47,31 +47,137 @@
 		client.send();
 	}
 	
+	function getText(url, onReady) {
+		var client = new XMLHttpRequest();
+		client.open('GET', url);
+		client.onreadystatechange = function() {
+			onReady(client.responseText);
+		}
+		client.send();
+	}
+
+	
+	function getArrayBuffer(url, onReady) {
+		var xhr = new XMLHttpRequest();
+		xhr.open('GET', url, true);
+		xhr.responseType = 'arraybuffer';
+
+		xhr.onload = function(e) {
+			var uInt8Array = new ArrayBuffer(this.response);
+			onReady(arrayBuffer);
+		}
+	}
+	
 	function init() {				
 	
 		
 		getJSON("./model/Ironman/Ironman.gltf",function(gltf) {
-			
-			var result = {};
-
+			// Initialize images
 			if (gltf.images) {
-				result.images = {};
 				for (var name in gltf.images) {
 					var image = new Image();
 					image.src = gltf.images[name].uri;
-					result.images[name] = image;
+					gltf.images[name] = image;
 				}
 			}
 
-			
+			// Initialize textures			
 			if (gltf.textures) {
-				for (var textureName in gltf.textures) {
-					var textureData = gltf.textures[textureName];
+				for (var name in gltf.textures) {
+					var texture;
+					if (gltf.textures[name].target == gl.TEXTURE_2D) {
+						var textureFormat 			= gltf.textures[name].format;
+						var textureInternalFormat 	= gltf.textures[name].internalFormat;
+						var textureType 			= gltf.textures[name].type;
+						var textureSource 			= gltf.textures[name].source;
+						var textureSampler 			= gltf.textures[name].sampler;
+
+						var textureMinFilter 		= gltf.samplers[textureSampler].minFilter;
+						var textureMagFilter 		= gltf.samplers[textureSampler].magFilter;
+						var textureWrapS 			= gltf.samplers[textureSampler].wrapS;
+						var textureWrapT 			= gltf.samplers[textureSampler].wrapT;
 					
+						texture = o3gl.CreateTexture2D();
+						
+						texture._format = textureFormat;
+						texture._internalFormat = textureInternalFormat;
+						texture._type = textureType;
+						
+						texture.Image(gltf.images[textureSource]).
+						Filter(textureMinFilter, textureMagFilter).
+						Wrap(textureWrapS, textureWrapT);
+
+						gltf.textures[name] = texture;
+					}
+				}
+			}
+			
+			if (gltf.buffers) {
+				for (var name in gltf.buffers) {
+					getArrayBuffer(gltf.buffers[name].uri, function(arrayBuffer) {
+						gltf.buffers[name] = arrayBuffer;
+					});
+				}
+			}
+
+			if (gltf.bufferViews) {
+				for (var name in gltf.bufferViews) {
+					var buffer 		= gltf.bufferViews[name].buffer;
+					var byteLength 	= gltf.bufferViews[name].byteLength;
+					var byteOffset 	= gltf.bufferViews[name].byteOffset;
+					var target 		= gltf.bufferViews[name].target;
 					
+					var arrayBuffer = gltf.buffers[buffer];
+										
+					if (target === 0) {
+						var bufferView 			= new ArrayBuffer(arrayBuffer, byteOffset, byteLength);
+						gltf.bufferViews[name] 	= bufferView;
+					}
+					if (target === 34962) {
+						var bufferView 			= new Float32Array(arrayBuffer, byteOffset, byteLength / 4);
+						var arrayBuffer 		= o3gl.CreateArrayBuffer().Data(bufferView);
+						gltf.bufferViews[name] 	= arrayBuffer;
+					}
+					if (target === 34963) {
+						var bufferView 			= new Uint16Array(arrayBuffer, byteOffset, byteLength / 2);
+						var elementArrayBuffer 	= o3gl.CreateElementArrayBuffer().Data(bufferView);
+						gltf.bufferViews[name] 	= elementArrayBuffer;
+					}
+				}
+			}
+
+			if (gltf.shaders) {
+				for (var name in gltf.shaders) {					
+					var uri = gltf.shaders[name].uri;
+					
+					getText(uri, function(shaderSource) {
+						gltf.shaders[name] = o3gl.CreateShader(shaderSource);
+						
+						console.log("\nShader name:" + name);
+						console.log("\nShader source:" + shaderSource);
+					});
 					
 				}
 			}
+
+			/*
+			if (gltf.accessors) {
+				for (var name in gltf.accessors) {
+					var bufferView 		= gltf.accessors[name].bufferView;
+					var byteOffset 		= gltf.accessors[name].byteOffset;
+					var componentType 	= gltf.accessors[name].componentType;
+					var count 			= gltf.accessors[name].count;
+					var type 			= gltf.accessors[name].type;
+					var max 			= gltf.accessors[name].max;
+					var min 			= gltf.accessors[name].min;
+					
+					var pointer = 
+					
+					gltf.accessors[name] = 
+				}
+			}
+			*/
+			
 		
 		});
 

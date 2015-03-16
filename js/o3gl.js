@@ -588,6 +588,51 @@ Extend(o3gl.Texture, o3gl.Resource, {
 		return this;
 	}
 	,
+	format : function(value) {
+		this._format = value;
+		return this;
+	}
+	,
+	formatAlpha : function(value) {
+		this._format = gl.ALPHA;
+		return this;
+	}
+	,
+	formatRGB : function(value) {
+		this._format = gl.RGB;
+		return this;
+	}
+	,
+	formatRGBA : function(value) {
+		this._format = gl.RGBA;
+		return this;
+	}
+	,
+	formatLuminance : function(value) {
+		this._format = gl.LUMINANCE;
+		return this;
+	}
+	,
+	typeUnsignedByte : function() {
+		this._type = gl.UNSIGNED_BYTE;
+		return this;
+	}
+	,
+	typeUnsignedShort_5_6_5 : function() {
+		this._type = gl.UNSIGNED_SHORT_5_6_5;
+		return this;
+	}
+	,
+	typeUnsignedShort_4_4_4_4 : function() {
+		this._type = gl.UNSIGNED_SHORT_4_4_4_4;
+		return this;
+	}
+	,
+	typeUnsignedShort_5_5_5_1 : function() {
+		this._type = gl.UNSIGNED_SHORT_5_5_5_1;
+		return this;
+	}
+	,	
 	typeFloat : function() { 
 		var isExtension = gl.getExtension("OES_texture_float");
 		if (isExtension) {
@@ -639,6 +684,12 @@ Extend(o3gl.Texture2D, o3gl.Texture,
 		
 		return true;
 //		return true;
+	}
+	,
+	Filter : function (glTextureMinFilter, glTextureMagFilter) {
+		gl.texParameteri(this._target, gl.TEXTURE_MIN_FILTER, glTextureMinFilter);		
+		gl.texParameteri(this._target, gl.TEXTURE_MAG_FILTER, glTextureMagFilter);		
+		return this;
 	}
 	,
 	FilterMagLinear : function () {
@@ -719,6 +770,12 @@ Extend(o3gl.Texture2D, o3gl.Texture,
         return this.FilterMinLinearMipmapNearest().FilterMagLinearMipmapNearest();
     }
     ,
+	Wrap : function(glTextureWrapS, glTextureWrapT) {
+		gl.texParameteri(this._target, gl.TEXTURE_WRAP_S, glTextureWrapS);
+		gl.texParameteri(this._target, gl.TEXTURE_WRAP_T, glTextureWrapT);
+		return this;
+	}
+	,
 	WrapClampToEdge : function () {
 		gl.texParameteri(this._target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(this._target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -1337,10 +1394,7 @@ o3gl.FrameBuffer.prototype = {
 			gl.COLOR_ATTACHMENT14,
 			gl.COLOR_ATTACHMENT15			
 		];
-	
 
-
-	
 		for (var i=0; i<arguments.length; ++i) {
 			var attachment 	= arguments[i];
 
