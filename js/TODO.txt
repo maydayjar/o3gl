@@ -4,7 +4,7 @@
 	
 	+ Depth mask and color mask must be set in frame buffer ClearXXXX methods. Should them be used as Program methods? No they are more related to the frame buffer Clear() method.
 	
-	- Program automatic restore to the default settings ???
+	? Program automatic restore to the default settings
 	
 	- Program internal frame buffer cache.
 		
@@ -22,7 +22,7 @@
 	
 	- Various webgl 2.0 features
 	
-	- uniformf and uniformfv methods overloading
+	? uniformf and uniformfv methods overloading
 	
 	- BlurStroke shader
 	
@@ -45,3 +45,5 @@
 	- GLTF loader
 	
 	- Array buffer `View` helper object instead of pointer. With _count property. 
+	
+	- _DrawPrimitives is coupled with VertexArrayObject

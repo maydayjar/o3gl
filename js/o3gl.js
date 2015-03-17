@@ -1780,6 +1780,26 @@ o3gl.VertexArray.prototype = {
 		return result;
 	}
 	,
+	getMaxInstancesCount : function() {
+		var maxInstancesCount = 0;
+		for (var attributeLocation in this.attributes) {				
+			var value = this.attributes[attributeLocation];
+			if (!(value instanceof o3gl.ArrayBuffer.Pointer)) continue;
+			var pointer = value;
+			var divisor = pointer._divisor;
+			if (divisor === 1) {
+				// TODO: temporary implementation
+				var pointerMaxElementsCount = pointer.getMaxElementsCount();
+				if (!maxInstancesCount) {
+					maxInstancesCount = pointerMaxElementsCount;
+				} else if (maxInstancesCount > pointerMaxElementsCount) {
+					maxInstancesCount = pointerMaxElementsCount;
+				}
+			}
+		}
+		return maxInstancesCount;
+	}
+	,
 	Elements :function(elementArrayBuffer) {
 		this.elementArrayBuffer = elementArrayBuffer;
 		if (this.elementArrayBuffer) {
@@ -1822,6 +1842,12 @@ o3gl.VertexArray.prototype = {
 			strideBytes, // Specifies the byte offset between consecutive generic vertex attributes. If stride is 0, the generic vertex attributes are understood to be tightly packed in the array. The initial value is 0.
 			offsetBytes  // Specifies a offset of the first component of the first generic vertex attribute in the array in the data store of the buffer currently bound to the GL_ARRAY_BUFFER target. The initial value is 0.
 		);
+		
+		// ANGLE instanced arrays
+		if (arrayBufferPointer._divisor) {
+			var ext = gl.getExtension("ANGLE_instanced_arrays");
+			ext.vertexAttribDivisorANGLE(attributeLocation, arrayBufferPointer._divisor)
+		}
 		
 		// remember for default draw methods invocation
 		this.attributes[attributeLocation] = arrayBufferPointer;
@@ -2203,11 +2229,11 @@ o3gl.Program.prototype = {
 		return this;
 	}
 	,
-	getUniformLocation : function (name) {
+	GetUniformLocation : function (name) {
 		return this._uniforms[name].location;
 	}
 	,
-	getAttribLocation : function (name) {
+	GetAttribLocation : function (name) {
 		return this._attributes[name].location;
 	}
 	,
@@ -2329,7 +2355,7 @@ o3gl.Program.prototype = {
 			gl.uniformMatrix4fv(program.mMatrixUniform[0], false, this.modelMatrices[0]);
 		*/
 		
-		gl.uniformMatrix3fv(this.getUniformLocation(name), false, matrix);			
+		gl.uniformMatrix3fv(this.GetUniformLocation(name), false, matrix);			
 		return this;		
 	}
 	,
@@ -2337,7 +2363,7 @@ o3gl.Program.prototype = {
 	
 		// location [in]
 		// Type: WebGLUniformLocation
-		// The location of uniform variable to be updated. Locate set by getUniformLocation.
+		// The location of uniform variable to be updated. Locate set by GetUniformLocation.
 		
 		// transpose [in]
 		// Type: boolean
@@ -2347,96 +2373,96 @@ o3gl.Program.prototype = {
 		// Type: Float32Array
 		// An array of float values representing one or more 4x4 matrices.
 	
-		gl.uniformMatrix4fv(this.getUniformLocation(name), false, matrix);
+		gl.uniformMatrix4fv(this.GetUniformLocation(name), false, matrix);
 		return this;		
 	}
 	,
 	Uniform1f: function(name, v1) {
-		var uniformLocation = this.getUniformLocation(name);
+		var uniformLocation = this.GetUniformLocation(name);
 		gl.uniform1f(uniformLocation, v1);
 		return this;
 	}
 	,
 	Uniform2f: function(name, v1, v2) {
-		var uniformLocation = this.getUniformLocation(name);
+		var uniformLocation = this.GetUniformLocation(name);
 		gl.uniform2f(uniformLocation, v1, v2);
 		return this;
 	}
 	,
 	Uniform3f: function(name, v1, v2, v3) {
-		var uniformLocation = this.getUniformLocation(name);
+		var uniformLocation = this.GetUniformLocation(name);
 		gl.uniform3f(uniformLocation, v1, v2, v3);
 		return this;
 	}
 	,
 	Uniform4f: function(name, v1, v2, v3, v4) {
-		var uniformLocation = this.getUniformLocation(name);
+		var uniformLocation = this.GetUniformLocation(name);
 		gl.uniform4f(uniformLocation, v1, v2, v3, v4);
 		return this;
 	}
 	,
 	Uniform1fv: function(name, value) { // value must be an array
-		gl.uniform1fv(this.getUniformLocation(name), value);
+		gl.uniform1fv(this.GetUniformLocation(name), value);
 		return this;
 	}
 	,
 	Uniform2fv: function(name, value) { // value must be an array
-		var uniformLocation = this.getUniformLocation(name);
+		var uniformLocation = this.GetUniformLocation(name);
 		gl.uniform2fv(uniformLocation, value);
 		return this;
 	}
 	,
 	Uniform3fv: function(name, value) { // value must be an array
-		gl.uniform3fv(this.getUniformLocation(name), value);
+		gl.uniform3fv(this.GetUniformLocation(name), value);
 		return this;
 	}
 	,
 	Uniform4fv: function(name, value) { // value must be an array
-		gl.uniform4fv(this.getUniformLocation(name), value);
+		gl.uniform4fv(this.GetUniformLocation(name), value);
 		return this;
 	}
 	,
 	Uniform1i: function(name, v1) {
-		var uniformLocation = this.getUniformLocation(name);
+		var uniformLocation = this.GetUniformLocation(name);
 		gl.uniform1i(uniformLocation, v1);
 		return this;
 	}
 	,
 	Uniform2i: function(name, v1, v2) {
-		var uniformLocation = this.getUniformLocation(name);
+		var uniformLocation = this.GetUniformLocation(name);
 		gl.uniform2i(uniformLocation, v1, v2);
 		return this;
 	}
 	,
 	Uniform3i: function(name, v1, v2, v3) {
-		var uniformLocation = this.getUniformLocation(name);
+		var uniformLocation = this.GetUniformLocation(name);
 		gl.uniform3i(uniformLocation, v1, v2, v3);
 		return this;
 	}
 	,
 	Uniform4i: function(name, v1, v2, v3, v4) {
-		var uniformLocation = this.getUniformLocation(name);
+		var uniformLocation = this.GetUniformLocation(name);
 		gl.uniform4i(uniformLocation, v1, v2, v3, v4);
 		return this;
 	}
 	,
 	Uniform1iv: function(name, value) { // value must be an array
-		gl.uniform1iv(this.getUniformLocation(name), value);
+		gl.uniform1iv(this.GetUniformLocation(name), value);
 		return this;
 	}
 	,
 	Uniform2iv: function(name, value) { // value must be an array
-		gl.uniform2iv(this.getUniformLocation(name), value);
+		gl.uniform2iv(this.GetUniformLocation(name), value);
 		return this;
 	}
 	,
 	Uniform3iv: function(name, value) { // value must be an array
-		gl.uniform3iv(this.getUniformLocation(name), value);
+		gl.uniform3iv(this.GetUniformLocation(name), value);
 		return this;
 	}
 	,
 	Uniform4iv: function(name, value) { // value must be an array
-		gl.uniform4iv(this.getUniformLocation(name), value);
+		gl.uniform4iv(this.GetUniformLocation(name), value);
 		return this;
 	}
 	,
@@ -2473,32 +2499,32 @@ o3gl.Program.prototype = {
 	}
 	,
 	VertexAttributePointer : function(name, arrayBufferPointer) {		
-		var attributeLocation = this.getAttribLocation(name);
+		var attributeLocation = this.GetAttribLocation(name);
 		this.VertexArray().VertexAttributePointer(attributeLocation, arrayBufferPointer);
 		return this;
 	}
 	,
 	VertexAttribute1f : function(name, v1) {
-		var attributeLocation = this.getAttribLocation(name);
+		var attributeLocation = this.GetAttribLocation(name);
 		this.VertexArray().VertexAttribute1f(attributeLocation, v1);
 		return this;
 	}
 	,
 	VertexAttribute2f : function(name, v1, v2) {
-		var attributeLocation = this.getAttribLocation(name);
+		var attributeLocation = this.GetAttribLocation(name);
 		this.VertexArray().VertexAttribute2f(attributeLocation, v1, v2);
 		return this;
 	}
 	,
 	VertexAttribute3f : function(name, v1, v2, v3) {
-		var attributeLocation = this.getAttribLocation(name);
+		var attributeLocation = this.GetAttribLocation(name);
 		this.VertexArray().VertexAttribute3f(attributeLocation, v1, v2, v3);
 		return this;
 	}
 	,
 	VertexAttribute4f : function(name, v1, v2, v3, v4) {
-		var attributeLocation = this.getAttribLocation(name);
-		var attributeLocation = this.getAttribLocation(name);
+		var attributeLocation = this.GetAttribLocation(name);
+		var attributeLocation = this.GetAttribLocation(name);
 		this.VertexArray().VertexAttribute4f(attributeLocation, v1, v2, v3, v4);
 		return this;
 	}
@@ -2725,22 +2751,10 @@ o3gl.Program.prototype = {
 			this._frameBufferObject.Bind();		
 		}
 		if (this._textureUnitObject) {
-			/*
-			for (var name in this._samplers) {
-				var index = this._samplers[name];
-				var texture = this._textureUnitObject._textures[index];
-				gl.activeTexture(gl.TEXTURE0 + index);
-				texture.Bind();
-				this.Uniform1i(name, index);
-			}
-			*/
 			this._textureUnitObject.Bind();		
 		}
 		
 		this.Use(); // assert current program
-		
-		
-		var elementArrayBuffer = undefined;
 		
 		
 		if (this._vertexArrayObject) {
@@ -2773,8 +2787,12 @@ o3gl.Program.prototype = {
 			} else {
 				elementsCount = maxElementsCount;
 			}
-			
-			gl.drawElements(glMode, elementsCount, elementType, offsetBytes);
+			if (!maxInstancesCount) {
+				gl.drawElements(glMode, elementsCount, elementType, offsetBytes);
+			} else {
+				var ext = gl.getExtension("ANGLE_instanced_arrays");
+				ext.drawElementsInstancedANGLE(gl.TRIANGLES, elementsCount, elementType, offsetBytes, maxInstancesCount);
+			}
 		} else {
 			if (!first) {
 				first = 0;
@@ -2782,7 +2800,13 @@ o3gl.Program.prototype = {
 			if (!count) {
 				count = maxElementsCount;
 			}
-			gl.drawArrays(glMode, first, count);
+			
+			if (!maxInstancesCount) {
+				gl.drawArrays(glMode, first, count);
+			} else {
+				var ext = gl.getExtension("ANGLE_instanced_arrays");
+				ext.drawArraysInstancedANGLE(gl.TRIANGLES, first, count, maxInstancesCount);
+			}
 		}
 */
 		return this;		
