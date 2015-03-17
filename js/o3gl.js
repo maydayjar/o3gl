@@ -470,7 +470,7 @@ o3gl.textures 			= [];
 o3gl.buffers 			= [];
 o3gl.framebuffers 		= [];
 o3gl.renderbuffers 		= [];
-o3gl.vertexArrayObjects = [];
+o3gl.vertexArrays = [];
 
 o3gl.ACTIVE_TEXTURE 	= 0;
 
@@ -572,7 +572,10 @@ Extend(o3gl.Texture, o3gl.Resource, {
 		gl.deleteTexture(this._textureId);
 	}
 	,
-	Bind : function() {
+	Bind : function(textureUnit) {
+		if (textureUnit !== undefined) {
+			gl.activeTexture(textureUnit);
+		}
 		gl.bindTexture(this._target, this._textureId);
 		// Texture itself has no methods except bind.
 		return this; // Return intrface with all the texture manipulation API
@@ -1094,6 +1097,99 @@ Extend(o3gl.Buffer, o3gl.Resource, {
 );
 
 
+o3gl.Buffer.Pointer = function(buffer) {
+    this._buffer = buffer;
+    this._type = buffer._type;	// It is possible that buffer contains data of various types. So type must be set per pointer
+    this._stride = 0;			// Stride in bytes
+    this._offset = 0;			// Offset in bytes
+	this._size = 4; 			// Specifies the number of components per generic vertex attribute. Must be 1, 2, 3, 4. Additionally, the symbolic constant GL_BGRA is accepted by glVertexAttribPointer. The initial value is 4.
+}
+
+o3gl.Buffer.Pointer.prototype = {
+	typeByte : function(size) {
+		this._type = gl.BYTE;
+		if (size) this._size = size;
+		return this;
+	}
+	,
+	typeUnsignedByte : function(size) {
+		this._type = gl.UNSIGNED_BYTE;
+		if (size) this._size = size;
+		return this;
+	}
+	,
+	typeShort : function(size) {
+		this._type = gl.SHORT;
+		if (size) this._size = size;
+		return this;
+	}
+	,
+	typeUnsignedShort : function(size) {
+		this._type = gl.UNSIGNED_SHORT;
+		if (size) this._size = size;
+		return this;
+	}
+	,
+	typeInt : function(size) {
+		this._type = gl.INT;
+		if (size) this._size = size;
+		return this;
+	}
+	,
+	typeUnsignedInt : function(size) {
+		this._type = gl.UNSIGNED_INT;
+		if (size) this._size = size;
+		return this;
+	}
+	,
+	typeHalfFloat : function(size) {
+		this._type = gl.HALF_FLOAT;
+		if (size) this._size = size;
+		return this;
+	}
+	,
+	typeFloat : function(size) {
+		this._type = gl.FLOAT;
+		if (size) this._size = size;
+		return this;
+	}
+	,
+	typeDouble : function(size) {
+		this._type = gl.DOUBLE;
+		if (size) this._size = size;
+		return this;
+	}
+	,
+	stride : function(bytes) {
+		this._stride = bytes;
+		return this;
+	}
+	,
+	offset : function(bytes) {
+		this._offset = bytes;
+		return this;
+	}
+	,
+	size : function(value) {
+		this._size = value;
+		return this;
+	}
+	,
+	count : function(value) {
+		this._count = value;
+		return this;
+	}
+	,
+	getMaxElementsCount : function() {
+		// TODO: consider offset, stride and data type
+		return this._buffer._length / this._size;
+	}
+};
+
+
+
+
+
 o3gl.ArrayBuffer = function() {
 	o3gl.Buffer.call(this);
 	// Basically usage parameter is a hint to OpenGL/WebGL how you intent to use the buffer. The OpenGL/WebGL can then optimize the buffer depending of your hint.
@@ -1152,78 +1248,11 @@ Extend(o3gl.ArrayBuffer, o3gl.Buffer,
 
 o3gl.ArrayBuffer.Pointer = function(buffer) {
     this._buffer = buffer;
-    this._type = buffer._type;	// It is possible that buffer contains data of various types. So type must be set per pointer
-    this._stride = 0;			// Stride in bytes
-    this._offset = 0;			// Offset in bytes
-	this._size = 4; 			// Specifies the number of components per generic vertex attribute. Must be 1, 2, 3, 4. Additionally, the symbolic constant GL_BGRA is accepted by glVertexAttribPointer. The initial value is 4.
-	this._normalized = false;	// as
-	this._count = null;
-	
+	this._normalized = false;	// as	
 	this._divisor = 0;	// Extensions ANGLE_instanced_arrays, 
-	
 }
 
-o3gl.ArrayBuffer.Pointer.prototype = {
-	typeByte : function() {
-		this._type = gl.BYTE;
-		return this;
-	}
-	,
-	typeUnsignedByte : function() {
-		this._type = gl.UNSIGNED_BYTE;
-		return this;
-	}
-	,
-	typeShort : function() {
-		this._type = gl.SHORT;
-		return this;
-	}
-	,
-	typeUnsignedShort : function() {
-		this._type = gl.UNSIGNED_SHORT;
-		return this;
-	}
-	,
-	typeInt : function() {
-		this._type = gl.INT;
-		return this;
-	}
-	,
-	typeUnsignedInt : function() {
-		this._type = gl.UNSIGNED_INT;
-		return this;
-	}
-	,
-	typeHalfFloat : function() {
-		this._type = gl.HALF_FLOAT;
-		return this;
-	}
-	,
-	typeFloat : function(size) {
-		this._type = gl.FLOAT;
-		return this;
-	}
-	,
-	typeDouble : function(size) {
-		this._type = gl.DOUBLE;
-		return this;
-	}
-	,
-	stride : function(bytes) {
-		this._stride = bytes;
-		return this;
-	}
-	,
-	offset : function(bytes) {
-		this._offset = bytes;
-		return this;
-	}
-	,
-	size : function(value) {
-		this._size = value;
-		return this;
-	}
-	,
+Extend(o3gl.ArrayBuffer.Pointer, o3gl.Buffer.Pointer, {
 	count : function(value) {
 		this._count = value;
 		return this;
@@ -1248,12 +1277,7 @@ o3gl.ArrayBuffer.Pointer.prototype = {
         this._normalized = value;
         return this;
     }
-	,
-	getMaxElementsCount : function() {
-		// TODO: consider offset, stride and data type
-		return this._buffer._length / this._size;
-	}
-};
+});
 
 o3gl.ElementArrayBuffer = function() {
 	// Super constructor
@@ -1281,6 +1305,66 @@ Extend(o3gl.ElementArrayBuffer, o3gl.Buffer,
 		return this;
 	}
 });
+
+o3gl.UniformBuffer = function () {
+	// Super constructor
+	o3gl.Buffer.call(this);
+	// Basically usage parameter is a hint to OpenGL/WebGL how you intent to use the buffer. The OpenGL/WebGL can then optimize the buffer depending of your hint.
+	this._target 		= gl.UNIFORM_BUFFER;			// gl.ARRAY_BUFFER gl.ELEMENT_ARRAY_BUFFER
+	this._usage 		= gl.DYNAMIC_DRAW;				// gl.STATIC_DRAW gl.DYNAMIC_DRAW
+	this._type 			= undefined;					// Uniform buffer is likely composed of various types
+}
+
+Extend(o3gl.UniformBuffer, o3gl.Buffer, 
+{
+	pointer : function(program, uniformName) {
+	}
+});
+
+o3gl.UniformBuffer.Pointer = function(uniformBuffer) {
+}
+
+Extend(o3gl.UniformBuffer.Pointer, o3gl.Buffer.Pointer, {
+});
+
+
+o3gl.UniformBufferDefault = function (uniformBlockName) {
+	this._uniformBlockIndex = -1; // Default uniform block index
+	this._uniform
+}
+
+o3gl.UniformBufferDefault.prototype = {
+	Bind : function() {
+	}
+}
+
+// UBO concept
+/*
+uniform MyBlock1 {
+	vec3 v3;
+	int i;
+}
+
+var ub = o3gl.createUniformBuffer();
+
+//1st way to setup data
+var pv3 = ub.pointer().typeFloat().size(3);
+var pi = pv3.next().typeInt().size(1);
+pv3.Data(1.0,2.0,3.0);
+pi.Data(1);
+// Or
+ub.pointer().								
+	name("a").									// Named pointer ???
+	typeFloat().size(3).Data(1.0, 2.0, 3.0).
+	next().typeInt().size(1).Data(100)
+
+var p = o3gl.createProgram();
+
+// 2nd way to setup data
+p.UniformBlock("myBlock1", ub.pointer().offset(0)).uniform3f("v3", )
+
+*/
+
 
 
 o3gl.FrameBuffer = function() {
@@ -1648,52 +1732,52 @@ o3gl.Shader.prototype = {
 }
 
 // http://blog.tojicode.com/2012/10/oesvertexarrayobject-extension.html
-o3gl.VertexArrayObject = function () {
+o3gl.VertexArray = function () {
 	this._extension = gl.getExtension("OES_vertex_array_object"); 	// Vendor prefixes may apply!  
-	this.vertexArrayObjectId = _extension.createVertexArrayOES();;
+	this.vertexArrayId = _extension.createVertexArrayOES();;
 	
 	// Used to calculate default buffer size
 	this.elementArrayBuffer = null;											// Assotiated element array buffer
 	this.attributes = [];													// Per location vertex attribute values
 }
 
-o3gl.VertexArrayObject.prototype = {
+o3gl.VertexArray.prototype = {
 	Id : function() {
-		return this.vertexArrayObjectId;
+		return this.vertexArrayId;
 	}
 	,
 	Delete : function() {
-		this._extension.deleteVertexArrayOES(this.vertexArrayObjectId);
+		this._extension.deleteVertexArrayOES(this.vertexArrayId);
 	}
 	,
 	Bind : function() {
-		this._extension.bindVertexArrayOES(this.vertexArrayObjectId);			
+		this._extension.bindVertexArrayOES(this.vertexArrayId);			
 		return this;
 	}
 	,
-	getMaxElementsCount : function() {
-		var maxElementsCount = undefined;
-		if (this.elementArrayBuffer) {
-			maxElementsCount = this.elementArrayBuffer._length
-		} else {
-			for (var attributeLocation in this.attributes) {				
-				var value = this.attributes[attributeLocation];
-				
-				if (!(value instanceof o3gl.ArrayBuffer.Pointer)) continue;
-				
-				var pointer = value;
-				
-				var pointerMaxElementsCount = pointer.getMaxElementsCount();
+	_getMaxElementArrayBufferCount : function() {
+		return this.elementArrayBuffer._length;
+	}
+	,
+	_getMaxArrayBufferCount : function() {
+		var result = null;
+		for (var attributeLocation in this.attributes) {				
+			var value = this.attributes[attributeLocation];
+			
+			if (!(value instanceof o3gl.ArrayBuffer.Pointer)) continue;
+			
+			var pointer = value;
+			
+			var pointerMaxElementsCount = pointer.getMaxElementsCount();
 
-				if (!maxElementsCount) {
-					maxElementsCount = pointerMaxElementsCount;					
-				}
-				if (maxElementsCount > pointerMaxElementsCount) {
-					maxElementsCount = pointerMaxElementsCount;
-				}
-			}		
-		}			
-		return maxElementsCount;
+			if (result === null) {
+				result = pointerMaxElementsCount;					
+			}
+			if (result > pointerMaxElementsCount) {
+				result = pointerMaxElementsCount;
+			}
+		}
+		return result;
 	}
 	,
 	Elements :function(elementArrayBuffer) {
@@ -1773,7 +1857,7 @@ o3gl.VertexArrayObject.prototype = {
 	}
 }
 
-o3gl.VertexArrayObjectDefault = function () {	
+o3gl.VertexArrayDefault = function () {	
 	// Used to calculate default buffer size
 	this.elementArrayBuffer = null;											// Assotiated element array buffer
 	this.attributes = [];										// Per location vertex attribute pointers
@@ -1799,22 +1883,7 @@ o3gl.VertexArrayObjectDefault = function () {
 		return this;
 	}	
 }
-o3gl.VertexArrayObjectDefault.prototype = o3gl.VertexArrayObject.prototype;
-
-
-o3gl.UniformBufferObject = function () {
-}
-
-o3gl.UniformBufferObject.prototype = {
-	Id : function() {
-	}
-	,
-	Delete : function() {
-	}
-	,
-	Bind : function() {
-	}
-}
+o3gl.VertexArrayDefault.prototype = o3gl.VertexArray.prototype;
 
 /*
 Helper object that incorporates texture unit bindings
@@ -2021,6 +2090,113 @@ o3gl.Program.prototype = {
 		}
 		return result;
 	}
+	/**
+		Vertex attribute properties
+	
+	,
+	GetVertexAttributeArrayBufferBinding : function(name) {
+		var attributeLocation = this.getAttributeLocation();
+		return gl.getVertexAttrib(attributeLocation, gl.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING);
+	}
+	,
+	GetVertexAttributeArrayEnabled : function(name) {
+		var attributeLocation = this.getAttributeLocation();
+		return gl.getVertexAttrib(attributeLocation, gl.VERTEX_ATTRIB_ARRAY_ENABLED);
+	}
+	,
+	GetVertexAttributeArraySize : function(name) {
+		var attributeLocation = this.getAttributeLocation();
+		return gl.getVertexAttrib(attributeLocation, gl.VERTEX_ATTRIB_ARRAY_SIZE);
+	}
+	,
+	GetVertexAttributeArrayStride : function(name) {
+		var attributeLocation = this.getAttributeLocation();
+		return gl.getVertexAttrib(attributeLocation, gl.VERTEX_ATTRIB_ARRAY_STRIDE);
+	}
+	,
+	GetVertexAttributeArrayType : function(name) {
+		var attributeLocation = this.getAttributeLocation();
+		return gl.getVertexAttrib(attributeLocation, gl.VERTEX_ATTRIB_ARRAY_TYPE);
+	}
+	,
+	GetVertexAttributeArrayNormalized : function(name) {
+		var attributeLocation = this.getAttributeLocation();
+		return gl.getVertexAttrib(attributeLocation, gl.VERTEX_ATTRIB_ARRAY_NORMALIZED);
+	}
+	*/
+	,
+	GetUniformBlockIndex : function(uniformBlockName) {
+		return gl.getUniformBlockIndex(this.Id(), uniformBlockName);
+	}
+	,
+	_GetActiveUniformBlockParameter : function(uniformBlockName, glPname) {
+		var uniformBlockIndex = this.GetUniformBlockIndex(uniformBlockName);
+		return gl.getActiveUniformBlockParameter(this.Id(), uniformBlockIndex, glPname)
+	}
+	,
+	GetUniformBlockBinding : function(uniformBlockName) {
+		return this._GetActiveUniformBlockParameter(uniformBlockName, UNIFORM_BLOCK_BINDING);
+	}
+	,
+	GetUniformBlockDataSize : function(uniformBlockName) {
+		return this._GetActiveUniformBlockParameter(uniformBlockName, UNIFORM_BLOCK_DATA_SIZE);
+	}
+	,
+	GetUniformBlockActiveUniforms : function(uniformBlockName) {
+		return this._GetActiveUniformBlockParameter(uniformBlockName, UNIFORM_BLOCK_ACTIVE_UNIFORMS);
+	}
+	,
+	GetUniformBlockActiveUniformIndices : function(uniformBlockName) {
+		return this._GetActiveUniformBlockParameter(uniformBlockName, UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES);
+	}
+	,
+	GetUniformBlockReferencedByVertexShader : function(uniformBlockName) {
+		return this._GetActiveUniformBlockParameter(uniformBlockName, UNIFORM_BLOCK_REFERENCED_BY_VERTEX_SHADER);
+	}
+	,
+	GetUniformBlockReferencedByFragmentShader : function(uniformBlockName) {
+		return this._GetActiveUniformBlockParameter(uniformBlockName, UNIFORM_BLOCK_REFERENCED_BY_FRAGMENT_SHADER);
+	}
+	,
+	GetActiveUniformIndex : function(uniformName) {
+		return gl.getUniformIndices(this.Id(), [uniformName]) [0]; // TODO: API ??? sequence<> is an array
+	}
+	,
+	_GetActiveUniforms : function(uniformName, glPname) {
+		var uniformIndex = this.GetActiveUniformIndex(uniformName);
+		return gl.getActiveUniforms(this.Id(), [uniformIndex], glPname) [0]; // TODO: API ??? sequence<> is an array
+	}
+	,
+	GetActiveUniformType : function(uniformName) {
+		return this._GetActiveUniform(uniformName, gl.UNIFORM_TYPE);
+	}
+	,
+	GetActiveUniformSize : function(uniformName) {
+		return this._GetActiveUniform(uniformName, gl.UNIFORM_SIZE);
+	}
+	,
+	GetActiveUniformBlockIndex : function(uniformName) {
+		return this._GetActiveUniform(uniformName, gl.UNIFORM_BLOCK_INDEX);
+	}
+	,
+	GetActiveUniformOffset : function(uniformName) {
+		return this._GetActiveUniform(uniformName, gl.UNIFORM_OFFSET);
+	}
+	,
+	GetActiveUniformArrayStride : function(uniformName) {
+		return this._GetActiveUniform(uniformName, gl.UNIFORM_ARRAY_STRIDE);
+	}
+	,
+	GetActiveUniformMatrixStride : function(uniformName) {
+		return this._GetActiveUniform(uniformName, gl.UNIFORM_MATRIX_STRIDE);
+	}
+	,
+	GetActiveUniformIsRowMajor : function(uniformName) {
+		return this._GetActiveUniform(uniformName, gl.UNIFORM_IS_ROW_MAJOR);
+	}
+
+
+	// Uniform buffer object API
 	,
 	Use : function () {
 		gl.useProgram(this.Id());	
@@ -2089,7 +2265,7 @@ o3gl.Program.prototype = {
 			this._vertexArrayObject = value;
 		} else {
 			if (!this._vertexArrayObject) {
-				this._vertexArrayObject = new o3gl.VertexArrayObjectDefault();
+				this._vertexArrayObject = new o3gl.VertexArrayDefault();
 			}
 		}
 		
@@ -2446,6 +2622,94 @@ o3gl.Program.prototype = {
 		return this.BlendFunc(gl.SRC_ALPHA, gl.ONE);
 	}
 	,
+	_getMaxElementArrayBufferCount : function() {
+		var bufferSize = gl.getBufferParameter(gl.ELEMENT_ARRAY_BUFFER, gl.BUFFER_SIZE);
+		var elementType = gl.UNSIGNED_SHORT;
+		return bufferSize / Utils.glTypeSizeBytes(elementType);
+	}
+	,
+	_getMaxArrayBufferCount : function() {
+		var result = null;
+		for (var idx = 0; idx < gl.getProgramParameter(this.Id(), gl.ACTIVE_ATTRIBUTES); ++idx) {
+			var buffer = gl.getVertexAttrib(idx, gl.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING);
+			if (!buffer) continue;
+			var enabled = gl.getVertexAttrib(idx, gl.VERTEX_ATTRIB_ARRAY_ENABLED);
+			if (!enabled) continue;
+			
+			// TODO: GL_BGRA
+			var elementSize = gl.getVertexAttrib(idx, gl.VERTEX_ATTRIB_ARRAY_SIZE); // 1,2,3,4,GL_BGRA
+			var elementType = gl.getVertexAttrib(idx, gl.VERTEX_ATTRIB_ARRAY_TYPE);
+			var elementStride = gl.getVertexAttrib(idx, gl.VERTEX_ATTRIB_ARRAY_STRIDE);
+
+			gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+			var bufferSize = gl.getBufferParameter(gl.ARRAY_BUFFER, gl.BUFFER_SIZE);
+			
+			var elementBytes = Utils.glTypeSizeBytes(elementType) * elementSize + elementStride;
+			
+			var elementsCount = bufferSize / elementBytes;
+			
+			if (result === null) {
+				result = elementsCount;
+			} else {
+				if (result !== elementsCount) {
+					console.warning("Array buffers have different elements count");
+					if (result > elementsCount) { 
+						result = elementsCount;
+					}
+				} 
+			}
+		}
+		return result;
+	}
+	,
+	// Uniform buffer object API
+	_DrawArrays : function(glMode, first, count) {		
+		var maxElementsCount;
+		var vertexArrayObject = this._vertexArrayObject;
+		/*TODO: Tests*/ vertexArrayObject = null;
+		if (vertexArrayObject) {
+			maxElementsCount = vertexArrayObject._getMaxArrayBufferCount();
+		} else {
+			maxElementsCount = this._getMaxArrayBufferCount();			
+		}
+		
+		if (!first) {
+			first = 0;
+		}
+		if (!count) {
+			count = maxElementsCount;
+		}
+		gl.drawArrays(glMode, first, count);
+	}	
+	,
+	_DrawElements : function(glMode, first, count) {		
+		var elementType 	= undefined; 				// The type of elements in the element array buffer. Must be a gl.UNSIGNED_SHORT.
+		var elementsCount 	= undefined; 				// The number of elements to render.
+		var offsetBytes		= 0; 						// Offset into the element array buffer. Must be a valid multiple of the size of type.
+		
+		var vertexArrayObject = this._vertexArrayObject;
+		/*TODO: Tests*/ vertexArrayObject = null;
+		if (vertexArrayObject) {
+			elementType 	= this._vertexArrayObject.elementArrayBuffer._type;
+			elementsCount 	= this._vertexArrayObject._getMaxElementArrayBufferCount();
+		} else {
+			elementType = gl.UNSIGNED_SHORT;
+			elementsCount = this._getMaxElementArrayBufferCount();
+		}
+		
+		if (first) {
+			offsetBytes = Utils.glTypeSizeBytes(elementType) * first; // elementType must be gl.UNSIGNED_SHORT here
+		} else {
+			offsetBytes = 0;
+		}
+		
+		if (count) {
+			elementsCount = count;
+		}
+		
+		gl.drawElements(glMode, elementsCount, elementType, offsetBytes);
+	}
+	,
 	_drawPrimitives : function(glMode, first, count) {
 		// Bind assotiated resources
 		
@@ -2477,13 +2741,23 @@ o3gl.Program.prototype = {
 		
 		
 		var elementArrayBuffer = undefined;
-		var maxElementsCount = undefined;
+		
 		
 		if (this._vertexArrayObject) {
-			elementArrayBuffer = this._vertexArrayObject.elementArrayBuffer;
-			maxElementsCount = this._vertexArrayObject.getMaxElementsCount();
-		}
-		
+			if (this._vertexArrayObject.elementArrayBuffer) {
+				this._DrawElements(glMode, first, count);
+			} else {
+				this._DrawArrays(glMode, first, count);			
+			}
+		} else {
+			var elementArrayBuffer = gl.getParameter(gl.ELEMENT_ARRAY_BUFFER_BINDING);
+			if (elementArrayBuffer) {
+				this._DrawElements(glMode, first, count);			
+			} else {
+				this._DrawArrays(glMode, first, count);			
+			}
+		}		
+/*		
 		if (elementArrayBuffer) {
 			elementArrayBuffer.Bind();
 			var elementType 	= elementArrayBuffer._type; // The type of elements in the element array buffer. Must be a gl.UNSIGNED_SHORT.
@@ -2510,6 +2784,7 @@ o3gl.Program.prototype = {
 			}
 			gl.drawArrays(glMode, first, count);
 		}
+*/
 		return this;		
 	}
 	,
@@ -2726,11 +3001,14 @@ o3gl.CreateTexture2D = function() {
 o3gl.CreateTextureCubeMap = function() {
 	return new o3gl.TextureCubeMap();
 }
-o3gl.CreateArrayBuffer = function(data) {
-	return new o3gl.ArrayBuffer(data);
+o3gl.CreateArrayBuffer = function() {
+	return new o3gl.ArrayBuffer();
 }
-o3gl.CreateElementArrayBuffer = function(data) {
-	return new o3gl.ElementArrayBuffer(data);
+o3gl.CreateElementArrayBuffer = function() {
+	return new o3gl.ElementArrayBuffer();
+}
+o3gl.CreateUniformBuffer = function() {
+	return new o3gl.UniformBuffer();
 }
 o3gl.CreateFrameBuffer = function() {
 	return new o3gl.FrameBuffer();
@@ -2740,6 +3018,9 @@ o3gl.CreateRenderBufferDepth = function() {
 }
 o3gl.CreateRenderBufferStencil = function() {
 	return new o3gl.RenderBufferDepth();
+}
+o3gl.CreateVertexArray = function() {
+	return new o3gl.VertexArray();
 }
 o3gl.CreateShader = function(sources) {
 	return new o3gl.Shader(sources);
