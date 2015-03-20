@@ -128,14 +128,10 @@ void main() {
 		program 	= o3gl.CreateProgram(o3gl.CreateShader(vertexShaderSource), o3gl.CreateShader(fragmentShaderSource));
 		positions 	= o3gl.CreateArrayBuffer().Data(cubeVertex);
 		indexes 	= o3gl.CreateElementArrayBuffer().Data(cubeIndex);
-		
-		
-		// Set up program properties that won't change
+				
+				
 		program.
-			DepthTest(true).
-			DepthMask(true).
-			Set("aPosition", positions.pointer()).
-			Elements(indexes);
+			Attribute3f("aPosition", positions.pointer());
 	}
 	
 	function render() {
@@ -145,25 +141,18 @@ void main() {
 //		mat4.translate(mvMatrix, [-1, 0, 0]);
 		mat4.rotate(mvMatrix, angle, [1, 0, 0]);
 
-		/*
+
 		gl.enable(gl.DEPTH_TEST);
 		gl.clearColor(0.0, 0.0, 0.0, 1.0);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
 		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-		*/
-		
-		// Clear default framebuffer
-		program.
-			FrameBuffer().
-				ClearColorBuffer(0.0, 0.0, 0.0, 1.0).
-				ClearDepthBuffer();
 			
-		program.
-			// Set up viewport transformation to the default framebuffer size
-			Viewport().
-			// Update recalculated MV transformation
-			Set("uModelViewMatrix", 	mvMatrix).
-			Set("uProjectionMatrix", 	pMatrix).
+		// Set up program properties that won't change
+		indexes.Bind();
+		program.Use().
+			Attribute3f("aPosition", positions.pointer()).
+			UniformMatrix4fv("uModelViewMatrix", 	mvMatrix).
+			UniformMatrix4fv("uProjectionMatrix", 	pMatrix).
 			// End up with drawcall
 			DrawTriangles();
     }

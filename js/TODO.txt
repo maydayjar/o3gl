@@ -28,6 +28,10 @@
 	
 	- ANGLE_instanced_arrays
 	
+	- VERTEX_ATTRIB_ARRAY_DIVISOR_ANGLE. get vertex attribute parameter, consider it in automatic instance count computation
+	
+	- Difference between attribute index and location
+	
 	+ TextureUnitObject helper class. Default sampler uniforms sequential values assignment. https://www.khronos.org/webgl/wiki/TextureState.
 	
 	- Resources cleanup. Like disabling vertex arrays, unbinding textures from texture units etc
