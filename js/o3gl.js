@@ -2801,7 +2801,11 @@ o3gl.Program.prototype = {
 		frameBufferObject.Bind();
 		return this;
 	}
-
+	,
+	Elements : function(elementArrayBuffer) {
+		elementArrayBuffer.Bind();
+		return this;
+	}
 }
 
 
@@ -2866,10 +2870,10 @@ o3gl.Program.prototype = {
  * @constructor
  */
 o3gl.ProgramInstance = function(program) {
-	this.program = program
+	this._program = program
 		
 	// Uniforms and attributes setters
-	this._setter = {};
+	this._setter = {}; // name / arguments pairs
 		
 	// Assotiate new VAO with program
 	this._vertexArrayObject = undefined;
@@ -3327,7 +3331,7 @@ isElementArrayBufferBinding : function() {
 */
 
 
-// Client state tracking
+// Enable Client state tracking
 Aspect(o3gl.Texture2D.prototype).after("Bind", 			function() { o3gl.TEXTURE_BINDING_2D = this; });
 Aspect(o3gl.TextureCubeMap.prototype).after("Bind", 	function() { o3gl.TEXTURE_BINDING_CUBE_MAP = this;});
 Aspect(o3gl.ArrayBuffer.prototype).after("Bind", 		function() { o3gl.ARRAY_BUFFER_BINDING = this;});
@@ -3336,13 +3340,6 @@ Aspect(o3gl.FrameBuffer.prototype).after("Bind", 		function() { o3gl.FRAMEBUFFER
 Aspect(o3gl.RenderBuffer.prototype).after("Bind", 		function() { o3gl.RENDERBUFFER_BINDING = this;});
 Aspect(o3gl.Program.prototype).after("Use", 			function() { o3gl.CURRENT_PROGRAM = this;});
 
-
-var bindingTexture2D = /^GenerateMipmap|^Filter|^Wrap|^Image/;
-var bindingTextureCubeMap = /^GenerateMipmap|^Filter|^Wrap|^Image/;
-var bindingArrayBuffer = /^Data/;
-var bindingElementArrayBuffer = /^Data/;
-
-// Automatic resources bindings check
 Aspect(o3gl.Texture2D.prototype).before(/^GenerateMipmap$|^Filter|^Wrap|^Image$/, 		function() { if (o3gl.TEXTURE_BINDING_2D !== this) this.Bind(); } );
 Aspect(o3gl.TextureCubeMap.prototype).before(/^GenerateMipmap$|^Filter|^Wrap|^Image$/, 	function() { if (o3gl.TEXTURE_BINDING_CUBE_MAP !== this) this.Bind(); } );
 Aspect(o3gl.ArrayBuffer.prototype).before(/^Data$/, 									function() { if (o3gl.ARRAY_BUFFER_BINDING !== this) this.Bind(); } );
@@ -3367,6 +3364,8 @@ Aspect(o3gl.Program.prototype).after(/^Use$/, function() {
 		}
 	}
 });
+
+
 
 
 // Resource methods

@@ -22,13 +22,13 @@
 	
 	- Various webgl 2.0 features
 	
-	? uniformf and uniformfv methods overloading
+	? uniformf and uniformfv methods overloading. check uniformv for non-array type
 	
 	- BlurStroke shader
 	
 	- ANGLE_instanced_arrays
 	
-	- VERTEX_ATTRIB_ARRAY_DIVISOR_ANGLE. get vertex attribute parameter, consider it in automatic instance count computation
+		- VERTEX_ATTRIB_ARRAY_DIVISOR_ANGLE. get vertex attribute parameter, consider it in automatic instance count computation
 	
 	- Difference between attribute index and location
 	
@@ -50,4 +50,6 @@
 	
 	- Array buffer `View` helper object instead of pointer. With _count property. 
 	
-	- _DrawPrimitives is coupled with VertexArrayObject
+	+ Default draw arrays elements count. 
+		- Check o3gl CST variable to retrieve current element array buffer elements type.
+	
