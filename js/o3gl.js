@@ -152,44 +152,6 @@ function Aspect(object) {
 * 			UTILS
 **********************************************/	
 var Utils = {
-	getGLTextureId : function(index) {
-		var glTextureIds = [
-		gl.TEXTURE0,
-		gl.TEXTURE1,
-		gl.TEXTURE2,
-		gl.TEXTURE3,
-		gl.TEXTURE4,
-		gl.TEXTURE5,
-		gl.TEXTURE6,
-		gl.TEXTURE7,
-		gl.TEXTURE8,
-		gl.TEXTURE9,
-		gl.TEXTURE10,
-		gl.TEXTURE11,
-		gl.TEXTURE12,
-		gl.TEXTURE13,
-		gl.TEXTURE14,
-		gl.TEXTURE15,
-		gl.TEXTURE16,
-		gl.TEXTURE17,
-		gl.TEXTURE18,
-		gl.TEXTURE19,
-		gl.TEXTURE20,
-		gl.TEXTURE21,
-		gl.TEXTURE22,
-		gl.TEXTURE23,
-		gl.TEXTURE24,
-		gl.TEXTURE25,
-		gl.TEXTURE26,
-		gl.TEXTURE27,
-		gl.TEXTURE28,
-		gl.TEXTURE29,
-		gl.TEXTURE30,
-		gl.TEXTURE31
-		];
-		return glTextureIds[index];
-	}
-	,
 	createTypedArray : function (glType, array) {
 		switch (glType) {
 			case gl.BYTE : return new Int8Array(array);
@@ -266,6 +228,28 @@ var Utils = {
 		if (Preprocessor.isVertexShader(sources)) return gl.VERTEX_SHADER;
 		if (Preprocessor.isFragmentShader(sources)) return gl.FRAGMENT_SHADER;
 		return undefined;
+	}
+	,	
+	/**
+	* Assign sequential values to the active uniforms that are samplers
+	*/
+	defaultSamplerUniforms : function (glProgramId) {
+		var index = 0;
+		for (var idx = 0; idx < gl.getProgramParameter(glProgramId, gl.ACTIVE_UNIFORMS); ++idx) {
+			// Get information about an active uniform variable
+			var activeUniform 	= gl.getActiveUniform(glProgramId, idx);
+			var uniformName 	= activeUniform.name;
+			var uniformType 	= activeUnifrom.type;
+			var uniformLocation = gl.getUniformLocation(glProgramId, uniformName);
+
+			var samplerTypes = [gl.SAMPLER_2D, gl.SAMPLER_CUBE];
+			var isSamplerType = samplerTypes.indexOf(uniformType);
+			if (isSamplerType) {
+				gl.uniform1i(uniformLocation, index);
+				index++;
+			}
+			index++;
+		}
 	}
 }
 
@@ -1962,18 +1946,7 @@ o3gl.VertexArrayDefault = function () {
 }
 o3gl.VertexArrayDefault.prototype = o3gl.VertexArray.prototype;
 
-/**
- *
- * @param {Shader} shader1
- * @param {Shader} shader2
- * @constructor
- */
-o3gl.Program = function(shader1,shader2) {
-	// Create the program gl resuource
-	this.programId = gl.createProgram();
-	// Build the program with given shaders
-	this._attachShader(shader1, shader2)._link();
-}
+
 
 o3gl.BlendFactor = {
 	One 				: gl.ONE,
@@ -1986,6 +1959,19 @@ o3gl.BlendFactor = {
 	OneMinusSrcAlpha 	: gl.ONE_MINUS_SRC_ALPHA,
 	OneMinusDstColor 	: gl.ONE_MINUS_DST_COLOR,
 	OneMinusDstAlpha 	: gl.ONE_MINUS_DST_ALPHA
+}
+
+/**
+ *
+ * @param {Shader} shader1
+ * @param {Shader} shader2
+ * @constructor
+ */
+o3gl.Program = function(shader1,shader2) {
+	// Create the program gl resuource
+	this.programId = gl.createProgram();
+	// Build the program with given shaders
+	this._AttachShader(shader1, shader2)._Link();
 }
 
 o3gl.Program.prototype = {
@@ -2002,7 +1988,7 @@ o3gl.Program.prototype = {
 		return this;
 	}
 	,
-	_attachShader : function(shader1,shader2,shader3) {
+	_AttachShader : function(shader1,shader2,shader3) {
 		if (shader1)
 			gl.attachShader(this.programId, shader1.Id());
 		if (shader2)
@@ -2014,7 +2000,7 @@ o3gl.Program.prototype = {
 		return linkable;
 	}
 	,
-	_link : function() {
+	_Link : function() {
 		gl.linkProgram(this.programId);
 		if (!gl.getProgramParameter(this.programId, gl.LINK_STATUS)) {
 			alert("Could not initialise shaders");
@@ -2069,6 +2055,55 @@ o3gl.Program.prototype = {
 		return null;
 	}
 	,
+	/**
+	* Convenience method that dispatches request to the corresponding uniform or attribute method
+	*/
+	Set: function(name, values) {
+		if (!this._setters) {
+			this._setters = {};
+			var activeUniforms = this.GetActiveUniforms();			
+			for (var index = 0; index < activeUniforms.length; ++i) {
+				var name = activeUniforms[index].name;
+				var type = activeUniforms[index].type;
+				var size = activeUniforms[index].size;
+				this._setters[name] = this._getUniformSetter(type, size);
+			}
+			var activeAttributes = this.GetActiveAttributes();			
+			for (var index = 0; index < activeAttributes.length; ++i) {
+				var name = activeAttributes[index].name;
+				var type = activeAttributes[index].type;
+				var size = activeAttributes[index].size;
+				this._setters[name] = this._getAttributeSetter(type, size);				
+			}
+		}
+		var method = this._setters[name];
+		method.apply(this, arguments);		
+		return this;
+	}
+	,
+	GetActiveUniforms : function() {
+		var result = [];
+		var activeUniformsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS);
+		for (var idx = 0; idx < activeUniformsCount; ++idx) {
+			// Get information about an active uniform variable
+			var variable = gl.getActiveUniform(this.Id(), idx); // {name:"", type:int, size:3}
+			result.push(variable);
+		}
+		return result;
+	}
+	,
+	GetActiveAttributes : function() {
+		var result = [];
+		var activeAttribsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_ATTRIBUTES);
+		for (var idx = 0; idx < activeAttribsCount; ++idx) {
+			// Get information about an active attribute variable
+			var variable = gl.getActiveAttrib(this.Id(), idx);
+			result.push(variable);
+		}
+		return result;
+	}
+	/*
+	,	
 	GetActiveUniform : function(name) { 
 		var activeUniformsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS);
 		for (var idx = 0; idx < activeUniformsCount; ++idx) {
@@ -2108,6 +2143,7 @@ o3gl.Program.prototype = {
 	GetActiveAttribSize : function(name) {
 		return this.GetActiveAttrib(name).size;		
 	}
+	*/
 	,
 	GetUniformLocation : function (name) {
 		return gl.getUniformLocation(this.Id(), name);
@@ -2124,65 +2160,6 @@ o3gl.Program.prototype = {
 		gl.bindAttribLocation(this.programId, index, name);
 		return this;
 	}
-	,
-	_initializeSamplers : function () {
-		var index = 0;
-		for (var idx = 0; idx < gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS); ++idx) {
-			// Get information about an active uniform variable
-			var activeUniform 	= gl.getActiveUniform(this.Id(), idx);
-			var uniformName 	= activeUniform.name;
-			var uniformType 	= activeUnifrom.type;
-			var uniformLocation = gl.getUniformLocation(this.Id(), uniformName);
-
-			var samplerTypes = [gl.SAMPLER_2D, gl.SAMPLER_CUBE];
-			var isSamplerType = samplerTypes.indexOf(uniformType);
-			if (isSamplerType) {
-				gl.uniform1i(uniformLocation, index);
-				index++;
-			}
-			index++;
-		}
-	}
-	/*
-	,
-	_initializeVariables : function() {
-		// Initialize uniforms cache
-		if (!this._uniforms) {
-			this._uniforms = {};
-			for (var idx = 0; idx < gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS); ++idx) {
-				// Get information about an active uniform variable
-				var variable = gl.getActiveUniform(this.Id(), idx);
-				var location = gl.getUniformLocation(this.Id(), variable.name);
-				var setter	 = this._getUniformSetter(variable.type, variable.size);
-				this._uniforms[variable.name] = {
-					name : variable.name,
-					type : variable.type,
-					size : variable.size,
-					location : location,
-					setter : setter
-				}
-			}
-		}
-		// Initialize attributes cache
-		if (!this._attributes) {
-			this._attributes = {};
-			for (var idx = 0; idx < gl.getProgramParameter(this.Id(), gl.ACTIVE_ATTRIBUTES); ++idx) {
-				// Get information about an active attribute variable
-				var variable = gl.getActiveAttrib(this.Id(), idx);
-				var location = gl.getAttribLocation(this.Id(), variable.name);
-				var setter	 = this._getAttributeSetter(variable.type, variable.size);
-				this._attributes[variable.name] = {
-					name : variable.name,
-					type : variable.type,
-					size : variable.size,
-					location : location,
-					setter : setter
-				}
-			}
-		}
-	}
-	,
-	*/
 	/**
 	// TODO:	Vertex attribute properties. Must be global and static
 	,
@@ -2216,79 +2193,77 @@ o3gl.Program.prototype = {
 		return gl.getVertexAttrib(attributeLocation, gl.VERTEX_ATTRIB_ARRAY_NORMALIZED);
 	}
 	*/
+	
+	
+	/** Webgl 2.0 uniform properties methods */
+	
 	,
 	GetUniformBlockIndex : function(uniformBlockName) {
 		return gl.getUniformBlockIndex(this.Id(), uniformBlockName);
 	}
 	,
-	_GetActiveUniformBlockParameter : function(uniformBlockName, glPname) {
-		var uniformBlockIndex = this.GetUniformBlockIndex(uniformBlockName);
-		return gl.getActiveUniformBlockParameter(this.Id(), uniformBlockIndex, glPname)
-	}
-	,
 	GetUniformBlockBinding : function(uniformBlockName) {
-		return this._GetActiveUniformBlockParameter(uniformBlockName, UNIFORM_BLOCK_BINDING);
+		var uniformBlockIndex = this.GetUniformBlockIndex(uniformBlockName);
+		return gl.getActiveUniformBlockParameter(this.Id(), uniformBlockIndex, UNIFORM_BLOCK_BINDING);
 	}
 	,
 	GetUniformBlockDataSize : function(uniformBlockName) {
-		return this._GetActiveUniformBlockParameter(uniformBlockName, UNIFORM_BLOCK_DATA_SIZE);
+		var uniformBlockIndex = this.GetUniformBlockIndex(uniformBlockName);
+		return gl.getActiveUniformBlockParameter(this.Id(), uniformBlockIndex, UNIFORM_BLOCK_DATA_SIZE);
 	}
 	,
 	GetUniformBlockActiveUniforms : function(uniformBlockName) {
-		return this._GetActiveUniformBlockParameter(uniformBlockName, UNIFORM_BLOCK_ACTIVE_UNIFORMS);
+		var uniformBlockIndex = this.GetUniformBlockIndex(uniformBlockName);
+		return gl.getActiveUniformBlockParameter(this.Id(), uniformBlockIndex, UNIFORM_BLOCK_ACTIVE_UNIFORMS);
+
 	}
 	,
 	GetUniformBlockActiveUniformIndices : function(uniformBlockName) {
-		return this._GetActiveUniformBlockParameter(uniformBlockName, UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES);
+		var uniformBlockIndex = this.GetUniformBlockIndex(uniformBlockName);
+		return gl.getActiveUniformBlockParameter(this.Id(), uniformBlockIndex, UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES);
 	}
 	,
 	GetUniformBlockReferencedByVertexShader : function(uniformBlockName) {
-		return this._GetActiveUniformBlockParameter(uniformBlockName, UNIFORM_BLOCK_REFERENCED_BY_VERTEX_SHADER);
+		var uniformBlockIndex = this.GetUniformBlockIndex(uniformBlockName);
+		return gl.getActiveUniformBlockParameter(this.Id(), uniformBlockIndex, UNIFORM_BLOCK_REFERENCED_BY_VERTEX_SHADER);
 	}
 	,
 	GetUniformBlockReferencedByFragmentShader : function(uniformBlockName) {
-		return this._GetActiveUniformBlockParameter(uniformBlockName, UNIFORM_BLOCK_REFERENCED_BY_FRAGMENT_SHADER);
-	}
-	
-	/** Webgl 2.0 uniform properties methods
-	,
-	GetUniformIndex : function(uniformName) {
-		return gl.getUniformIndices(this.Id(), [uniformName]) [0]; // TODO: API ??? sequence<> is an array
+		var uniformBlockIndex = this.GetUniformBlockIndex(uniformBlockName);
+		return gl.getActiveUniformBlockParameter(this.Id(), uniformBlockIndex, UNIFORM_BLOCK_REFERENCED_BY_FRAGMENT_SHADER);
 	}
 	,
-	_GetActiveUniforms : function(uniformName, glPname) {
-		var uniformIndex = this.GetActiveUniformIndex(uniformName);
-		return gl.getActiveUniforms(this.Id(), [uniformIndex], glPname) [0]; // TODO: API ??? sequence<> is an array
+	GetUniformIndices : function(uniformNames) {
+		return gl.getUniformIndices(this.Id(), uniformNames); // TODO: API ??? sequence<> is an array
 	}
 	,
-	GetActiveUniformType : function(uniformName) {
-		return this._GetActiveUniform(uniformName, gl.UNIFORM_TYPE);
+	GetActiveUniformTypes : function(uniformIndices) {
+		return gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_TYPE); // TODO: API ??? sequence<> is an array
 	}
 	,
-	GetActiveUniformSize : function(uniformName) {
-		return this._GetActiveUniform(uniformName, gl.UNIFORM_SIZE);
+	GetActiveUniformSizes : function(uniformIndices) {
+		return gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_SIZE);
 	}
 	,
-	GetActiveUniformBlockIndex : function(uniformName) {
-		return this._GetActiveUniform(uniformName, gl.UNIFORM_BLOCK_INDEX);
+	GetActiveUniformBlockIndices : function(uniformIndices) {
+		return gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_BLOCK_INDEX);
 	}
 	,
-	GetActiveUniformOffset : function(uniformName) {
-		return this._GetActiveUniform(uniformName, gl.UNIFORM_OFFSET);
+	GetActiveUniformOffsets : function(uniformIndices) {
+		return gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_OFFSET);
 	}
 	,
-	GetActiveUniformArrayStride : function(uniformName) {
-		return this._GetActiveUniform(uniformName, gl.UNIFORM_ARRAY_STRIDE);
+	GetActiveUniformArrayStrides : function(uniformIndices) {
+		return gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_ARRAY_STRIDE);
 	}
 	,
-	GetActiveUniformMatrixStride : function(uniformName) {
-		return this._GetActiveUniform(uniformName, gl.UNIFORM_MATRIX_STRIDE);
+	GetActiveUniformMatrixStrides : function(uniformIndices) {
+		return gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_MATRIX_STRIDE);
 	}
 	,
-	GetActiveUniformIsRowMajor : function(uniformName) {
-		return this._GetActiveUniform(uniformName, gl.UNIFORM_IS_ROW_MAJOR);
+	GetActiveUniformIsRowMajors : function(uniformIndices) {
+		return gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_IS_ROW_MAJOR);
 	}
-	*/
 	,
 	GetUniform : function(name) {
 		var location = this.GetUniformLocation(name);
@@ -2441,10 +2416,10 @@ o3gl.Program.prototype = {
 	* Helper method
 	*/
 	UniformSampler : function(name, texture) {			
-		// Default samplers assignment
+		// Assign sequential value to the sampler uniforms
 		if (!this._samplers) {
-			this._samplers = [];			
-			this._initializeSamplers();
+			this._samplers = true;			
+			Utils.defaultSamplerUniforms(this.Id());
 		}
 		
 		var index = getUniform(name);

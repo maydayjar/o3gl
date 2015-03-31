@@ -1,30 +1,4 @@
 <script>
-/*
-	program.
-	Set("uP",1,0,0).
-	Set("aV", ab.pointer().stride(0).offset(0)).			
-	Set("sampler", t1).
-
-	Color(t1.level(0)).
-	Depth(depthBuffer).depthMask(true).depthTest(true).
-	Elements(elementArray)
-	DrawTriangles(indexes, 0, 6).toFrameBuffer(frameBuffer);
-*/
-
-/*
-	Program - is executable code
-	instance 	- pointer to drawcall data. vao 
-				- 
-	
-*/
-
-/*
-// GL object groups concept
-- Programs with precompiled shaders
-- Vertex Array Object
-- Frame Buffer objects
-
-*/
 
 /*
 // OBJECT concept
@@ -92,7 +66,6 @@ o3gl.pipeline().
 	rasterization()
 	
 // DRAWCALL concept
-
 o3gl.
 	drawcall().
 	program(program).
@@ -115,8 +88,6 @@ Some of the chained methods produce a new program instance
 
 // EXPLICIT INSTANCING concept
 Explicit program instance creation
-
-
 */
 
 /**
@@ -202,10 +173,20 @@ program.FrameBuffer().ClearStencilBuffer();
 
 program.DepthTest(true);		// Depth test and mask are program-specific features
 program.DepthMask(true);		// Depth test and mask are program-specific features 
+*/
+
+/**
+UBO extension
+var ubo = o3gl.createUniformBuffer();
+
+ubo.Data(program, "block1", "block2", block3); // allocate data for blocks
+
+ubo.pointer().set(program, name)	// set up offset, type (if name points to a uniform variable), size ()
+ubo.pointer().set(program, name)	// set up offset, type (if name points to a uniform variable)
+
 
 
 */
-
 
 
 
