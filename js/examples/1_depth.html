@@ -126,12 +126,13 @@ void main() {
 		];
 		
 		program 	= o3gl.CreateProgram(o3gl.CreateShader(vertexShaderSource), o3gl.CreateShader(fragmentShaderSource));
-		positions 	= o3gl.CreateArrayBuffer().Data(cubeVertex);
+		positions 	= o3gl.CreateArrayBuffer().Data(new Int16Array(cubeVertex));
 		indexes 	= o3gl.CreateElementArrayBuffer().Data(cubeIndex);
 				
-				
+		/*
 		program.
 			Attribute3f("aPosition", positions.pointer());
+		*/
 	}
 	
 	function render() {

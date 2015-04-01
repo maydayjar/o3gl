@@ -52,4 +52,10 @@
 	
 	+ Default draw arrays elements count. 
 		- Check o3gl CST variable to retrieve current element array buffer elements type.
+		
+	+ Check array buffer data conversion from int to float? Yes, it works. Buffer data can be of arbitrary type. It is mapped to shader attribute types.
+	
+	- Test relation between attribute location and attribute index. gl.getProgramParameter(this.Id(), gl.ACTIVE_ATTRIBUTES) returns the number of active attribute variables. 
+	
+	- Resource factories. To create preconfigured resources.
 	
