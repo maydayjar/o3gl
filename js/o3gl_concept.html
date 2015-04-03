@@ -179,7 +179,15 @@ program.DepthMask(true);		// Depth test and mask are program-specific features
 UBO extension
 var ubo = o3gl.createUniformBuffer();
 
-ubo.Data(program, "block1", "block2", block3); // allocate data for blocks
+var ubs = program.GetUniformBlockSize();
+ubo.Data(ubs); // allocate data for all blocks
+
+program.uniformBlock(name, ubo.pointer().size(ubs).offset(100 * ubs)); // Bind particular uniform block
+
+program.uniformBlock(name1,name2, ubo.pointer()); // Bind sequential uniform blocks
+
+// Subsequent calls of uniformxxx methods will change 
+
 
 ubo.pointer().set(program, name)	// set up offset, type (if name points to a uniform variable), size ()
 ubo.pointer().set(program, name)	// set up offset, type (if name points to a uniform variable)
