@@ -1715,13 +1715,15 @@ o3gl.Shader.prototype = {
 }
 
 // http://blog.tojicode.com/2012/10/oesvertexarrayobject-extension.html
-o3gl.VertexArray = function () {
+o3gl.VertexArray = function (vertexArrayId) {
 	this._extension = gl.getExtension("OES_vertex_array_object"); 	// Vendor prefixes may apply!  
-	this.vertexArrayId = _extension.createVertexArrayOES();;
 	
-	// Used to calculate default buffer size
-	this.elementArrayBuffer = null;											// Assotiated element array buffer
-	this.attributes = [];													// Per location vertex attribute values
+	if (vertexArrayId !== undefined) {
+		// default vertex array constructor
+		this.vertexArrayId = vertexArrayId;
+	} else {
+		this.vertexArrayId = _extension.createVertexArrayOES();
+	}
 }
 
 /**
@@ -1776,6 +1778,89 @@ o3gl.VertexArray._GetMinEnabledVertexAttribArrayBufferCount = function(indices) 
 	return result;
 }
 
+/**
+* Static helper method. 
+*/
+o3gl.VertexArray._VertexAttributePointer = function(attributeLocation, arrayBufferPointer) {		
+	//TODO: mat4 attribute takes up 4 attribute locations. The one you bind and the 3 following	
+	//TODO: What is size of gl.FLOAT_MAT4 returned with getActiveAttrib ??? The size is 1
+	if (!arrayBufferPointer._size) {
+		var glType = this.getType(name);
+		arrayBufferPointer.size(Utils.glTypeSizeComponents(glType));
+	}
+	
+	if (!arrayBufferPointer._type) {
+		//TODO: illegal state ???
+		//Probably array buffer's been initialized by non typed array
+		//The it's assumed to be the same like shader attribute variable type
+	}
+	
+	var type        	= arrayBufferPointer._type; 			// !!!
+	var normalized  	= arrayBufferPointer._normalized;		//		
+	var size 			= arrayBufferPointer._size;
+	var strideBytes     = arrayBufferPointer._stride;
+	var offsetBytes     = arrayBufferPointer._offset;
+		
+	// Configure and bind array buffer
+	var arrayBuffer 	= arrayBufferPointer._buffer;
+	arrayBuffer.Bind();
+	
+	gl.enableVertexAttribArray(attributeLocation);
+	gl.vertexAttribPointer(attributeLocation,
+		size,   // Specifies the number of components per generic vertex attribute. Must be 1, 2, 3, 4. Additionally, the symbolic constant GL_BGRA is accepted by glVertexAttribPointer. The initial value is 4.
+		type,   // Specifies the data type of each component in the array
+		normalized,  // Specifies whether fixed-point data values should be normalized (GL_TRUE) or converted directly as fixed-point values (GL_FALSE) when they are accessed.
+		strideBytes, // Specifies the byte offset between consecutive generic vertex attributes. If stride is 0, the generic vertex attributes are understood to be tightly packed in the array. The initial value is 0.
+		offsetBytes  // Specifies a offset of the first component of the first generic vertex attribute in the array in the data store of the buffer currently bound to the GL_ARRAY_BUFFER target. The initial value is 0.
+	);
+	
+	// ANGLE instanced arrays
+	if (arrayBufferPointer._divisor) {
+		var ext = gl.getExtension("ANGLE_instanced_arrays");
+		ext.vertexAttribDivisorANGLE(attributeLocation, arrayBufferPointer._divisor)
+	}
+	return this;
+}
+
+/**
+* Static helper method. 
+*/
+o3gl.VertexArray._VertexAttribute1f = function(attributeLocation, value) {
+	gl.disableVertexAttribArray(attributeLocation);
+	if (!value.length) value = arguments.slice(1);
+	gl.vertexAttrib1fv(attributeLocation, value); 
+	return this;
+}
+
+/**
+* Static helper method. 
+*/
+o3gl.VertexArray._VertexAttribute2f = function(attributeLocation, value) {
+	gl.disableVertexAttribArray(attributeLocation);
+	if (!value.length) value = arguments.slice(1);
+	gl.vertexAttrib2fv(attributeLocation, value); 
+	return this;
+}
+
+/**
+* Static helper method. 
+*/
+o3gl.VertexArray._VertexAttribute3f = function(attributeLocation, value) {
+	gl.disableVertexAttribArray(attributeLocation);
+	if (!value.length) value = arguments.slice(1);
+	gl.vertexAttrib3fv(attributeLocation, value); 
+	return this;
+}
+
+/**
+* Static helper method. 
+*/
+o3gl.VertexArray._VertexAttribute4f = function(attributeLocation, value) {
+	gl.disableVertexAttribArray(attributeLocation);
+	if (!value.length) value = arguments.slice(1);
+	gl.vertexAttrib4fv(attributeLocation, value); 
+	return this;
+}
 
 o3gl.VertexArray.prototype = {
 	Id : function() {
@@ -1783,11 +1868,15 @@ o3gl.VertexArray.prototype = {
 	}
 	,
 	Delete : function() {
-		this._extension.deleteVertexArrayOES(this.vertexArrayId);
+		if (this.vertexArrayId) {
+			this._extension.deleteVertexArrayOES(this.vertexArrayId);
+		}
 	}
 	,
 	Bind : function() {
-		this._extension.bindVertexArrayOES(this.vertexArrayId);			
+		if (this._extension) {
+			this._extension.bindVertexArrayOES(this.vertexArrayId);
+		}
 		return this;
 	}
 	,
@@ -1869,107 +1958,31 @@ o3gl.VertexArray.prototype = {
 	}
 	,
 	VertexAttributePointer : function(attributeLocation, arrayBufferPointer) {		
-		//TODO: mat4 attribute takes up 4 attribute locations. The one you bind and the 3 following	
-		//TODO: What is size of gl.FLOAT_MAT4 returned with getActiveAttrib ??? The size is 1
-		if (!arrayBufferPointer._size) {
-			var glType = this.getType(name);
-			arrayBufferPointer.size(Utils.glTypeSizeComponents(glType));
-		}
-		
-		if (!arrayBufferPointer._type) {
-			//TODO: illegal state ???
-			//Probably array buffer's been initialized by non typed array
-			//The it's assumed to be the same like shader attribute variable type
-		}
-		
-		var type        	= arrayBufferPointer._type; 			// !!!
-		var normalized  	= arrayBufferPointer._normalized;		//		
-		var size 			= arrayBufferPointer._size;
-		var strideBytes     = arrayBufferPointer._stride;
-		var offsetBytes     = arrayBufferPointer._offset;
-			
-		// Configure and bind array buffer
-		var arrayBuffer 	= arrayBufferPointer._buffer;
-		arrayBuffer.Bind();
-		
-		gl.enableVertexAttribArray(attributeLocation);
-		gl.vertexAttribPointer(attributeLocation,
-			size,   // Specifies the number of components per generic vertex attribute. Must be 1, 2, 3, 4. Additionally, the symbolic constant GL_BGRA is accepted by glVertexAttribPointer. The initial value is 4.
-			type,   // Specifies the data type of each component in the array
-			normalized,  // Specifies whether fixed-point data values should be normalized (GL_TRUE) or converted directly as fixed-point values (GL_FALSE) when they are accessed.
-			strideBytes, // Specifies the byte offset between consecutive generic vertex attributes. If stride is 0, the generic vertex attributes are understood to be tightly packed in the array. The initial value is 0.
-			offsetBytes  // Specifies a offset of the first component of the first generic vertex attribute in the array in the data store of the buffer currently bound to the GL_ARRAY_BUFFER target. The initial value is 0.
-		);
-		
-		// ANGLE instanced arrays
-		if (arrayBufferPointer._divisor) {
-			var ext = gl.getExtension("ANGLE_instanced_arrays");
-			ext.vertexAttribDivisorANGLE(attributeLocation, arrayBufferPointer._divisor)
-		}
-		
-		// remember for default draw methods invocation
-		this.attributes[attributeLocation] = arrayBufferPointer;
+		o3gl.VertexArray._VertexAttributePointer(attributeLocation, arrayBufferPointer);
 		return this;
 	}
 	,
 	VertexAttribute1f : function(attributeLocation, v1) {
-		gl.disableVertexAttribArray(attributeLocation);
-		gl.vertexAttrib1f(attributeLocation, v1); 
-		this.attributes[attributeLocation] = [v1];
+		o3gl.VertexArray._VertexAttribute1f(attributeLocation, v1);
 		return this;
 	}
 	,
 	VertexAttribute2f : function(attributeLocation, v1, v2) {
-		gl.disableVertexAttribArray(attributeLocation);
-		gl.vertexAttrib2f(attributeLocation, v1, v2); 
-		this.attributes[attributeLocation] = [v1, v2];
+		o3gl.VertexArray._VertexAttribute2f(attributeLocation, v1, v2);
 		return this;
 	}
 	,
 	VertexAttribute3f : function(attributeLocation, v1, v2, v3) {
-		gl.disableVertexAttribArray(attributeLocation);
-		gl.vertexAttrib2f(attributeLocation, v1, v2, v3); 
-		this.attributes[attributeLocation] = [v1, v2, v3];
+		o3gl.VertexArray._VertexAttribute2f(attributeLocation, v1, v2, v3);
 		return this;
 	}
 	,
 	VertexAttribute4f : function(attributeLocation, v1, v2, v3, v4) {
-		gl.disableVertexAttribArray(attributeLocation);
-		gl.vertexAttrib2f(attributeLocation, v1, v2, v3, v4); 
-		this.attributes[attributeLocation] = [v1, v2, v3, v4];
+		o3gl.VertexArray._VertexAttribute2f(attributeLocation, v1, v2, v3, v4);
 		return this;
 	}
 }
 
-o3gl.VertexArrayDefault = function () {	
-	// Used to calculate default buffer size
-	this.elementArrayBuffer = null;											// Assotiated element array buffer
-	this.attributes = [];										// Per location vertex attribute pointers
-	this.maxElementsCount = null;											// Precomputed max elements count
-	
-	this.Id = function() {
-		return null;
-	}
-	this.Delete = function() {}
-	this.Bind = function() {
-		if (this.elementArrayBuffer) {
-			this.elementArrayBuffer.Bind();
-		}
-		for (var attributeLocation in this.attributes) {				
-			var value = this.attributes[attributeLocation];
-			if (value instanceof o3gl.ArrayBuffer.Pointer) {
-				this.VertexAttributePointer(attributeLocation, value)
-			} else {
-				if (value.length === 1) this.VertexAttribute1f(attributeLocation, value[0]);
-				if (value.length === 2) this.VertexAttribute2f(attributeLocation, value[0], value[1]);
-				if (value.length === 3) this.VertexAttribute3f(attributeLocation, value[0], value[1], value[2]);
-				if (value.length === 4) this.VertexAttribute4f(attributeLocation, value[0], value[1], value[3], value[4]);
-			}
-		}
-		return this;
-	}	
-}
-o3gl.VertexArrayDefault.prototype = o3gl.VertexArray.prototype;
 
 
 
@@ -2039,206 +2052,84 @@ o3gl.Program.prototype = {
 		return new o3gl.ProgramInstance(this);
 	}
 	,
-	
-		//gl.FLOAT
-		//gl.FLOAT_VEC2
-		//gl.FLOAT_VEC3
-		//gl.FLOAT_VEC4
-		//gl.INT
-		//gl.INT_VEC2
-		//gl.INT_VEC3
-		//gl.INT_VEC4
-		//gl.BOOL
-		//gl.BOOL_VEC2
-		//gl.BOOL_VEC3
-		//gl.BOOL_VEC4
-		//gl.FLOAT_MAT2
-		//gl.FLOAT_MAT3
-		//gl.FLOAT_MAT4
-		//gl.SAMPLER_2D
-		//gl.SAMPLER_CUBE
-	
-	
-	_getUniformSetter : function(type, size) {
-		if (type === gl.FLOAT) 			return this.Uniform1f;
-		if (type === gl.FLOAT_VEC2) 	return this.Uniform2f;
-		if (type === gl.FLOAT_VEC3) 	return this.Uniform3f;
-		if (type === gl.FLOAT_VEC4) 	return this.Uniform4f;
-		if (type === gl.FLOAT_MAT2) 	return this.UniformMatrix2fv;
-		if (type === gl.FLOAT_MAT3) 	return this.UniformMatrix3fv;
-		if (type === gl.FLOAT_MAT4) 	return this.UniformMatrix4fv;
-		if (type === gl.SAMPLER_2D) 	return this.UniformSampler;
-		if (type === gl.SAMPLER_CUBE) 	return this.UniformSampler;
-		return null;
-	}
-	,
-	_getAttributeSetter : function(type, size) {
-		if (type === gl.FLOAT) 			return this.Attribute1f;
-		if (type === gl.FLOAT_VEC2) 	return this.Attribute2f;
-		if (type === gl.FLOAT_VEC3) 	return this.Attribute3f;
-		if (type === gl.FLOAT_VEC4) 	return this.Attribute4f;
-		return null;
-	}
-	,
-	/**
-	* Convenience method that dispatches request to the corresponding uniform or attribute method
-	*/
-	Set: function(name, values) {
-		if (!this._setters) {
-			this._setters = {};
-			var activeUniforms = this.GetActiveUniforms();			
-			for (var index = 0; index < activeUniforms.length; ++i) {
-				var name = activeUniforms[index].name;
-				var type = activeUniforms[index].type;
-				var size = activeUniforms[index].size;
-				this._setters[name] = this._getUniformSetter(type, size);
-			}
-			var activeAttributes = this.GetActiveAttributes();			
-			for (var index = 0; index < activeAttributes.length; ++i) {
-				var name = activeAttributes[index].name;
-				var type = activeAttributes[index].type;
-				var size = activeAttributes[index].size;
-				this._setters[name] = this._getAttributeSetter(type, size);				
-			}
-		}
-		var method = this._setters[name];
-		method.apply(this, arguments);		
-		return this;
-	}
-	,
-	GetActiveUniforms : function() {
-		var result = [];
-		var activeUniformsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS);
-		for (var idx = 0; idx < activeUniformsCount; ++idx) {
-			// Get information about an active uniform variable
-			var variable = gl.getActiveUniform(this.Id(), idx); // {name:"", type:int, size:3}
-			result.push(variable);
-		}
-		return result;
-	}
-	,
-	GetActiveAttributes : function(names, types, sizes, locations) {
-		var result = [];
-		var activeAttribsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_ATTRIBUTES);
-		for (var idx = 0; idx < activeAttribsCount; ++idx) {
-			// Get information about an active attribute variable
-			var variable = gl.getActiveAttrib(this.Id(), idx);
-			
-			if (names) names.push(variable.name);
-			if (types) types.push(variable.type);
-			if (sizes) types.push(variable.size);
-			if (locations) locations.push(this.GetAttribLocation(variable.name));
-			
-			result.push(variable);
-		}
-		return result;
-	}
-	,
 	/**
 	* This method allows to determine vertex attribute array indices, used by the program
 	*/
-	GetActiveAttributeLocations : function() {
-		var result = [];
-		this.GetActiveAttributes(null, null, null, result);
-		return result;
-	}
-
-
-	/*
-	,	
-	GetActiveUniform : function(name) { 
-		var activeUniformsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS);
-		for (var idx = 0; idx < activeUniformsCount; ++idx) {
-			// Get information about an active uniform variable
-			var variable = gl.getActiveUniform(this.Id(), idx); // {name:"", type:int, size:3}
-			if (variable.name === name) { 
-				return variable;
-			}
-		}
-		return null;
-	}
-	,
-	GetActiveAttrib : function(name) {
+	GetAttributeIndex : function(name) {
 		var activeAttribsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_ATTRIBUTES);
 		for (var idx = 0; idx < activeAttribsCount; ++idx) {
-			// Get information about an active attribute variable
 			var variable = gl.getActiveAttrib(this.Id(), idx);
-			if (variable.name === name) {
-				return variable;
-			}
-		}
-		return null;
+			if (variable.name === name) return idx;
+		}		
+		return -1;
 	}
 	,
-	GetActiveUniformType : function(name) {
-		return this.GetActiveUniform(name).type;
+	GetAttributeType : function(name) {
+		var index = this.GetAttributeIndex(name);
+		var variable = gl.getActiveAttrib(this.Id(), index);
+		return variable.type;
 	}
 	,
-	GetActiveUniformSize : function(name) {
-		return this.GetActiveUniform(name).size;		
+	GetAttributeSize : function(name) {
+		var index = this.GetAttributeIndex(name);
+		var variable = gl.getActiveAttrib(this.Id(), index);
+		return variable.size;
 	}
 	,
-	GetActiveAttribType : function(name) {
-		return this.GetActiveAttrib(name).type;
+	GetAttributeLocation : function (name) {
+		return gl.getAttribLocation(this.Id(), name);
 	}
-	,
-	GetActiveAttribSize : function(name) {
-		return this.GetActiveAttrib(name).size;		
+	,	
+	// Auxillary method
+	GetAttributeLocations : function() {
+		var result = [];
+		for (var idx = 0; idx < gl.getProgramParameter(this.Id(), gl.ACTIVE_ATTRIBUTES); ++idx) {
+			var variable = gl.getActiveAttrib(this.Id(), idx);
+			result.push(this.GetAttributeLocation(variable.name));
+		}		
+		return result;
 	}
-	*/
 	,
 	GetUniformLocation : function (name) {
 		return gl.getUniformLocation(this.Id(), name);
 	}
 	,
-	GetAttribLocation : function (name) {
-		return gl.getAttribLocation(this.Id(), name);
+	GetUniformIndex : function (name) {
+		for (var idx = 0; idx < gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS); ++idx) {
+			var variable = gl.getActiveUniform(this.Id(), idx);
+			if (variable.name === name) return idx;
+		}		
+		return -1;
 	}
 	,
-	BindAttribLocation : function (name, index) {		
-		// More than one name can be bound to the same vertex index, but multiple indexes cannot be bound to the same name.
-		// If name is a matrix attribute, then index points to the first column of the matrix. 
-		// Additional matrix columns are automatically bound to index+1, index+2, and so forth based on matrix variable (mat2,mat3,mat4).
-		gl.bindAttribLocation(this.programId, index, name);
-		return this;
+	// Auxillary method
+	GetUniformSamplerLocations : function() {
+		var result = [];
+		for (var idx = 0; idx < gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS); ++idx) {
+			var variable = gl.getActiveUniform(this.Id(), idx);
+			switch (variable.type) {
+				case gl.SAMPLER_2D :
+				case gl.SAMPLER_CUBE :
+					result.push(this.GetUniformLocation(variable.name));
+			}
+		}		
+		return result;
+	}
+	,
+	GetUniformType : function (name) {
+		var index = this.GetUniformIndex(name);
+		var variable = gl.getActiveUniform(this.Id(), index);
+		return variable.type;
+	}
+	,
+	GetUniformSize : function (name) {
+		var index = this.GetUniformIndex(name);
+		var variable = gl.getActiveUniform(this.Id(), index);
+		return variable.size;
 	}
 	/**
-	// TODO:	Vertex attribute properties. Must be global and static
-	,
-	GetVertexAttributeArrayBufferBinding : function(name) {
-		var attributeLocation = this.getAttributeLocation();
-		return gl.getVertexAttrib(attributeLocation, gl.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING);
-	}
-	,
-	GetVertexAttributeArrayEnabled : function(name) {
-		var attributeLocation = this.getAttributeLocation();
-		return gl.getVertexAttrib(attributeLocation, gl.VERTEX_ATTRIB_ARRAY_ENABLED);
-	}
-	,
-	GetVertexAttributeArraySize : function(name) {
-		var attributeLocation = this.getAttributeLocation();
-		return gl.getVertexAttrib(attributeLocation, gl.VERTEX_ATTRIB_ARRAY_SIZE);
-	}
-	,
-	GetVertexAttributeArrayStride : function(name) {
-		var attributeLocation = this.getAttributeLocation();
-		return gl.getVertexAttrib(attributeLocation, gl.VERTEX_ATTRIB_ARRAY_STRIDE);
-	}
-	,
-	GetVertexAttributeArrayType : function(name) {
-		var attributeLocation = this.getAttributeLocation();
-		return gl.getVertexAttrib(attributeLocation, gl.VERTEX_ATTRIB_ARRAY_TYPE);
-	}
-	,
-	GetVertexAttributeArrayNormalized : function(name) {
-		var attributeLocation = this.getAttributeLocation();
-		return gl.getVertexAttrib(attributeLocation, gl.VERTEX_ATTRIB_ARRAY_NORMALIZED);
-	}
+	* Webgl 2.0 uniform block introspection API
 	*/
-	
-	
-	/** Webgl 2.0 uniform properties methods */
-	
 	,
 	GetUniformBlockIndex : function(uniformBlockName) {
 		return gl.getUniformBlockIndex(this.Id(), uniformBlockName);
@@ -2275,6 +2166,9 @@ o3gl.Program.prototype = {
 		return gl.getActiveUniformBlockParameter(this.Id(), uniformBlockIndex, UNIFORM_BLOCK_REFERENCED_BY_FRAGMENT_SHADER);
 	}
 	,
+	/**
+	* Webgl 2.0 uniform introspection API
+	*/
 	GetUniformIndices : function(uniformNames) {
 		return gl.getUniformIndices(this.Id(), uniformNames); // TODO: API ??? sequence<> is an array
 	}
@@ -2311,125 +2205,74 @@ o3gl.Program.prototype = {
 		var location = this.GetUniformLocation(name);
 		return gl.getUniform(this.Id(), location);
 	}
-	,
-	UniformMatrix3fv: function(name, matrix) {
-		//TODO
-		/*
-		In your shader code you need to create the array of elements you want to use
-			uniform mat4[4] uMMatrix;
-		In reality, webgl just created four seperate uniforms with the names uMMatrix[0], uMMatrix[1], uMMatrix[2],and uMMatrix[3]. You need to bind them seperately.
-			program.mMatrixUniform[0] = gl.getUniformLocation(program, 'uMMatrix[0]');
-			gl.uniformMatrix4fv(program.mMatrixUniform[0], false, this.modelMatrices[0]);
-		*/
+		//gl.FLOAT
+		//gl.FLOAT_VEC2
+		//gl.FLOAT_VEC3
+		//gl.FLOAT_VEC4
+		//gl.INT
+		//gl.INT_VEC2
+		//gl.INT_VEC3
+		//gl.INT_VEC4
+		//gl.BOOL
+		//gl.BOOL_VEC2
+		//gl.BOOL_VEC3
+		//gl.BOOL_VEC4
+		//gl.FLOAT_MAT2
+		//gl.FLOAT_MAT3
+		//gl.FLOAT_MAT4
+		//gl.SAMPLER_2D
+		//gl.SAMPLER_CUBE
 		
-		gl.uniformMatrix3fv(this.GetUniformLocation(name), false, matrix);			
-		return this;		
+	,
+	Set : function(name, value) {
+		var uniformLocation = this.GetUniformLocation(name);
+		if (uniformLocation !== null) {
+			if (value instanceof o3gl.Texture)  					this.UniformSampler(name, value);
+			else if (!value.length) 								this.Uniform(name, arguments.slice(1));
+			else 													this.Uniform(name, value);
+			return this;
+		}
+		var attributeLocation = this.GetAttributeLocation(name);
+		if (attributeLocation !== null) {
+			if (value instanceof o3gl.ArrayBuffer) 					this.AttributePointer(name, value.pointer());
+			else if (value instanceof o3gl.ArrayBuffer.Pointer)		this.AttributePointer(name, value);
+			else if (!value.length) 								this.Attribute(name, arguments.slice(1));
+			else 													this.Attribute(name, value);
+			return this;
+		}
+
+		// TODO: Uniform blocks
+		throw new TypeError(name+" not found");
 	}
 	,
-	UniformMatrix4fv: function(name, matrix) {
+	Uniform: function(name, value) {
+		// Convert arguments to the vector form
+		if (!value.length) value = arguments.slice(1);
 	
-		// location [in]
-		// Type: WebGLUniformLocation
-		// The location of uniform variable to be updated. Locate set by GetUniformLocation.
+		var uniformLocation 	= this.GetUniformLocation(name);
+		var uniformType 		= this.GetUniformType(name);
 		
-		// transpose [in]
-		// Type: boolean
-		// Sets whether to transpose the matrix as the values are loaded into the uniform variable. Must be set to gl.FALSE.
+		switch (uniformType) {
+			case gl.FLOAT			:		gl.uniform1fv		(uniformLocation, value);	break;	
+			case gl.FLOAT_VEC2    	:		gl.uniform2fv		(uniformLocation, value);	break;
+			case gl.FLOAT_VEC3    	:		gl.uniform3fv		(uniformLocation, value);	break;
+			case gl.FLOAT_VEC4    	:		gl.uniform4fv		(uniformLocation, value);	break;
+			case gl.INT           	:		gl.uniform1iv		(uniformLocation, value);	break;
+			case gl.INT_VEC2      	:		gl.uniform2iv		(uniformLocation, value);	break;
+			case gl.INT_VEC3      	:		gl.uniform3iv		(uniformLocation, value);	break;
+			case gl.INT_VEC4      	:		gl.uniform4iv		(uniformLocation, value);	break;
+	//		case gl.BOOL          	:		gl.uniform1iv		(uniformLocation, value);	break;
+	//		case gl.BOOL_VEC2     	:		gl.uniform2iv		(uniformLocation, value);	break;
+	//		case gl.BOOL_VEC3     	:		gl.uniform3iv		(uniformLocation, value);	break;
+	//		case gl.BOOL_VEC4     	:		gl.uniform4iv		(uniformLocation, value);	break;
+			// Second argument sets whether to transpose the matrix as the values are loaded into the uniform variable. Must be set to gl.FALSE.
+			case gl.FLOAT_MAT2    	:		gl.uniformMatrix2fv	(uniformLocation, false, value);	break;
+			case gl.FLOAT_MAT3    	:		gl.uniformMatrix3fv	(uniformLocation, false, value);	break;
+			case gl.FLOAT_MAT4    	:		gl.uniformMatrix4fv	(uniformLocation, false, value);	break;
+			case gl.SAMPLER_2D    	:		gl.uniform1iv		(uniformLocation, value);	break;
+			case gl.SAMPLER_CUBE  	:		gl.uniform1iv		(uniformLocation, value);	break;
+		}
 		
-		// value [in]
-		// Type: Float32Array
-		// An array of float values representing one or more 4x4 matrices.
-	
-		gl.uniformMatrix4fv(this.GetUniformLocation(name), false, matrix);
-		return this;		
-	}
-	,
-	Uniform1f: function(name, v1) {
-		var uniformLocation = this.GetUniformLocation(name);
-		gl.uniform1f(uniformLocation, v1);
-		return this;
-	}
-	,
-	Uniform2f: function(name, v1, v2) {
-		var uniformLocation = this.GetUniformLocation(name);
-		gl.uniform2f(uniformLocation, v1, v2);
-		return this;
-	}
-	,
-	Uniform3f: function(name, v1, v2, v3) {
-		var uniformLocation = this.GetUniformLocation(name);
-		gl.uniform3f(uniformLocation, v1, v2, v3);
-		return this;
-	}
-	,
-	Uniform4f: function(name, v1, v2, v3, v4) {
-		var uniformLocation = this.GetUniformLocation(name);
-		gl.uniform4f(uniformLocation, v1, v2, v3, v4);
-		return this;
-	}
-	,
-	Uniform1fv: function(name, value) { // value must be an array
-		gl.uniform1fv(this.GetUniformLocation(name), value);
-		return this;
-	}
-	,
-	Uniform2fv: function(name, value) { // value must be an array
-		var uniformLocation = this.GetUniformLocation(name);
-		gl.uniform2fv(uniformLocation, value);
-		return this;
-	}
-	,
-	Uniform3fv: function(name, value) { // value must be an array
-		gl.uniform3fv(this.GetUniformLocation(name), value);
-		return this;
-	}
-	,
-	Uniform4fv: function(name, value) { // value must be an array
-		gl.uniform4fv(this.GetUniformLocation(name), value);
-		return this;
-	}
-	,
-	Uniform1i: function(name, v1) {
-		var uniformLocation = this.GetUniformLocation(name);
-		gl.uniform1i(uniformLocation, v1);
-		return this;
-	}
-	,
-	Uniform2i: function(name, v1, v2) {
-		var uniformLocation = this.GetUniformLocation(name);
-		gl.uniform2i(uniformLocation, v1, v2);
-		return this;
-	}
-	,
-	Uniform3i: function(name, v1, v2, v3) {
-		var uniformLocation = this.GetUniformLocation(name);
-		gl.uniform3i(uniformLocation, v1, v2, v3);
-		return this;
-	}
-	,
-	Uniform4i: function(name, v1, v2, v3, v4) {
-		var uniformLocation = this.GetUniformLocation(name);
-		gl.uniform4i(uniformLocation, v1, v2, v3, v4);
-		return this;
-	}
-	,
-	Uniform1iv: function(name, value) { // value must be an array
-		gl.uniform1iv(this.GetUniformLocation(name), value);
-		return this;
-	}
-	,
-	Uniform2iv: function(name, value) { // value must be an array
-		gl.uniform2iv(this.GetUniformLocation(name), value);
-		return this;
-	}
-	,
-	Uniform3iv: function(name, value) { // value must be an array
-		gl.uniform3iv(this.GetUniformLocation(name), value);
-		return this;
-	}
-	,
-	Uniform4iv: function(name, value) { // value must be an array
-		gl.uniform4iv(this.GetUniformLocation(name), value);
 		return this;
 	}
 	,
@@ -2453,207 +2296,58 @@ o3gl.Program.prototype = {
 		return this;
 	}
 	,
-	/**
-	* Assign sequential values to the active uniforms of sampler type
-	*/
-	UniformSamplersDefaultValues : function () {
-		var index = 0;
-		for (var idx = 0; idx < gl.getProgramParameter(this.Id(), gl.ACTIVE_UNIFORMS); ++idx) {
-			// Get information about an active uniform variable
-			var activeUniform 	= gl.getActiveUniform(this.Id(), idx);
-			var uniformName 	= activeUniform.name;
-			var uniformType 	= activeUnifrom.type;
-			var uniformLocation = gl.getUniformLocation(this.Id(), uniformName);
-			// Assign unique integer value
-			switch (uniformType) {
-				case gl.SAMPLER_2D :
-				case gl.SAMPLER_CUBE :
-					gl.uniform1i(uniformLocation, index);
-					index++;					
-			}
-			index++;
-		}
-	}
-	,
-	/**
-	* Helper method
-	*/
-	UniformSampler : function(name, texture) {			
+	// Helper method
+	UniformSampler : function(name, texture) {
 		// Assign sequential value to the sampler uniforms
 		if (!this._samplers) {
-			this.UniformSamplersDefaultValues();
+			var uniformSamplerLocations = this.GetUniformSamplerLocations();
+			for (var i = 0; i < uniformSamplerLocations.length; ++i) {
+				gl.uniform1i(uniformSamplerLocations[i], i);
+			}
 			this._samplers = true;			
 		}
 		
-		var index = getUniform(name);
+		var index = this.GetUniform(name);
 		gl.activeTexture(gl.TEXTURE0 + index);
 		texture.Bind();
 		return this;
 	}
 	,
-	VertexAttributePointer : function(name, arrayBufferPointer) {
-		var attributeLocation = this.GetAttribLocation(name);	
-		//TODO: mat4 attribute takes up 4 attribute locations. The one you bind and the 3 following	
-		//TODO: What is size of gl.FLOAT_MAT4 returned with getActiveAttrib ??? The size is 1
-		if (!arrayBufferPointer._size) {
-			var glType = this.getType(name);
-			arrayBufferPointer.size(Utils.glTypeSizeComponents(glType));
+	Attribute: function(name, value) {
+		var attributeLocation = this.GetAttributeLocation(name);
+		var glType = this.GetAttributeType(name);
+		switch (glType) {
+			case gl.FLOAT			:		o3gl.VertexArray._VertexAttribute1f(attributeLocation, value);	break;	
+			case gl.FLOAT_VEC2    	:		o3gl.VertexArray._VertexAttribute2f(attributeLocation, value);	break;
+			case gl.FLOAT_VEC3    	:		o3gl.VertexArray._VertexAttribute3f(attributeLocation, value);	break;
+			case gl.FLOAT_VEC4    	:		o3gl.VertexArray._VertexAttribute4f(attributeLocation, value);	break;
 		}
-		
-		if (!arrayBufferPointer._type) {
-			//TODO: illegal state ???
-			//Probably array buffer's been initialized by non typed array
-			//The it's assumed to be the same like shader attribute variable type
-			arrayBufferPointer._type = this.GetActiveAttribType();
-		}
-		
-		var size 			= arrayBufferPointer._size;
-		var type        	= arrayBufferPointer._type; 			// !!!
-		var normalized  	= arrayBufferPointer._normalized;		//
-		var strideBytes     = arrayBufferPointer._stride;
-		var offsetBytes     = arrayBufferPointer._offset;
+		return this;
+	}
+	,
+	AttributePointer: function(name, value) {
+		var attributeLocation = this.GetAttributeLocation(name);
+		var pointer = value;		
+		if (!pointer._size) {
+			var attributeType = this.GetAttributeType(name);
 			
-		// Configure and bind array buffer
-		var arrayBuffer 	= arrayBufferPointer._buffer;
-		arrayBuffer.Bind();
-		
-		gl.enableVertexAttribArray(attributeLocation);
-		gl.vertexAttribPointer(attributeLocation,
-			size,   // Specifies the number of components per generic vertex attribute. Must be 1, 2, 3, 4. Additionally, the symbolic constant GL_BGRA is accepted by glVertexAttribPointer. The initial value is 4.
-			type,   // Specifies the data type of each component in the array
-			normalized,  // Specifies whether fixed-point data values should be normalized (GL_TRUE) or converted directly as fixed-point values (GL_FALSE) when they are accessed.
-			strideBytes, // Specifies the byte offset between consecutive generic vertex attributes. If stride is 0, the generic vertex attributes are understood to be tightly packed in the array. The initial value is 0.
-			offsetBytes  // Specifies a offset of the first component of the first generic vertex attribute in the array in the data store of the buffer currently bound to the GL_ARRAY_BUFFER target. The initial value is 0.
-		);
-		
-		// ANGLE instanced arrays
-		if (arrayBufferPointer._divisor) {
-			var ext = gl.getExtension("ANGLE_instanced_arrays");
-			ext.vertexAttribDivisorANGLE(attributeLocation, arrayBufferPointer._divisor)
-		}
-		
-		return this;
-	}
-	,
-	VertexAttribute1f : function(name, v1) {
-		var attributeLocation = this.GetAttribLocation(name);	
-		gl.disableVertexAttribArray(attributeLocation);
-		gl.vertexAttrib1f(attributeLocation, v1); 
-		this.attributes[attributeLocation] = [v1];
-		return this;
-	}
-	,
-	VertexAttribute2f : function(name, v1, v2) {
-		var attributeLocation = this.GetAttribLocation(name);	
-
-		gl.disableVertexAttribArray(attributeLocation);
-		gl.vertexAttrib2f(attributeLocation, v1, v2); 
-		this.attributes[attributeLocation] = [v1, v2];
-		return this;
-	}
-	,
-	VertexAttribute3f : function(name, v1, v2, v3) {
-		var attributeLocation = this.GetAttribLocation(name);	
-		gl.disableVertexAttribArray(attributeLocation);
-		gl.vertexAttrib2f(attributeLocation, v1, v2, v3); 
-		this.attributes[attributeLocation] = [v1, v2, v3];
-		return this;
-	}
-	,
-	VertexAttribute4f : function(name, v1, v2, v3, v4) {
-		var attributeLocation = this.GetAttribLocation(name);	
-		gl.disableVertexAttribArray(attributeLocation);
-		gl.vertexAttrib2f(attributeLocation, v1, v2, v3, v4); 
-		this.attributes[attributeLocation] = [v1, v2, v3, v4];
-		return this;
-	}
-	/*
-		Convenience methods with overloaded arguments 
-		Performs pointer size/type configuration
-	*/
-	,
-	Attribute1f : function(name, v1) {
-		if (v1 instanceof o3gl.ArrayBuffer) {
-			this.VertexAttributePointer(name, v1.pointer().size(1));
-		} else if (v1 instanceof o3gl.ArrayBuffer.Pointer) {
-			this.VertexAttributePointer(name, v1.size(1));
-		} else {
-			this.VertexAttribute1f(name, v1);
-		}
-		return this;
-	}
-	,
-	Attribute2f : function(name, v1, v2) {
-		if (v1 instanceof o3gl.ArrayBuffer) {
-			this.VertexAttributePointer(name, v1.pointer().size(2));
-		} else if (v1 instanceof o3gl.ArrayBuffer.Pointer) {
-			this.VertexAttributePointer(name, v1.size(2));
-		} else {
-			this.VertexAttribute2f(name, v1, v2);
-		}
-		return this;
-	}
-	,
-	Attribute3f : function(name, v1, v2, v3) {
-		if (v1 instanceof o3gl.ArrayBuffer) {
-			this.VertexAttributePointer(name, v1.pointer().size(3));
-		} else if (v1 instanceof o3gl.ArrayBuffer.Pointer) {
-			this.VertexAttributePointer(name, v1.size(3));
-		} else {
-			this.VertexAttribute3f(name, v1, v2, v3);
-		}
-		return this;
-	}
-	,
-	Attribute4f : function(name, v1, v2, v3, v4) {
-		if (v1 instanceof o3gl.ArrayBuffer) {
-			this.VertexAttributePointer(name, v1.pointer().size(4));
-		} else if (v1 instanceof o3gl.ArrayBuffer.Pointer) {
-			this.VertexAttributePointer(name, v1.size(4));
-		} else {
-			this.VertexAttribute4f(name, v1, v2, v3, v4);
-		}
-		return this;
-	}
-	,
-	_getMaxElementArrayBufferCount : function() {
-		var bufferSize = gl.getBufferParameter(gl.ELEMENT_ARRAY_BUFFER, gl.BUFFER_SIZE);
-		var elementType = gl.UNSIGNED_SHORT;
-		return bufferSize / Utils.glTypeSizeBytes(elementType);
-	}
-	,
-	_getMaxArrayBufferCount : function() {
-		var result = null;
-		for (var idx = 0; idx < gl.getProgramParameter(this.Id(), gl.ACTIVE_ATTRIBUTES); ++idx) {
-			var buffer = gl.getVertexAttrib(idx, gl.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING);
-			if (!buffer) continue;
-			var enabled = gl.getVertexAttrib(idx, gl.VERTEX_ATTRIB_ARRAY_ENABLED);
-			if (!enabled) continue;
-			
-			// TODO: GL_BGRA
-			var elementSize = gl.getVertexAttrib(idx, gl.VERTEX_ATTRIB_ARRAY_SIZE); // 1,2,3,4,GL_BGRA
-			var elementType = gl.getVertexAttrib(idx, gl.VERTEX_ATTRIB_ARRAY_TYPE);
-			var elementStride = gl.getVertexAttrib(idx, gl.VERTEX_ATTRIB_ARRAY_STRIDE);
-
-			gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-			var bufferSize = gl.getBufferParameter(gl.ARRAY_BUFFER, gl.BUFFER_SIZE);
-			
-			var elementBytes = Utils.glTypeSizeBytes(elementType) * elementSize + elementStride;
-			
-			var elementsCount = bufferSize / elementBytes;
-			
-			if (result === null) {
-				result = elementsCount;
-			} else {
-				if (result !== elementsCount) {
-					console.warning("Array buffers have different elements count");
-					if (result > elementsCount) { 
-						result = elementsCount;
-					}
-				} 
+			switch (attributeType) {
+				case gl.FLOAT			:		pointer.size(1);		break;	
+				case gl.FLOAT_VEC2    	:		pointer.size(2);		break;
+				case gl.FLOAT_VEC3    	:		pointer.size(3);		break;
+				case gl.FLOAT_VEC4    	:		pointer.size(4);		break;
 			}
 		}
-		return result;
+		o3gl.VertexArray._VertexAttributePointer(attributeLocation, pointer);		
+		return this;
+	}
+	,
+	BindAttributeLocation : function (name, index) {		
+		// More than one name can be bound to the same vertex index, but multiple indexes cannot be bound to the same name.
+		// If name is a matrix attribute, then index points to the first column of the matrix. 
+		// Additional matrix columns are automatically bound to index+1, index+2, and so forth based on matrix variable (mat2,mat3,mat4).
+		gl.bindAttribLocation(this.programId, index, name);
+		return this;
 	}
 	,
 	// Uniform buffer object API
@@ -2671,7 +2365,7 @@ o3gl.Program.prototype = {
 	,
 	_DrawElements : function(glMode, first, count) {		
 		var elementType 	= gl.UNSIGNED_SHORT; 						// The type of elements in the element array buffer. Must be a gl.UNSIGNED_SHORT.
-		var elementsCount 	= this._getMaxElementArrayBufferCount(); 	// The number of elements to render.
+		var elementsCount 	= undefined; 	// The number of elements to render.
 		var offsetBytes		= 0; 										// Offset into the element array buffer. Must be a valid multiple of the size of type.
 				
 		if (first) 
@@ -2689,17 +2383,14 @@ o3gl.Program.prototype = {
 		// TODO: instanced
 	}
 	,
-	_drawPrimitives : function(glMode, first, count) {
+	_DrawPrimitives : function(glMode, first, count) {
 		this.Use(); // TODO: do we need it here??? assert current program
-		
-
 		var elementArrayBuffer = gl.getParameter(gl.ELEMENT_ARRAY_BUFFER_BINDING);
 		if (elementArrayBuffer) {
 			this._DrawElements(glMode, first, count);			
 		} else {
 			this._DrawArrays(glMode, first, count);			
 		}
-	
 /*		
 		if (elementArrayBuffer) {
 			elementArrayBuffer.Bind();
@@ -2743,7 +2434,7 @@ o3gl.Program.prototype = {
 	,
 	/** connects each group of three consecutive vertices to make a triangle - so 24 vertices produces 8 separate triangles. */
 	DrawTriangles : function(first, count) {
-		this._drawPrimitives(gl.TRIANGLES, first, count);
+		this._DrawPrimitives(gl.TRIANGLES, first, count);
 		return this;
 	}
 	,
@@ -2753,40 +2444,39 @@ o3gl.Program.prototype = {
 	* This sounds messy but imagine that you are drawing something like a long, winding ribbon - with vertices A,C,E,G down one side of the ribbon and B,D,F,H down the otherside. 
 	* You'll need to sketch this one on some paper to get the hang of it. */
 	DrawTriangleStrip : function(first, count) {
-		this._drawPrimitives(gl.TRIANGLE_STRIP, first, count);
+		this._DrawPrimitives(gl.TRIANGLE_STRIP, first, count);
 		return this;
 	}
 	,
 	/**  similar in concept to the STRIP but now we start with triangle A,B,C, then A,C,D, then A,D,E...and so on until A,W,X. The result looks like a ladies' fan. */
 	DrawTriangleFan : function(first, count) {
-		this._drawPrimitives(gl.TRIANGLE_FAN, first, count);
+		this._DrawPrimitives(gl.TRIANGLE_FAN, first, count);
 		return this;
 	}
 	,
 	/** Draws each vertex as a single pixel dot...so if there are 24 vertices, you get 24 dots.*/
 	DrawPoints : function(first, count) {
-		this._drawPrimitives(gl.POINTS, first, count);
+		this._DrawPrimitives(gl.POINTS, first, count);
 		return this;
 	}
 	,
 	/** connects each pair of vertices by a straight line, so 24 vertices produces 12 separate lines. */
 	DrawLines : function(first, count) {
-		this._drawPrimitives(gl.LINES, first, count);
+		this._DrawPrimitives(gl.LINES, first, count);
 		return this;
 	}
 	,
 	/** connects each vertex to the next by a straight line, so 24 vertices produces 23 lines that are all connected end-to-end. */
 	DrawLineStrip : function(first, count) {
-		this._drawPrimitives(gl.LINE_STRIP, first, count);
+		this._DrawPrimitives(gl.LINE_STRIP, first, count);
 		return this;
 	}
 	,
 	/**  is like LINESTRIP except that the last vertex is connected back to the first, so 24 vertices produces 24 straight lines - looping back to the start*/
 	DrawLineLoop : function(first, count) {
-		this._drawPrimitives(gl.LINE_LOOP, first, count);
+		this._DrawPrimitives(gl.LINE_LOOP, first, count);
 		return this;
 	}
-
 	,
 	Viewport : function(x,y,width,height) {
 		if (arguments.length == 0) {

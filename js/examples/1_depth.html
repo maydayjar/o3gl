@@ -151,9 +151,9 @@ void main() {
 		// Set up program properties that won't change
 		indexes.Bind();
 		program.Use().
-			Attribute3f("aPosition", positions.pointer()).
-			UniformMatrix4fv("uModelViewMatrix", 	mvMatrix).
-			UniformMatrix4fv("uProjectionMatrix", 	pMatrix).
+			Set("aPosition", positions.pointer()).
+			Set("uModelViewMatrix", 	mvMatrix).
+			Set("uProjectionMatrix", 	pMatrix).
 			// End up with drawcall
 			DrawTriangles();
     }

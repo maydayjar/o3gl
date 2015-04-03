@@ -1,10 +1,40 @@
 	? Change "aspects" to the proxy objects
+
+	? Program automatic restore to the default settings
+
+	? Framebuffer texture available settings
+
+	? Default sampler uniforms sequential values assignment. https://www.khronos.org/webgl/wiki/TextureState. In progress.
+
+	? ProgramSources proxy mode. Is programmatical shader sources preprocessing a good idea?
+	
+	? `Uber shader program` (with list of uniforms like useLighting, useAlphaMap) in most cases are not good.
+	
+	? Multiple textures demo
+	
+	+ Depth mask and color mask must be set in frame buffer ClearXXXX methods. Should them be used as Program methods? No they are more related to the frame buffer Clear() method.
+
+	+ Default draw arrays elements count. 
+		- Check o3gl CST variable to retrieve current element array buffer elements type.
+
+	- Array buffer pointer type must not match only possible vertex attribute float type. Pointer size (components count) can not match decalred attribute type (though this is very weird case). Pointer itself contains all the necessary type and size information. But 
+
+	- Uniform types must match glUniformXXX by type and arguments size. No type conversion or partial value are applied. Therefore uniform type unambiguously matches one of glUniform setter method.
+
+	- Uniform and attribute setters method name contains size and type information and can accept values of different types. For example fv accepth both array and js typed array. 
 	
 	- Frame buffer scissor test
 	
-	+ Depth mask and color mask must be set in frame buffer ClearXXXX methods. Should them be used as Program methods? No they are more related to the frame buffer Clear() method.
+	- What is size in getActiveUniform???
 	
-	? Program automatic restore to the default settings
+	- Test sparse attribute location binding
+	
+	- Method signatures designed to be cached on the client side
+	
+	- Does uniform index match uniform location. Can they alter?
+
+	- Test arrays of uniforms and attributes
+
 	
 	- Program internal frame buffer cache.
 		
@@ -18,44 +48,29 @@
 		
 	- Nehe examples texture deffered loading causes texture initialization error
 	
-	? Framebuffer texture available settings
 	
-	- Various webgl 2.0 features
+	- Various webgl 2.0 features and extensions support
+
+		- ANGLE_instanced_arrays
+		
+			- VERTEX_ATTRIB_ARRAY_DIVISOR_ANGLE. get vertex attribute parameter, consider it in automatic instance count computation
 	
-	? uniformf and uniformfv methods overloading. check uniformv for non-array type
-	
+
+		
 	- BlurStroke shader
 	
-	- ANGLE_instanced_arrays
-	
-		- VERTEX_ATTRIB_ARRAY_DIVISOR_ANGLE. get vertex attribute parameter, consider it in automatic instance count computation
-	
 	- Difference between attribute index and location
-	
-	+ TextureUnitObject helper class. Default sampler uniforms sequential values assignment. https://www.khronos.org/webgl/wiki/TextureState.
-	
+		
 	- Resources cleanup. Like disabling vertex arrays, unbinding textures from texture units etc
 	
 	- Embedded matrices builder module
-	
-	- UniformBufferObject helper implementation
-	
-	? ProgramSources proxy mode. 
-	
-	? `Uber shader program` (with list of uniforms like useLighting, useAlphaMap) in most cases are not good.
-	
-	? Multiple textures demo
-	
+		
 	- GLTF loader
 	
 	- Array buffer `View` helper object instead of pointer. With _count property. 
-	
-	+ Default draw arrays elements count. 
-		- Check o3gl CST variable to retrieve current element array buffer elements type.
-		
-	+ Check array buffer data conversion from int to float? Yes, it works. Buffer data can be of arbitrary type. It is mapped to shader attribute types.
-	
+				
 	- Test relation between attribute location and attribute index. gl.getProgramParameter(this.Id(), gl.ACTIVE_ATTRIBUTES) returns the number of active attribute variables. 
 	
 	- Resource factories. To create preconfigured resources.
+	
 	
