@@ -223,7 +223,7 @@ program.DepthTest(true).DepthMask(false)
 /**
 Currying aspect
 */
-
+/*
 function Deffered(src, dst, methodNameRegexp) {
 	var result = {};
 
@@ -284,5 +284,18 @@ o2.f2(2);
 console.log(o1.value);
 deffered();
 console.log(o1.value);
+*/
+
+var i = 1;
+console.log(i instanceof Number);
+
+var a1 = [];
+console.log(a1 instanceof Array);
+console.log(a2 instanceof Array);
+
+var a2 = new Float32Array();
+console.log(a2 instanceof Float32Array);
+console.log(a2 instanceof ArrayBuffer);
+
 
 </script>
