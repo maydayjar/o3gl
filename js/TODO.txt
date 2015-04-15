@@ -12,15 +12,37 @@
 	
 	? Multiple textures demo
 	
+	? Bind resources just after creation to allow instant chained methods building. Eliminate client state tracking. Rely on explicit Bind operation. In java provide different interfaces to force binding where necessary.
+	
+	? Client state tracking wrappers
+
+	? Do we need first, count and instances count to be properties of the program instance. And gl draw mode too.
+	
+	? Include sources preprocessing to the ProgramInstance. Is sources preprocessing a good way of dealing with shaders?
+	
 	+ Depth mask and color mask must be set in frame buffer ClearXXXX methods. Should them be used as Program methods? No they are more related to the frame buffer Clear() method.
 
+	+ Difference between attribute index and location is that index is program-specific and constant value while location is vertex attribute pointer 
+	
 	+ Default draw arrays elements count. 
 		- Check o3gl CST variable to retrieve current element array buffer elements type.
 
-	- Array buffer pointer type must not match only possible vertex attribute float type. Pointer size (components count) can not match decalred attribute type (though this is very weird case). Pointer itself contains all the necessary type and size information. But 
+	+ Array buffer pointer type must not match only possible vertex attribute float type. Pointer size (components count) can not match decalred attribute type (though this is very weird case). Pointer itself contains all the necessary type and size information. But 
 
-	- Uniform types must match glUniformXXX by type and arguments size. No type conversion or partial value are applied. Therefore uniform type unambiguously matches one of glUniform setter method.
+	+ Uniform types must match glUniformXXX by type and arguments size. No type conversion or partial value are applied. Therefore uniform type unambiguously matches one of glUniform setter method.
 
+	- Draw points and point size
+	
+	- ProgramInstance logic:
+		
+		- If VAO is set, attribute setters are executed immediately. Otherwise assgnment is deffered
+		
+		- If framebuffer is assigned it is bound before every drawcall. Color, Depth, Stencil are convenience methods that cause new implicit framebuffer object creation. Implicit frame, render and uniform buffers are stored internally and deleted in the ProgramInstance.Delete()
+		
+		- Viewport binding
+		
+		- Depth/Color Mask, DepthTest, Blending
+	
 	- Uniform and attribute setters method name contains size and type information and can accept values of different types. For example fv accepth both array and js typed array. 
 	
 	- Frame buffer scissor test
@@ -35,6 +57,7 @@
 
 	- Test arrays of uniforms and attributes
 
+	- Performance test (multiple primitive objects rendering)
 	
 	- Program internal frame buffer cache.
 		
@@ -43,6 +66,8 @@
 		Allows simplified "render to texture" semantics. 
 		Use case: two convolution shader passes. 
 		Possible problem is deletion of the created framebuffer objects
+	
+	- What is more expensive: switching between framebuffers or changing frame buffer color attachement
 	
 	- Program instances concept
 		
@@ -58,9 +83,7 @@
 
 		
 	- BlurStroke shader
-	
-	- Difference between attribute index and location
-		
+			
 	- Resources cleanup. Like disabling vertex arrays, unbinding textures from texture units etc
 	
 	- Embedded matrices builder module
@@ -68,8 +91,6 @@
 	- GLTF loader
 	
 	- Array buffer `View` helper object instead of pointer. With _count property. 
-				
-	- Test relation between attribute location and attribute index. gl.getProgramParameter(this.Id(), gl.ACTIVE_ATTRIBUTES) returns the number of active attribute variables. 
 	
 	- Resource factories. To create preconfigured resources.
 	
