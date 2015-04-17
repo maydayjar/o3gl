@@ -100,8 +100,6 @@ void main() {
 		
 		// Set up program properties that won't change
 		program.
-			DepthTest(true).
-			DepthMask(true).
 			Set("aPosition", positions.pointer()).
 			Set("aOffset", offsets.pointer().divisor(1)); // Draw instanced!
 	}
@@ -170,8 +168,8 @@ void main() {
 			mesh = new Teapot();
 			normalize(mesh.positions);
 		}	
-		positions.Data(mesh.positions);
-		indexes.Data(mesh.indexes);
+		positions.Bind().Data(mesh.positions);
+		indexes.Bind().Data(mesh.indexes);
 
 		
 		/*

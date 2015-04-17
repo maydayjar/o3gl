@@ -118,12 +118,12 @@
 				"uMaterialSpecular",
 				"uMaterialAmbient",
 				"uLightPosition"
-			);
+			).newInstance();
 			
-		programConvolution 	= o3gl.sources(Shaders.Convolution).CreateProgram();
-		programBlurRadial 	= o3gl.sources(Shaders.BlurRadial).CreateProgram();
-		programBlend 		= o3gl.sources(Shaders.BlendAdditive).CreateProgram();
-		programFlush 		= o3gl.sources(Shaders.Default).CreateProgram();
+		programConvolution 	= o3gl.sources(Shaders.Convolution).CreateProgram().newInstance();
+		programBlurRadial 	= o3gl.sources(Shaders.BlurRadial).CreateProgram().newInstance();
+		programBlend 		= o3gl.sources(Shaders.BlendAdditive).CreateProgram().newInstance();
+		programFlush 		= o3gl.sources(Shaders.Default).CreateProgram().newInstance();
 
 		// Create frame buffer textures
 		var ppScale = 0.5;
@@ -149,7 +149,8 @@
 
 		//fbScene.Bind().ClearDepth().ClearColor(0.0, 0.0, 0.0, 1.0).Viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 		
-        fbScene.ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer();		
+        fbScene.Bind().ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer();		
+		
 		// Draw regular geometry
 		var step = 2.5;
 		for (var x=-1; x <= 1; x ++) 
@@ -172,8 +173,7 @@
 			var b = (z + 1) / 2;
 
 			programPhong.
-				FrameBuffer(fbScene).Viewport().
-				DepthTest(true).DepthMask(true).
+				FrameBuffer(fbScene).DepthTest(true).DepthMask(true).
 				Set("uMatrixV", 	matrixV). 		
 				Set("uMatrixP", 	matrixP).		
 				Set("uMatrixM", 	matrixM).
@@ -187,13 +187,12 @@
 				DrawTriangles();
 		}
 
-/*		
+		/*
 		// Flush to the screen
-		fbDefault.Bind().DepthTest(false).DepthMask(false).
-		ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer().
-		Viewport();
+		fbDefault.Bind().ClearDepthBuffer();
 		
-		programFlush.Use().
+		programFlush.
+			FrameBuffer(fbDefault).DepthTest(false).DepthMask(false).
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uSampler0", textureScene).		
@@ -201,7 +200,7 @@
 			DrawTriangles();
 
 		return;
-*/
+		*/
 		
 		// Draw emmissive geometry
         fbEmissive.ClearColorBuffer(0,0,0,1);
@@ -211,7 +210,7 @@
 		mat4.toInverseMat3(matrixMV, matrixN);		
 		mat3.transpose(matrixN);
 		programPhong.
-			FrameBuffer(fbEmissive).Viewport().
+			FrameBuffer(fbEmissive).
 			DepthTest(true).DepthMask(true).
 			Set("uMatrixV", 	matrixV). 		
 			Set("uMatrixP", 	matrixP).		
@@ -237,7 +236,7 @@
 
 
 		programConvolution.
-			FrameBuffer(fbConvolutionPass1).Viewport().
+			FrameBuffer(fbConvolutionPass1).
 			DepthTest(false).
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
@@ -246,7 +245,7 @@
 			DrawTriangles();
 		
 		programConvolution.
-			FrameBuffer(fbConvolutionPass2).Viewport().
+			FrameBuffer(fbConvolutionPass2).
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uStep", 0, 0.9/fbConvolutionPass2.getHeight()).
@@ -254,7 +253,7 @@
 			DrawTriangles();
 		
 		programBlurRadial.
-			FrameBuffer(fbBlurRadial).Viewport().
+			FrameBuffer(fbBlurRadial).
 			DepthTest(false).
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
@@ -266,21 +265,22 @@
 	
 		// Flush to the screen
 		programBlend.
-			FrameBuffer(fbDefault).Viewport().
+			FrameBuffer(fbDefault).
 			DepthTest(false).
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uSampler0", textureBlurRadial).		
 			Set("uSampler1", textureScene).		
 			DrawTriangles();
-		
+
 		return;
-		
-		programFlush.Use().
+
+		programFlush.FrameBuffer().ClearColorBuffer(1,0,0,1);
+		programFlush.DepthTest(false).
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
-//			Set("uSampler0", textureScene).		
-			Set("uSampler0", textureConvolutionPass2).		
+			Set("uSampler0", textureScene).		
+//			Set("uSampler0", textureBlurRadial).		
 			DrawTriangles();
     }
     

@@ -547,6 +547,7 @@ Extend(o3gl.Texture, o3gl.Resource, {
 		// Texture itself has no methods except bind.
 		return this; // Return intrface with all the texture manipulation API
 	}
+	// TODO: activeTexture semantics is unclear. activeTextur must be set before texture binding. Exposing this method can cause misuse without subsequent Bind() method invocation
 	,
 	Active : function (textureUnit) {
 		gl.activeTexture(gl.TEXTURE0 + textureUnit);
@@ -625,6 +626,7 @@ o3gl.Texture2D = function() {
 Extend(o3gl.Texture2D, o3gl.Texture,
 {
 	GenerateMipmap : function() {
+		this.Bind();
 		gl.generateMipmap(this._target);
 		return this;
 	}
@@ -657,6 +659,7 @@ Extend(o3gl.Texture2D, o3gl.Texture,
 	}
 	,
 	Filter : function (glTextureMinFilter, glTextureMagFilter) {
+		this.Bind();
 		gl.texParameteri(this._target, gl.TEXTURE_MIN_FILTER, glTextureMinFilter);		
 		gl.texParameteri(this._target, gl.TEXTURE_MAG_FILTER, glTextureMagFilter);		
 		return this;
@@ -741,6 +744,7 @@ Extend(o3gl.Texture2D, o3gl.Texture,
     }
     ,
 	Wrap : function(glTextureWrapS, glTextureWrapT) {
+		this.Bind();
 		gl.texParameteri(this._target, gl.TEXTURE_WRAP_S, glTextureWrapS);
 		gl.texParameteri(this._target, gl.TEXTURE_WRAP_T, glTextureWrapT);
 		return this;
@@ -822,7 +826,6 @@ o3gl.Texture2D.Target.prototype = {
 		return this;
 	}
 	,
-	
 	Image : function() {
 		this._texture.Bind();
 		
@@ -1032,6 +1035,8 @@ Extend(o3gl.Buffer, o3gl.Resource, {
 	* Accepts javascript arrays and WebGL typed arrays
 	*/
 	Data : function(data) {
+		this.Bind();
+
 		var arrayOrSize;	// Typed array or size in bytes
 		// Convert array to typed array
 		if (data instanceof Array) {
@@ -1065,6 +1070,8 @@ Extend(o3gl.Buffer, o3gl.Resource, {
 	}
 	,
 	SubData : function(offset, value) {
+		this.Bind();
+		
 		var typedArray;	// Typed array or size in bytes
 		// Convert array to typed array
 		if (value instanceof Array) {
@@ -1234,7 +1241,6 @@ o3gl.ArrayBuffer.Pointer = function(buffer) {
 	this._normalized = false;	// as	
 	this._divisor = 0;	// Extensions ANGLE_instanced_arrays, 
 }
-
 Extend(o3gl.ArrayBuffer.Pointer, o3gl.Buffer.Pointer, {
 	count : function(value) {
 		this._count = value;
@@ -1270,7 +1276,6 @@ o3gl.ElementArrayBuffer = function() {
 	this._usage 		= gl.STATIC_DRAW;			// gl.STATIC_DRAW gl.DYNAMIC_DRAW
 	this._type 			= gl.UNSIGNED_SHORT;				// Component type HINT. Used by pointers as default value
 }
-
 Extend(o3gl.ElementArrayBuffer, o3gl.Buffer, 
 {
 	typeUnsignedByte : function() {
@@ -1297,58 +1302,23 @@ o3gl.UniformBuffer = function () {
 	this._usage 		= gl.DYNAMIC_DRAW;				// gl.STATIC_DRAW gl.DYNAMIC_DRAW
 	this._type 			= undefined;					// Uniform buffer is likely composed of various types
 }
-
 Extend(o3gl.UniformBuffer, o3gl.Buffer, 
 {
 	pointer : function(program, uniformName) {
 	}
 });
-
 o3gl.UniformBuffer.Pointer = function(uniformBuffer) {
 }
-
 Extend(o3gl.UniformBuffer.Pointer, o3gl.Buffer.Pointer, {
 });
-
-
 o3gl.UniformBufferDefault = function (uniformBlockName) {
 	this._uniformBlockIndex = -1; // Default uniform block index
 	this._uniform
 }
-
 o3gl.UniformBufferDefault.prototype = {
 	Bind : function() {
 	}
 }
-
-// UBO concept
-/*
-uniform MyBlock1 {
-	vec3 v3;
-	int i;
-}
-
-var ub = o3gl.createUniformBuffer();
-
-//1st way to setup data
-var pv3 = ub.pointer().typeFloat().size(3);
-var pi = pv3.next().typeInt().size(1);
-pv3.Data(1.0,2.0,3.0);
-pi.Data(1);
-// Or
-ub.pointer().								
-	name("a").									// Named pointer ???
-	typeFloat().size(3).Data(1.0, 2.0, 3.0).
-	next().typeInt().size(1).Data(100)
-
-var p = o3gl.createProgram();
-
-// 2nd way to setup data
-p.UniformBlock("myBlock1", ub.pointer().offset(0)).uniform3f("v3", )
-
-*/
-
-
 
 o3gl.FrameBuffer = function() {
 	// this.frameBufferId = gl.createFramebuffer();
@@ -1427,6 +1397,8 @@ o3gl.FrameBuffer.prototype = {
 	}
 	,
 	Color : function(attachment0, attachment1, attachment2, attachment3) {
+		this.Bind();
+
 		if (this.frameBufferId === null) {
 			this.frameBufferId = gl.createFramebuffer();
 			gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBufferId);
@@ -1495,6 +1467,8 @@ o3gl.FrameBuffer.prototype = {
 	}
 	,
 	Depth : function(attachment) {
+		this.Bind();
+		
 		if (this.frameBufferId === null) {
 			this.frameBufferId = gl.createFramebuffer();
 			gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBufferId);
@@ -1519,6 +1493,8 @@ o3gl.FrameBuffer.prototype = {
 	}
 	,
 	Stencil : function(attachment) {
+		this.Bind();
+		
 		if (this.frameBufferId === null) {
 			this.frameBufferId = gl.createFramebuffer();
 			gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBufferId);
@@ -1530,6 +1506,8 @@ o3gl.FrameBuffer.prototype = {
 	}
 	,
 	ClearColorBuffer : function(r,g,b,a) {
+		this.Bind();
+		
 		var isR = (r !== null);
 		var isG = (g !== null);
 		var isB = (b !== null);
@@ -1546,6 +1524,8 @@ o3gl.FrameBuffer.prototype = {
 	}
 	,
 	ClearDepthBuffer : function(depth) {
+		this.Bind();		
+		
 		gl.depthMask(true);	// Without this set to true no effect will take place
 
 		if (arguments.length == 0)  {
@@ -1558,13 +1538,18 @@ o3gl.FrameBuffer.prototype = {
 	}	
 	,
 	Clear : function() {
+		this.Bind();		
+		
 		gl.colorMask(true, true, true, true);
 		gl.depthMask(true);	// Without this set to true no effect will take place
+		// TODO check attachements
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);		
 		return this;
 	}
 	,
 	ClearColor : function(r,g,b,a) {		
+		this.Bind();
+	
 		if (arguments.length === 0) {
 			gl.clearColor(0, 0, 0, 0);			// Specification default values
 		} else {
@@ -1574,6 +1559,8 @@ o3gl.FrameBuffer.prototype = {
 	}
 	,
 	ClearDepth : function(value) {		
+		this.Bind();
+	
 		if (arguments.length == 0)  {
 			gl.clearDepth(1.0); // Specification default value
 		} else {
@@ -1598,17 +1585,10 @@ o3gl.FrameBuffer.prototype = {
 		gl.scissor(x, y, width, height);
 		return this;
 	}	
+	// TODO: Do depth mask and color nm mask affect color buffer clear method
 	,
-		DepthMask : function(enable) {
+	DepthMask : function(enable) {
 		gl.depthMask(enable);
-		return this;
-	}
-	,
-	DepthTest : function(enable) {
-		if (enable) 
-			gl.enable(gl.DEPTH_TEST);
-		else
-			gl.disable(gl.DEPTH_TEST);
 		return this;
 	}
 	,
@@ -1633,10 +1613,10 @@ o3gl.RenderBuffer.prototype = {
 	Bind : function() {
 		gl.bindRenderbuffer(this._target, this._renderBufferId);
 		return this;
-		// WHY???
 	}
 	,
 	Storage : function(width, height) {
+		this.Bind();
 		gl.renderbufferStorage(this._target, this._internalFormat, width, height);
 		return this;
 	}
@@ -1831,46 +1811,33 @@ o3gl.VertexArray._VertexAttributePointer = function(attributeLocation, arrayBuff
 	return this;
 }
 
-/**
-* Static helper method. 
-*/
+/*
+// TODO: Dont need this shit now
 o3gl.VertexArray._VertexAttribute1f = function(attributeLocation, value) {
 	gl.disableVertexAttribArray(attributeLocation);
 	if (!value.length) value = arguments.slice(1);
 	gl.vertexAttrib1fv(attributeLocation, value); 
 	return this;
 }
-
-/**
-* Static helper method. 
-*/
 o3gl.VertexArray._VertexAttribute2f = function(attributeLocation, value) {
 	gl.disableVertexAttribArray(attributeLocation);
 	if (!value.length) value = arguments.slice(1);
 	gl.vertexAttrib2fv(attributeLocation, value); 
 	return this;
 }
-
-/**
-* Static helper method. 
-*/
 o3gl.VertexArray._VertexAttribute3f = function(attributeLocation, value) {
 	gl.disableVertexAttribArray(attributeLocation);
 	if (!value.length) value = arguments.slice(1);
 	gl.vertexAttrib3fv(attributeLocation, value); 
 	return this;
 }
-
-/**
-* Static helper method. 
-*/
 o3gl.VertexArray._VertexAttribute4f = function(attributeLocation, value) {
 	gl.disableVertexAttribArray(attributeLocation);
 	if (!value.length) value = arguments.slice(1);
 	gl.vertexAttrib4fv(attributeLocation, value); 
 	return this;
 }
-
+*/
 o3gl.VertexArray.prototype = {
 	Id : function() {
 		return this.vertexArrayId;
@@ -1928,6 +1895,7 @@ o3gl.VertexArray.prototype = {
 		}
 		return this;
 	}
+	/*
 	,
 	VertexAttributePointer : function(attributeLocation, arrayBufferPointer) {		
 		o3gl.VertexArray._VertexAttributePointer(attributeLocation, arrayBufferPointer);
@@ -1953,6 +1921,7 @@ o3gl.VertexArray.prototype = {
 		o3gl.VertexArray._VertexAttribute2f(attributeLocation, v1, v2, v3, v4);
 		return this;
 	}
+	*/
 }
 
 
@@ -2020,13 +1989,10 @@ o3gl.Program.prototype = {
 		return usable;
 	}
 	,
-	instance : function() {
+	newInstance : function() {
 		return new o3gl.ProgramInstance(this);
 	}
 	,
-	/**
-	* This method allows to determine vertex attribute array indices, used by the program
-	*/
 	GetAttributeIndex : function(name) {
 		var activeAttribsCount = gl.getProgramParameter(this.Id(), gl.ACTIVE_ATTRIBUTES);
 		for (var idx = 0; idx < activeAttribsCount; ++idx) {
@@ -2177,23 +2143,6 @@ o3gl.Program.prototype = {
 		var location = this.GetUniformLocation(name);
 		return gl.getUniform(this.Id(), location);
 	}
-		//gl.FLOAT
-		//gl.FLOAT_VEC2
-		//gl.FLOAT_VEC3
-		//gl.FLOAT_VEC4
-		//gl.INT
-		//gl.INT_VEC2
-		//gl.INT_VEC3
-		//gl.INT_VEC4
-		//gl.BOOL
-		//gl.BOOL_VEC2
-		//gl.BOOL_VEC3
-		//gl.BOOL_VEC4
-		//gl.FLOAT_MAT2
-		//gl.FLOAT_MAT3
-		//gl.FLOAT_MAT4
-		//gl.SAMPLER_2D
-		//gl.SAMPLER_CUBE
 	,
 	_isUniform : function(name) {
 		var uniformLocation = this.GetUniformLocation(name);
@@ -2212,7 +2161,7 @@ o3gl.Program.prototype = {
 	,
 	Set : function(name, value) {
 		if (this._isUniform(name)) {
-			if (value instanceof o3gl.Texture)  					this.UniformSampler(name, value);
+			if (value instanceof o3gl.Texture)  					this.Sampler(name, value);
 			else if (!value.length)									this.Uniform(name, Array.prototype.slice.call(arguments, 1));
 			else 													this.Uniform(name, value);
 			return this;
@@ -2232,6 +2181,9 @@ o3gl.Program.prototype = {
 	}
 	,
 	Uniform: function(name, value) {
+		// Assure program is currently used
+		this.Use();
+		
 		// Uniform must be an array or typed array
 		var uniformLocation 	= this.GetUniformLocation(name);
 		var uniformType 		= this.GetUniformType(name);
@@ -2282,33 +2234,22 @@ o3gl.Program.prototype = {
 	}
 	,
 	// Helper method
-	UniformSampler : function(name, texture) {
-		// Assign sequential value to the sampler uniforms
-		if (!this._samplers) {
-			var uniformSamplerLocations = this.GetUniformSamplerLocations();
-			for (var i = 0; i < uniformSamplerLocations.length; ++i) {
-				gl.uniform1i(uniformSamplerLocations[i], i);
-			}
-			this._samplers = true;			
-		}
-		
+	Sampler : function(name, texture) {		
 		var index = this.GetUniform(name);
 		gl.activeTexture(gl.TEXTURE0 + index);
 		texture.Bind();
 		return this;
 	}
 	,
-	Sampler : this.UniformSampler // It is likely more consistent naming
-	,
 	Attribute: function(name, value) {
 		// Value must be an array or typed array
 		var attributeLocation = this.GetAttributeLocation(name);
 		var glType = this.GetAttributeType(name);
 		switch (glType) {
-			case gl.FLOAT			:		o3gl.VertexArray._VertexAttribute1f(attributeLocation, value);	break;	
-			case gl.FLOAT_VEC2    	:		o3gl.VertexArray._VertexAttribute2f(attributeLocation, value);	break;
-			case gl.FLOAT_VEC3    	:		o3gl.VertexArray._VertexAttribute3f(attributeLocation, value);	break;
-			case gl.FLOAT_VEC4    	:		o3gl.VertexArray._VertexAttribute4f(attributeLocation, value);	break;
+			case gl.FLOAT			:		gl.vertexAttrib1fv(attributeLocation, value);	break;	
+			case gl.FLOAT_VEC2    	:		gl.vertexAttrib1fv(attributeLocation, value);	break;
+			case gl.FLOAT_VEC3    	:		gl.vertexAttrib1fv(attributeLocation, value);	break;
+			case gl.FLOAT_VEC4    	:		gl.vertexAttrib1fv(attributeLocation, value);	break;
 		}
 		return this;
 	}
@@ -2340,7 +2281,7 @@ o3gl.Program.prototype = {
 	}
 	,
 	// Uniform buffer object API
-	_DrawArrays : function(glMode, first, count, instances) {				
+	_DrawArrays : function(glMode, first, count, primcount) {				
 		if (!first) {
 			first = 0;
 		}
@@ -2351,7 +2292,7 @@ o3gl.Program.prototype = {
 		var defaultElementsCount;
 		var defaultInstancesCount;
 		
-		if (!count || !instances) {
+		if (!count || !primcount) {
 			vertexArrayIndices = this.GetAttributeLocations();
 			enabledVertexArrayIndices = o3gl.VertexArray._GetEnabledVertexAttributeArrayIndices(vertexArrayIndices);
 		}
@@ -2380,17 +2321,17 @@ o3gl.Program.prototype = {
 		}
 		
 		if (!count) count = defaultElementsCount;
-		if (!instances) instances = defaultInstancesCount;
+		if (!primcount) primcount = defaultInstancesCount;
 		
-		if (instances) {
+		if (primcount) {
 			var ext = gl.getExtension("ANGLE_instanced_arrays");
-			ext.drawArraysInstancedANGLE(gl.TRIANGLES, first, count, instances);
+			ext.drawArraysInstancedANGLE(gl.TRIANGLES, first, count, primcount);
 		} else {
 			gl.drawArrays(glMode, first, count);			
 		}
 	}	
 	,
-	_DrawElements : function(glMode, first, count, instances) {		
+	_DrawElements : function(glMode, first, count, primcount) {		
 		var elementType 	= gl.UNSIGNED_SHORT; 						// The type of elements in the element array buffer. Must be a gl.UNSIGNED_SHORT.
 		var elementsCount 	= undefined; 	// The number of elements to render.
 		var offsetBytes		= 0; 										// Offset into the element array buffer. Must be a valid multiple of the size of type.
@@ -2405,7 +2346,7 @@ o3gl.Program.prototype = {
 		else						
 			elementsCount = o3gl.VertexArray._GetElementArrayBufferCount(); 	// Compute 
 		
-		if (!instances) {
+		if (!primcount) {
 			var defaultInstancesCount;			
 			vertexArrayIndices = this.GetAttributeLocations();
 			enabledVertexArrayIndices = o3gl.VertexArray._GetEnabledVertexAttributeArrayIndices(vertexArrayIndices);
@@ -2421,171 +2362,61 @@ o3gl.Program.prototype = {
 						throw new TypError("Instanced arrays yield different elements count");
 				}
 			}
-			instances = defaultInstancesCount;
+			primcount = defaultInstancesCount;
 		}
 
-		if (instances > 0) {
+		if (primcount > 0) {
 			var ext = gl.getExtension("ANGLE_instanced_arrays");
-			ext.drawElementsInstancedANGLE(glMode, elementsCount, elementType, offsetBytes, instances);
+			ext.drawElementsInstancedANGLE(glMode, elementsCount, elementType, offsetBytes, primcount);
 		} else {
 			gl.drawElements(glMode, elementsCount, elementType, offsetBytes);			
 		}
 	}
 	,
-	_DrawPrimitives : function(glMode, first, count, instances) {
+	_DrawPrimitives : function(glMode, first, count, primcount) {
 		this.Use(); // TODO: do we need it here??? assert current program
+		
 		var elementArrayBuffer = gl.getParameter(gl.ELEMENT_ARRAY_BUFFER_BINDING);
 		if (elementArrayBuffer) {
-			this._DrawElements(glMode, first, count, instances);			
+			this._DrawElements(glMode, first, count, primcount);			
 		} else {
-			this._DrawArrays(glMode, first, count, instances);			
+			this._DrawArrays(glMode, first, count, primcount);			
 		}
-/*		
-		if (elementArrayBuffer) {
-			elementArrayBuffer.Bind();
-			var elementType 	= elementArrayBuffer._type; // The type of elements in the element array buffer. Must be a gl.UNSIGNED_SHORT.
-			var elementsCount 	= undefined; 				// The number of elements to render.
-			var offsetBytes		= 0; 						// Offset into the element array buffer. Must be a valid multiple of the size of type.
-			
-			if (first) {
-				offsetBytes = Utils.glTypeSizeBytes(elementType) * first; // elementType must be gl.UNSIGNED_SHORT here
-			}
-			
-			if (count) {
-				elementsCount = count;
-			} else {
-				elementsCount = maxElementsCount;
-			}
-			if (!maxInstancesCount) {
-				gl.drawElements(glMode, elementsCount, elementType, offsetBytes);
-			} else {
-				var ext = gl.getExtension("ANGLE_instanced_arrays");
-				ext.drawElementsInstancedANGLE(gl.TRIANGLES, elementsCount, elementType, offsetBytes, maxInstancesCount);
-			}
-		} else {
-			if (!first) {
-				first = 0;
-			}
-			if (!count) {
-				count = maxElementsCount;
-			}
-			
-			if (!maxInstancesCount) {
-				gl.drawArrays(glMode, first, count);
-			} else {
-				var ext = gl.getExtension("ANGLE_instanced_arrays");
-				ext.drawArraysInstancedANGLE(gl.TRIANGLES, first, count, maxInstancesCount);
-			}
-		}
-*/
 		return this;		
 	}
 	,
-	/** connects each group of three consecutive vertices to make a triangle - so 24 vertices produces 8 separate triangles. */
-	DrawTriangles : function(first, count) {
-		this._DrawPrimitives(gl.TRIANGLES, first, count);
+	DrawTriangles : function(first, count, primcount) {
+		this._DrawPrimitives(gl.TRIANGLES, first, count, primcount);
 		return this;
 	}
 	,
-	/** is a little harder to get your head around...let's letter our 24 vertices 'A' through 'X'. 
-	* This produces N-2 triangles where N is the number of vertices...the first triangle connects vertices A,B,C, 
-	* the remaining triangles are each formed from the previous two vertices of the last triangle...(swapped over to keep the triangle facing the same way) plus one new vertex, so the second triangle is C,B,D, the third is C,D,E, the fourth is E,D,F...all the way through to the 22nd triangle which is made from W,V,X. 
-	* This sounds messy but imagine that you are drawing something like a long, winding ribbon - with vertices A,C,E,G down one side of the ribbon and B,D,F,H down the otherside. 
-	* You'll need to sketch this one on some paper to get the hang of it. */
-	DrawTriangleStrip : function(first, count) {
-		this._DrawPrimitives(gl.TRIANGLE_STRIP, first, count);
+	DrawTriangleStrip : function(first, count, primcount) {
+		this._DrawPrimitives(gl.TRIANGLE_STRIP, first, count, primcount);
 		return this;
 	}
 	,
-	/**  similar in concept to the STRIP but now we start with triangle A,B,C, then A,C,D, then A,D,E...and so on until A,W,X. The result looks like a ladies' fan. */
-	DrawTriangleFan : function(first, count) {
-		this._DrawPrimitives(gl.TRIANGLE_FAN, first, count);
+	DrawTriangleFan : function(first, count, primcount) {
+		this._DrawPrimitives(gl.TRIANGLE_FAN, first, count, primcount);
 		return this;
 	}
 	,
-	/** Draws each vertex as a single pixel dot...so if there are 24 vertices, you get 24 dots.*/
-	DrawPoints : function(first, count) {
-		this._DrawPrimitives(gl.POINTS, first, count);
+	DrawPoints : function(first, count, primcount) {
+		this._DrawPrimitives(gl.POINTS, first, count, primcount);
 		return this;
 	}
 	,
-	/** connects each pair of vertices by a straight line, so 24 vertices produces 12 separate lines. */
-	DrawLines : function(first, count) {
-		this._DrawPrimitives(gl.LINES, first, count);
+	DrawLines : function(first, count, primcount) {
+		this._DrawPrimitives(gl.LINES, first, count, primcount);
 		return this;
 	}
 	,
-	/** connects each vertex to the next by a straight line, so 24 vertices produces 23 lines that are all connected end-to-end. */
-	DrawLineStrip : function(first, count) {
-		this._DrawPrimitives(gl.LINE_STRIP, first, count);
+	DrawLineStrip : function(first, count, primcount) {
+		this._DrawPrimitives(gl.LINE_STRIP, first, count, primcount);
 		return this;
 	}
 	,
-	/**  is like LINESTRIP except that the last vertex is connected back to the first, so 24 vertices produces 24 straight lines - looping back to the start*/
-	DrawLineLoop : function(first, count) {
-		this._DrawPrimitives(gl.LINE_LOOP, first, count);
-		return this;
-	}
-	,
-	Viewport : function(x,y,width,height) {
-		if (arguments.length == 0) {
-			if (this._frameBufferObject) {
-				x 		= 0;
-				y 		= 0; 
-				width 	= this._frameBufferObject.getWidth();
-				height 	= this._frameBufferObject.getHeight();
-			} else {
-				//TODO:	It seems there is no way to detect gl context currently bound buffer size
-				throw new TypeError("Unable to get framebuffer size");
-			}
-		}
-		gl.viewport(x, y, width, height);
-		return this;
-	}
-	,
-	DepthMask : function(enable) {
-		gl.depthMask(enable);
-		return this;
-	}
-	,
-	DepthTest : function(enable) {
-		if (enable) 
-			gl.enable(gl.DEPTH_TEST);
-		else
-			gl.disable(gl.DEPTH_TEST);
-		return this;
-	}
-	,
-	ColorMask : function(r,g,b,a) {
-		gl.colorMask(r,g,b,a);
-		return this;
-	}
-	,
-	Blend : function(enable) {
-		if (enable)
-			gl.enable(gl.BLEND);
-		else 
-			gl.disable(gl.BLEND);
-		return this;
-	}
-	,
-	BlendFunc : function(glBlendFactorSrc, glBlendFactorDst) {
-		gl.blendFunc(glBlendFactorSrc, glBlendFactorDst);
-		return this;
-	}
-	,
-	VertexArray : function (vertexArrayObject) {
-		vertexArrayObject.Bind();
-		return this;
-	}
-	,
-	FrameBuffer : function (frameBufferObject) {
-		frameBufferObject.Bind();
-		return this;
-	}
-	,
-	Elements : function(elementArrayBuffer) {
-		elementArrayBuffer.Bind();
+	DrawLineLoop : function(first, count, primcount) {
+		this._DrawPrimitives(gl.LINE_LOOP, first, count, primcount);
 		return this;
 	}
 }
@@ -2664,31 +2495,31 @@ o3gl.ProgramInstance = function(program) {
 	this._attributes = {}; // name / arguments pairs	
 	
 	// Assotiate new FBO with program;
-	this._frameBuffer = undefined;
+	this._frameBuffer = null;
 	
 	// Assotiated element array buffer. It makes 
-	this._elementArrayBuffer;
+	this._elementArrayBuffer = null;
 		
 	// Assotiate new VAO with program
-	this._vertexArray = undefined;
+	this._vertexArray = null;
 	
 	// Uniform block name and uniform buffer pointer relation
-	this._uniformBuffers = undefined;
+	this._uniformBuffers = null;
 	
 	// Viewport binding
-	this._viewport = undefined;
+	this._viewport = null;
 	
 	// Depth test binding
-	this._depthTest = undefined;
+	this._depthTest = null;
 	
 	// Depth mask binding
-	this._depthMask = undefined;
+	this._depthMask = null;
 
 	// Blend function
-	this._glBlendFactorSrc = undefined;
+	this._glBlendFactorSrc = null;
 
 	// Blend function
-	this._glBlendFactorDst = undefined;
+	this._glBlendFactorDst = null;
 	
 }
 
@@ -2715,18 +2546,27 @@ o3gl.ProgramInstance.prototype = {
 	}
 	,
 	FrameBuffer : function(value) {
-		if (value || value === null) {
-			this._frameBufferObject = value;
-		} else {
-			if (!this._frameBufferObject) {
-				this._frameBufferObject = new o3gl.FrameBuffer();
+		if (arguments.length === 1) {
+			this._frameBuffer = value;
+			if (value) {
+				this._viewport = {
+					x:0, y:0, width:this._frameBuffer.getWidth(), height:this._frameBuffer.getHeight()
+				}
+			} else {
+				this._viewport = null; // TODO: frame buffer reset causes viewport cleanup
 			}
-		}
-		if (value) {
 			return this;
 		} else {
-			return this._frameBufferObject;			
-		}		
+			if (!this._frameBuffer) {
+				// Create default framebuffer
+				this._frameBuffer = new o3gl.FrameBuffer();
+				// Initialize viewport to the maximum size
+				this._viewport = {
+					x:0, y:0, width:this._frameBuffer.getWidth(), height:this._frameBuffer.getHeight()					
+				}
+			}
+			return this._frameBuffer;
+		}
 	}
 	,
 	UniformBuffer : function(names) {
@@ -2772,11 +2612,39 @@ o3gl.ProgramInstance.prototype = {
 	,
 	Color : function(attachment0, attachment1, attachment2, attachment3) {
 		this.FrameBuffer().Bind().Color(attachment0, attachment1, attachment2, attachment3);
+		if (!this._viewport) {
+			this._viewport = {
+				x:0, y:0, width:this.FrameBuffer().getWidth(), height:this.FrameBuffer().getHeight()
+			}
+		}
+		if (!this._colorMask) {
+			this._colorMask = {r:1, g:1, b:1, a:1};
+		}
+		return this;
+	}
+	,
+	ColorMask : function(r,g,b,a) {
+		this._colorMask = {r:r,g:g,b:b,a:a};
 		return this;
 	}
 	,
 	Depth : function(attachment) {
-		this.FrameBuffer().Bind().Depth(attachment);
+		if (attachment instanceof o3gl.RenderBufferDepth) {
+			this.FrameBuffer().Bind().Depth(attachment);			
+			this._depthMask = this._depthTest = true;
+		} else {
+			this._depthMask = this._depthTest = attachment ? true : false;
+		}
+		return this;
+	}
+	,
+	DepthMask : function(value) {
+		this._depthMask = value ? true : false;
+		return this;
+	}
+	,
+	DepthTest : function(value) {
+		this._depthTest = value ? true : false;
 		return this;
 	}
 	,
@@ -2787,34 +2655,12 @@ o3gl.ProgramInstance.prototype = {
 	,
 	Viewport : function(x,y,width,height) {
 		if (arguments.length == 0) {
-			if (this._frameBufferObject) {
-				x 		= 0;
-				y 		= 0; 
-				width 	= this._frameBuffer.getWidth();
-				height 	= this._frameBuffer.getHeight();
-			} else {
-				//TODO:	It seems there is no way to detect gl context currently bound frame buffer size
-				throw new TypeError("Unable to get framebuffer size");
+			this._viewport = null;
+		} else {
+			this._viewport = {
+				x:x, y:y, width:width, height:height
 			}
 		}
-		this._viewport = {
-			x:x, y:y, width:width, height:height
-		}
-		return this;
-	}
-	,
-	DepthMask : function(enable) {
-		this._depthMask = enable;
-		return this;
-	}
-	,
-	DepthTest : function(enable) {
-		this._depthTest = enable;
-		return this;
-	}
-	,
-	ColorMask : function(r,g,b,a) {
-		this._colorMask = {r:r,g:g,b:b,a:a};
 		return this;
 	}
 	,
@@ -2828,7 +2674,7 @@ o3gl.ProgramInstance.prototype = {
 		return this.BlendFunc(gl.SRC_ALPHA, gl.ONE);
 	}
 	,
-	_DrawPrimitives : function(glMode, first, count, instances) {
+	_DrawPrimitives : function(glMode, first, count, primcount) {
 		// Apply uniform values
 		if (this._uniformBuffer) {
 			this._uniformBuffer.Bind();
@@ -2842,7 +2688,7 @@ o3gl.ProgramInstance.prototype = {
 
 		// Bind textures/samplers
 		for (var name in this._samplers) {
-			var value = this._uniforms[name];
+			var value = this._samplers[name];
 			if (!value) continue;
 			this._program.Sampler(name, value);
 		}
@@ -2852,7 +2698,7 @@ o3gl.ProgramInstance.prototype = {
 			this._vertexArray.Bind();
 		} else {
 			for (var name in this._attributes) {
-				var value = this._uniforms[name];
+				var value = this._attributes[name];
 				if (!value) continue;
 				if (value instanceof o3gl.ArrayBuffer.Pointer) {
 					this._program.AttributePointer(name, value);
@@ -2860,26 +2706,36 @@ o3gl.ProgramInstance.prototype = {
 					this._program.Attribute(name, value);
 				}
 			}
+			
+			if (this._elementArrayBuffer) {
+				this._elementArrayBuffer.Bind();
+			} else {
+				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+			}
 		}
 
+		
+		
+		// Apply frame buffer configuration
 		if (this._viewport) {
 			gl.viewport(this._viewport.x, this._viewport.y, this._viewport.width, this._viewport.height);
 		}
-	
 		if (this._depthTest === true) {
 			gl.enable(gl.DEPTH_TEST);
 		}
 		if (this._depthTest === false) {
 			gl.disable(gl.DEPTH_TEST);
 		}
-
 		if(this._depthMask === true) {
 			gl.depthMask(true);
 		}
 		if(this._depthMask === false) {
 			gl.depthMask(false);
 		}
-
+		if (this._frameBuffer) {
+			this._frameBuffer.Bind();
+		}
+		
 		if (this._glBlendFactorSrc && this._glBlendFactorDst) {
 			if(this._glBlendFactorSrc === gl.ONE && this._glBlendFactorDst === gl.ZERO) {
 				gl.disable(gl.BLEND);
@@ -2889,43 +2745,43 @@ o3gl.ProgramInstance.prototype = {
 			}
 		}		
 		
-		this._program._DrawPrimitives(glMode, first, count, instances);
+		this._program._DrawPrimitives(glMode, first, count, primcount);
 		
 		return this;		
 	}
 	,
-	DrawTriangles : function(first, count) {
-		this._DrawPrimitives(gl.TRIANGLES, first, count);
+	DrawTriangles : function(first, count, primcount) {
+		this._DrawPrimitives(gl.TRIANGLES, first, count, primcount);
 		return this;
 	}
 	,
-	DrawTriangleStrip : function(first, count) {
-		this._DrawPrimitives(gl.TRIANGLE_STRIP, first, count);
+	DrawTriangleStrip : function(first, count, primcount) {
+		this._DrawPrimitives(gl.TRIANGLE_STRIP, first, count, primcount);
 		return this;
 	}
 	,
-	DrawTriangleFan : function(first, count) {
-		this._DrawPrimitives(gl.TRIANGLE_FAN, first, count);
+	DrawTriangleFan : function(first, count, primcount) {
+		this._DrawPrimitives(gl.TRIANGLE_FAN, first, count, primcount);
 		return this;
 	}
 	,
-	DrawPoints : function(first, count) {
-		this._DrawPrimitives(gl.POINTS, first, count);
+	DrawPoints : function(first, count, primcount) {
+		this._DrawPrimitives(gl.POINTS, first, count, primcount);
 		return this;
 	}
 	,
-	DrawLines : function(first, count) {
-		this._DrawPrimitives(gl.LINES, first, count);
+	DrawLines : function(first, count, primcount) {
+		this._DrawPrimitives(gl.LINES, first, count, primcount);
 		return this;
 	}
 	,
-	DrawLineStrip : function(first, count) {
-		this._DrawPrimitives(gl.LINE_STRIP, first, count);
+	DrawLineStrip : function(first, count, primcount) {
+		this._DrawPrimitives(gl.LINE_STRIP, first, count, primcount);
 		return this;
 	}
 	,
-	DrawLineLoop : function(first, count) {
-		this._DrawPrimitives(gl.LINE_LOOP, first, count);
+	DrawLineLoop : function(first, count, primcount) {
+		this._DrawPrimitives(gl.LINE_LOOP, first, count, primcount);
 		return this;
 	}
 }
@@ -3101,7 +2957,7 @@ isElementArrayBufferBinding : function() {
 }
 */
 
-
+/*
 // Enable Client state tracking
 Aspect(o3gl.Texture2D.prototype).after("Bind", 			function() { o3gl.TEXTURE_BINDING_2D = this; });
 Aspect(o3gl.TextureCubeMap.prototype).after("Bind", 	function() { o3gl.TEXTURE_BINDING_CUBE_MAP = this;});
@@ -3135,43 +2991,52 @@ Aspect(o3gl.Program.prototype).after(/^Use$/, function() {
 		}
 	}
 });
-
+*/
 
 
 
 // Resource methods
 o3gl.CreateTexture2D = function() {
-	return new o3gl.Texture2D();
+	return new o3gl.Texture2D().Bind();
 }
 o3gl.CreateTextureCubeMap = function() {
-	return new o3gl.TextureCubeMap();
+	return new o3gl.TextureCubeMap().Bind();
 }
 o3gl.CreateArrayBuffer = function() {
-	return new o3gl.ArrayBuffer();
+	return new o3gl.ArrayBuffer().Bind();
 }
 o3gl.CreateElementArrayBuffer = function() {
-	return new o3gl.ElementArrayBuffer();
+	return new o3gl.ElementArrayBuffer().Bind();
 }
 o3gl.CreateUniformBuffer = function() {
-	return new o3gl.UniformBuffer();
+	return new o3gl.UniformBuffer().Bind();
 }
 o3gl.CreateFrameBuffer = function() {
-	return new o3gl.FrameBuffer();
+	return new o3gl.FrameBuffer().Bind();
 }
 o3gl.CreateRenderBufferDepth = function() {
-	return new o3gl.RenderBufferDepth();
+	return new o3gl.RenderBufferDepth().Bind();
 }
 o3gl.CreateRenderBufferStencil = function() {
-	return new o3gl.RenderBufferDepth();
+	return new o3gl.RenderBufferStencil().Bind();
 }
 o3gl.CreateVertexArray = function() {
-	return new o3gl.VertexArray();
+	return new o3gl.VertexArray().Bind();
 }
 o3gl.CreateShader = function(sources) {
 	return new o3gl.Shader(sources);
 }
 o3gl.CreateProgram = function(shader1,shader2) {
-	return new o3gl.Program(shader1,shader2);
+	var result = new o3gl.Program(shader1,shader2).Use();
+	
+	// Assign sequential value to the sampler uniforms
+	var uniformSamplerLocations = result.GetUniformSamplerLocations();
+	for (var i = 0; i < uniformSamplerLocations.length; ++i) {
+		var uniformSamplerLocation = uniformSamplerLocations[i];
+		gl.uniform1i(uniformSamplerLocation, i);
+	}
+
+	return result;
 }
 
 o3gl.sources = function(sources1, sources2) {

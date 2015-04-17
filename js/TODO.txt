@@ -31,6 +31,14 @@
 
 	+ Uniform types must match glUniformXXX by type and arguments size. No type conversion or partial value are applied. Therefore uniform type unambiguously matches one of glUniform setter method.
 
+	+ Figure out frame buffer methods that affect clearXXXX method effect. They are clearColor and clearDepth. Scissor test is also involved. Depth and color mask as long as depth are relevant only for the program and are not considered by buffer Clear method. 
+	
+	+ Scissor test affects both program output and framebuffer clear methods.
+
+	
+	- Vertex array VertexAttributeXXXX methods. Do we need to consider instanced arrays in these methods
+
+	
 	- Draw points and point size
 	
 	- ProgramInstance logic:
