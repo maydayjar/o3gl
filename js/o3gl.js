@@ -2135,6 +2135,11 @@ o3gl.Program.prototype = {
 		return gl.getUniformBlockIndex(this.Id(), uniformBlockName);
 	}
 	,
+	GetUniformBlockOffset : function (uniformBlockName) {
+		var uniformBlockIndex = this.GetUniformBlockIndex(uniformBlockName);
+		return gl.getIndexedParameter(gl.UNIFORM_BUFFER_START, uniformBlockIndex);
+	}
+	,
 	GetUniformBlockBinding : function(uniformBlockName) {
 		var uniformBlockIndex = this.GetUniformBlockIndex(uniformBlockName);
 		return gl.getActiveUniformBlockParameter(this.Id(), uniformBlockIndex, UNIFORM_BLOCK_BINDING);
@@ -2165,10 +2170,9 @@ o3gl.Program.prototype = {
 		var uniformBlockIndex = this.GetUniformBlockIndex(uniformBlockName);
 		return gl.getActiveUniformBlockParameter(this.Id(), uniformBlockIndex, UNIFORM_BLOCK_REFERENCED_BY_FRAGMENT_SHADER);
 	}
+	/*
 	,
-	/**
-	* Webgl 2.0 uniform introspection API
-	*/
+	// Webgl 2.0 uniform introspection API
 	GetUniformIndices : function(uniformNames) {
 		return gl.getUniformIndices(this.Id(), uniformNames); // TODO: API ??? sequence<> is an array
 	}
@@ -2200,6 +2204,55 @@ o3gl.Program.prototype = {
 	GetActiveUniformIsRowMajors : function(uniformIndices) {
 		return gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_IS_ROW_MAJOR);
 	}
+	*/
+	
+	,	
+	GetActiveUniformIndex : function(uniformName) {	// Duplicated method GetUniformIndex
+		return gl.getUniformIndices(this.Id(), [uniformName])[0]; // TODO: API ??? sequence<> is an array
+	}
+	,
+	GetActiveUniformType : function(uniformName) {
+		var uniformIndices = gl.getUniformIndices(this.Id(), [uniformName]);
+		return gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_TYPE)[0]; // TODO: API ??? sequence<> is an array
+	}
+	,
+	GetActiveUniformSize : function(uniformName) {
+		var uniformIndices = gl.getUniformIndices(this.Id(), [uniformName]);
+		return gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_SIZE)[0];
+	}
+	,
+	GetActiveUniformBlockIndex : function(uniformName) {
+		var uniformIndices = gl.getUniformIndices(this.Id(), [uniformName]);
+		return gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_BLOCK_INDEX)[0];
+	}
+	,
+	GetActiveUniformBlockName : function(uniformName) {
+		var uniformIndices = gl.getUniformIndices(this.Id(), [uniformName]);
+		var uniformBlockIndex = gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_BLOCK_INDEX)[0];
+		return getActiveUniformBlockName(this.Id(), uniformBlockIndex);
+	}
+	,
+	GetActiveUniformOffset : function(uniformName) {
+		var uniformIndices = gl.getUniformIndices(this.Id(), [uniformName]);
+		return gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_OFFSET)[0];
+	}
+	,
+	GetActiveUniformArrayStride : function(uniformName) {
+		var uniformIndices = gl.getUniformIndices(this.Id(), [uniformName]);
+		return gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_ARRAY_STRIDE)[0];
+	}
+	,
+	GetActiveUniformMatrixStride : function(uniformName) {
+		var uniformIndices = gl.getUniformIndices(this.Id(), [uniformName]);
+		return gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_MATRIX_STRIDE)[0];
+	}
+	,
+	GetActiveUniformIsRowMajor : function(uniformName) {
+		var uniformIndices = gl.getUniformIndices(this.Id(), [uniformName]);
+		return gl.getActiveUniforms(this.Id(), uniformIndices, gl.UNIFORM_IS_ROW_MAJOR)[0];
+	}
+	
+	
 	,
 	GetUniform : function(name) {
 		var location = this.GetUniformLocation(name);
@@ -2246,12 +2299,27 @@ o3gl.Program.prototype = {
 	}
 	,
 	Uniform: function(name, value) {
-		// Convert arguments to the vector form
-		if (!value.length) value = arguments.slice(1);
-	
 		var uniformLocation 	= this.GetUniformLocation(name);
 		var uniformType 		= this.GetUniformType(name);
 		
+		// Convert arguments to the vector form
+		if (!value.length) value = arguments.slice(1);
+	
+		var uniformBlockName = this.GetActiveUniformBlockName(name);
+		if (uniformBlockName) {
+			var unifromBlockBinding = this.GetUniformBlockBinding(uniformBlockName);
+			if (uniformBlockBinding) {
+				var uniformBlockOffset = this.GetUniformBlockBinding(uniformBlockName);
+				var uniformOffset = this.GetActiveUniformOffset(name);
+				
+				gl.bindBuffer(gl.UNIFORM_BUFFER, unifromBlockBinding);
+				gl.bufferSubData(this._target, offset, typedArray);
+				
+				gl.bufferSubData(gl.UNIFORM_BUFFER,uniformBlockOffset + uniformOffset, value);
+			}
+			return this;
+		}
+			
 		switch (uniformType) {
 			case gl.FLOAT			:		gl.uniform1fv		(uniformLocation, value);	break;	
 			case gl.FLOAT_VEC2    	:		gl.uniform2fv		(uniformLocation, value);	break;

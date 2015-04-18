@@ -178,7 +178,8 @@ void main() {
 		document.body.appendChild( stats.domElement );
 		// Initialize WebGL
         var canvas = document.getElementById("canvas");
-		var gl = WebGLUtils.setupWebGL(canvas);
+		//var gl = WebGLUtils.setupWebGL(canvas);
+		var gl = canvas.getContext("experimental-webgl2");
 		o3gl = O3GL(gl);
 		// Initialize scene
 		init();
