@@ -84,22 +84,24 @@ void main() {
 
 		program 	= o3gl.CreateProgram(o3gl.CreateShader(vertexShaderSource), o3gl.CreateShader(fragmentShaderSource));
 		positions 	= o3gl.CreateArrayBuffer().Data(mesh.positions);
-		offsets 	= o3gl.CreateArrayBuffer().Data([
-			-1,-1,0,
-			1,-1,0,
-			1,1,0,
-			-1,1,0,			
-		]);
+		offsets 	= o3gl.CreateArrayBuffer().typeShort().Data( new Int8Array(
+			[
+				-1,-1,0,
+				1,-1,0,
+				1,1,0,
+				-1,1,0,			
+			])
+		);
 		indexes 	= o3gl.CreateElementArrayBuffer().Data(mesh.indexes);
 		
 		
+		program.BindAttributeLocation("aPosition", 0);
+		program.BindAttributeLocation("aOffset", 2);
+		
 		// Set up program properties that won't change
 		program.
-			DepthTest(true).
-			DepthMask(true).
 			Set("aPosition", positions.pointer()).
-			Set("aOffset", offsets.pointer().divisor(1)). // Draw instanced!
-			Elements(indexes);
+			Set("aOffset", offsets.pointer().divisor(1)); // Draw instanced!
 	}
 	
 	function render() {
@@ -109,22 +111,15 @@ void main() {
 //		mat4.translate(mvMatrix, [-1, 0, 0]);
 		mat4.rotate(mvMatrix, angle, [1, 0, 0]);
 
-		/*
+		
 		gl.enable(gl.DEPTH_TEST);
 		gl.clearColor(0.0, 0.0, 0.0, 1.0);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
 		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-		*/
 		
-		// Clear default framebuffer
+		
+		indexes.Bind();			
 		program.
-			FrameBuffer().
-				ClearColorBuffer(0.0, 0.0, 0.0, 1.0).
-				ClearDepthBuffer();
-			
-		program.
-			// Set up viewport transformation to the default framebuffer size
-			Viewport().
 			// Update recalculated MV transformation
 			Set("uModelViewMatrix", 	mvMatrix).
 			Set("uProjectionMatrix", 	pMatrix).
@@ -172,10 +167,10 @@ void main() {
 		} else if (mesh instanceof Cube) {
 			mesh = new Teapot();
 			normalize(mesh.positions);
-		}
-		
-		positions.Data(mesh.positions);
-		indexes.Data(mesh.indexes);
+		}	
+		positions.Bind().Data(mesh.positions);
+		indexes.Bind().Data(mesh.indexes);
+
 		
 		/*
 		positions 	= o3gl.createBuffer().Data(cubeVertex);
