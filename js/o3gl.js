@@ -393,7 +393,7 @@ var Preprocessor = {
 		if (lines instanceof Array) {
 			for (var i = 0; i < lines.length; ++i) {
 				var line = lines[i];
-				if (this.isFragmentShader(line)) return true;
+				if (this.isAttribute(line)) return true;
 			}
 		}
 		else {
@@ -407,7 +407,7 @@ var Preprocessor = {
 		if (lines instanceof Array) {
 			for (var i = 0; i < lines.length; ++i) {
 				var line = lines[i];
-				if (this.isFragmentShader(line)) return true;
+				if (this.isUniform(line)) return true;
 			}
 		}
 		else {
@@ -2702,9 +2702,7 @@ o3gl.ProgramInstance.prototype._isAttribute = function(name) {
 	if (this._programSources) return this._programSources._isAttribute(name);
 }
 o3gl.ProgramInstance.prototype.program = function() {
-	if (this._program) {
-		return this._program;		
-	} else {
+	if (!this._program) {
 		var variables = [];
 		for (var name in this._uniforms) {
 			variables.push(name);
@@ -2712,8 +2710,9 @@ o3gl.ProgramInstance.prototype.program = function() {
 		for (var name in this._attributes) {
 			variables.push(name);
 		}
-		return this._programSources.CreateProgram(variables);
+		this._program = this._programSources.CreateProgram(variables);
 	}
+	return this._program;		
 }
 o3gl.ProgramInstance.prototype.VertexArray = function(value) {
 	if (value || value === null) {
@@ -3013,15 +3012,21 @@ o3gl.ProgramSources.prototype = {
 	}
 	,
 	CreateProgram : function(identifiers) {
-		var program = this.programs[arguments];
+		if (!(identifiers instanceof Array)) {
+			identifiers = [];
+			for (var i = 0; i < arguments.length; ++i) {
+				identifiers.push(arguments[i]);
+			}
+		}
+		var program = this.programs[identifiers];
 		if (program == null) {
 			var vertexShaderSource 		= this.vertexShaderSource;
 			var fragmentShaderSource 	= this.fragmentShaderSource;
-			
-			if (arguments.length > 0) {
+			var defined = [];
+			if (identifiers && identifiers.length > 0) {
 				var defined = [];
-				for (var  i = 0; i < arguments.length; ++i)	 {
-					var identifier = arguments[i];
+				for (var  i = 0; i < identifiers.length; ++i)	 {
+					var identifier = identifiers[i];
 					defined[identifier] = true;
 				}
 				// Exclude lines with undeclared variables;

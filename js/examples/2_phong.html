@@ -133,16 +133,16 @@
 
 				// Declare material traits
 				if (i === 0) program.Set("uMaterialDiffuse", 1.0, 0.0, 0.0, 1.0);
-				if (i === 1) program.Set("uSamplerDiffuse", 	textureDiffuse);
+				//if (i === 1) program.Set("uSamplerDiffuse", 	textureDiffuse);
 				if (i === 2) {
 					program.Set("uMaterialDiffuse", 0.0, 1.0, 0.0, 1.0);
 					program.Set("uSamplerDiffuse", 	textureDiffuse);
 				}
-				if (j === 0) program.Set("uSamplerNormal", 	textureNormal);
-				if (j === 1) program.Set("uSamplerCube", 	textureCubeMap);
+				//if (j === 0) program.Set("uSamplerNormal", 	textureNormal);
+				//if (j === 1) program.Set("uSamplerCube", 	textureCubeMap);
 				if (j === 2) {
-					program.Set("uSamplerNormal", textureNormal);
-					program.Set("uSamplerCube", textureCubeMap);
+					//program.Set("uSamplerNormal", textureNormal);
+					//program.Set("uSamplerCube", textureCubeMap);
 				}
 				programs.push(program)
 			}
@@ -155,10 +155,14 @@
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
 		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 	
+		//programs[0].DrawTriangles();
+	
+	
 		for (var i = 0; i < programs.length; ++i) {
 			program = programs[i];
 			program.DrawTriangles();
-		}			
+		}	
+	
     }
     
     function update() {
