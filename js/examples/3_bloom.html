@@ -96,13 +96,6 @@ void main() {
 	
 	
 	function init() {
-        var c = function() {
-        }
-        c.prototype = {
-            toString : function() {
-                return "c";
-            }
-        }
 
 		window.onresize();
 		// Initialize matrices
@@ -119,23 +112,25 @@ void main() {
 		// Initialize mesh texture
 		var imageDiffuse 	= document.getElementById("specular");
 		
-		textureDiffuse 		= o3gl.CreateTexture2D().Image(imageDiffuse);
+		textureDiffuse 		= o3gl.CreateTexture2D().FilterLinear().WrapClampToEdge().Image(imageDiffuse);
 		
 		// Create framebuffers
 		fbTextureScene 		= o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
-
-		fbTextureTest 		= o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
+        fbDepthScene 		= o3gl.CreateRenderBufferDepth().Storage(viewport.width, viewport.height);
+		fbTexturePass1 		= o3gl.CreateTexture2D().FilterLinear().WrapClampToEdge().Image(128, 128);
+		fbTexturePass2 		= o3gl.CreateTexture2D().FilterLinear().WrapClampToEdge().Image(128, 128);
 
 		
+		/*
+		fbTextureTest 		= o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
         fbDepthScene 		= o3gl.CreateRenderBufferDepth().Storage(viewport.width, viewport.height);
 		fbScene 			= o3gl.CreateFrameBuffer().Color(fbTextureScene).Depth(fbDepthScene);
-
 		fbTexturePass1 		= o3gl.CreateTexture2D().FilterLinear().WrapClampToEdge().Image(128, 128);
 		fbPass1 			= o3gl.CreateFrameBuffer().Color(fbTexturePass1);
-
 		fbTexturePass2 		= o3gl.CreateTexture2D().FilterLinear().WrapClampToEdge().Image(128, 128);
 		fbPass2 			= o3gl.CreateFrameBuffer().Color(fbTexturePass2);
-
+		*/
+		
 		// Create vertex buffer objects
 		var cube = new Cube();
 		vbo.cube.indexes = o3gl.CreateElementArrayBuffer().Data(cube.indexes);
@@ -145,36 +140,37 @@ void main() {
 		vbo.plane.positions = o3gl.CreateArrayBuffer().Data(plane.positions);
 		vbo.plane.textureCoords = o3gl.CreateArrayBuffer().Data(plane.textureCoords);
 
-
+		
 		// Create the programs
-		programDraw 		= o3gl.CreateProgram(o3gl.CreateShader(vertexShaderSource),o3gl.CreateShader(fragmentShaderSource));
-		programDefault 		= o3gl.CreateProgram(o3gl.CreateShader(Shaders.Default.Vertex),o3gl.CreateShader(Shaders.Default.Fragment));
-		programConvolution 	= o3gl.CreateProgram(o3gl.CreateShader(Shaders.Convolution.Vertex),o3gl.CreateShader(Shaders.Convolution.Fragment));
-		programBlend 		= o3gl.CreateProgram(o3gl.CreateShader(Shaders.BlendAdditive.Vertex),o3gl.CreateShader(Shaders.BlendAdditive.Fragment));
+		programDraw 		= o3gl.CreateProgram(o3gl.CreateShader(vertexShaderSource),o3gl.CreateShader(fragmentShaderSource)).newInstance();
+		programDefault 		= o3gl.CreateProgram(o3gl.CreateShader(Shaders.Default.Vertex),o3gl.CreateShader(Shaders.Default.Fragment)).newInstance();
+		programConvolution 	= o3gl.CreateProgram(o3gl.CreateShader(Shaders.Convolution.Vertex),o3gl.CreateShader(Shaders.Convolution.Fragment)).newInstance();
+		programBlend 		= o3gl.CreateProgram(o3gl.CreateShader(Shaders.BlendAdditive.Vertex),o3gl.CreateShader(Shaders.BlendAdditive.Fragment)).newInstance();
+		
+		
+		programDraw.DepthTest(true);
 		
 		// 
 		programDefault.
+			DepthTest(false).
 			Set("aPosition",	vbo.plane.positions).
 			Set("aTextureCoord",vbo.plane.textureCoords).
 			FrameBuffer();
 		
-		
 		programConvolution.
+			DepthTest(false).
 			Set("aPosition",	vbo.plane.positions).
 			Set("aTextureCoord",vbo.plane.textureCoords);
 //			DepthTest(false).
 //			DepthMask(false);
 
 		programBlend.
+			DepthTest(false).
 			Set("uSampler0", fbTexturePass1).		
 			Set("uSampler1", fbTextureScene).		
 			Set("aPosition",	vbo.plane.positions).
-			Set("aTextureCoord",vbo.plane.textureCoords).			
-//			DepthTest(false).
-//			DepthMask(false).
-			FrameBuffer();		// Use default framebuffer
+			Set("aTextureCoord",vbo.plane.textureCoords);
 			
-		fbScene.ClearColorBuffer(0,1,0,1).ClearDepthBuffer();
 	}
 	
 	function render() {
@@ -198,15 +194,9 @@ void main() {
 		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 		*/
 		
-		// Clear the scene
-		
-		fbScene.ClearColorBuffer(0,0,0,1).ClearDepthBuffer();
-
 		// Draw the scene
+		programDraw.FrameBuffer().Color(fbTextureScene).Depth(fbDepthScene).Clear();
 		programDraw.
-			DepthTest(true).DepthMask(true).
-			FrameBuffer(fbScene).
-			Viewport().			
 			Set("uMatrixP", 	matrixP).
 			Set("uMatrixMV", 	matrixMV).
 			Set("uSampler0", 	textureDiffuse).		
@@ -214,39 +204,34 @@ void main() {
 			Set("aTextureCoord",vbo.cube.textureCoords).
 			Elements(vbo.cube.indexes).
 			DrawTriangles();
-
-
+		
+		programConvolution.FrameBuffer().Color(fbTexturePass1);
 		programConvolution.
-			FrameBuffer(fbPass1).Viewport().
-			DepthTest(false).DepthMask(false).
 			Set("uStep", 1/128, 0).							
 			Set("uSampler0", fbTextureScene).	
 			DrawTriangles();
 			
+		programConvolution.FrameBuffer().Color(fbTexturePass2);
 		programConvolution.
-			FrameBuffer(fbPass2).Viewport().
-			DepthTest(false).DepthMask(false).
 			Set("uStep", 0, 1/128).
 			Set("uSampler0", fbTexturePass1).		
 			DrawTriangles();
 			
-			
-		programBlend.FrameBuffer().Clear();
+		programBlend.FrameBuffer(); // Declare default framebuffer
 		programBlend.
-			DepthTest(false).DepthMask(false).
-			Viewport().
-			//Set("uSampler0", fbTexturePass2).		
 			Set("uSampler0", fbTextureScene).		
-			Set("uSampler1", fbTexturePass2).		
-			DrawTriangles();
-		
-		return;
-		
-		programDefault.
-			Set("uSampler0", fbTextureScene).
-			Viewport().
+			Set("uSampler1", fbTexturePass2).
 			DrawTriangles();
 			
+		return;
+
+		/*
+		programDefault.FrameBuffer().Clear();
+		programDefault.
+			DepthTest(false).
+			Set("uSampler0", fbTextureScene).
+			DrawTriangles();
+		*/
 
     }
     
@@ -325,7 +310,7 @@ void main() {
 </head>
 
 
-<body onload="webGLStart();" style="overflow: hidden; background-color:#F00">
+<body onload="webGLStart();" style="overflow: hidden; background-color:#aaa">
 	<img id="diffuse" 	src = "texture/diffuse.png" 	hidden />
 	<img id="normal" 	src = "texture/normal.png" 	hidden />
 	<img id="specular" 	src = "texture/ao.png" 		hidden />

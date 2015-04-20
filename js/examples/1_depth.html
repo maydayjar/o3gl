@@ -142,12 +142,10 @@ void main() {
 //		mat4.translate(mvMatrix, [-1, 0, 0]);
 		mat4.rotate(mvMatrix, angle, [1, 0, 0]);
 
-
 		gl.enable(gl.DEPTH_TEST);
 		gl.clearColor(0.0, 0.0, 0.0, 1.0);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
-//		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-		gl.viewport(0,0, 5000, 5000);
+		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 			
 		// Set up program properties that won't change
 		indexes.Bind();
@@ -179,8 +177,8 @@ void main() {
 		document.body.appendChild( stats.domElement );
 		// Initialize WebGL
         var canvas = document.getElementById("canvas");
-		//var gl = WebGLUtils.setupWebGL(canvas);
-		var gl = canvas.getContext("experimental-webgl2");
+		var gl = WebGLUtils.setupWebGL(canvas);
+		// var gl = canvas.getContext("experimental-webgl2");
 		o3gl = O3GL(gl);
 		// Initialize scene
 		init();

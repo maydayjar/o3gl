@@ -31,13 +31,22 @@
 
 	+ Uniform types must match glUniformXXX by type and arguments size. No type conversion or partial value are applied. Therefore uniform type unambiguously matches one of glUniform setter method.
 
-	+ Figure out frame buffer methods that affect clearXXXX method effect. They are clearColor and clearDepth. Scissor test is also involved. Depth and color mask as long as depth are relevant only for the program and are not considered by buffer Clear method. 
+	+ Frame buffer related `gl.clear` method is affected by the following settings:
+		
+		`clearColor` and `clearDepth`
+		
+		scissor test enabled/disabled
+		
+		depth and color mask
+
 	
 	+ Scissor test affects both program output and framebuffer clear methods.
 
+	- Runnable instance with configured draw mode, first element, elements count
 	
 	- Vertex array VertexAttributeXXXX methods. Do we need to consider instanced arrays in these methods
 
+	- Proram instance functor
 	
 	- Draw points and point size
 	
