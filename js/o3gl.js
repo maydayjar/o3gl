@@ -268,7 +268,11 @@ var Preprocessor = {
 		return lines;
 	}
 	,
-	regexpDeclaration : /(uniform|attribute|varying|const)?\s?(float|int|vec2|vec3|vec4|mat2|mat3|mat4|sampler2D|samplerCube)\s+(\w+)/
+	regexpDeclaration : /(uniform|attribute|varying|const)?\s+(float|int|vec2|vec3|vec4|mat2|mat3|mat4|sampler2D|samplerCube)\s+(\w+)/
+	,
+	regexpUniformDeclaration : /uniform\s+(float|int|vec2|vec3|vec4|mat2|mat3|mat4|sampler2D|samplerCube)\s+(\w+)/
+	,
+	regexpAttributeDeclaration : /attribute\s+(float|int|vec2|vec3|vec4|mat2|mat3|mat4|sampler2D|samplerCube)\s+(\w+)/
 	,
 	regexpAssignment : /(\w+)\s*=([^=;\n]+)/
 	,
@@ -393,12 +397,13 @@ var Preprocessor = {
 		if (lines instanceof Array) {
 			for (var i = 0; i < lines.length; ++i) {
 				var line = lines[i];
-				if (this.isAttribute(line)) return true;
+				if (this.isAttribute(line, name)) return true;
 			}
-		}
-		else {
+		} else {
 			var line = lines;
-			if(line.match("attribute\s+"+name)) return true;
+			if(!line.match(this.regexpAttributeDeclaration)) return false;
+			if(!line.match(name)) return false;
+			return true;
 		}
 		return false;
 	}
@@ -407,12 +412,13 @@ var Preprocessor = {
 		if (lines instanceof Array) {
 			for (var i = 0; i < lines.length; ++i) {
 				var line = lines[i];
-				if (this.isUniform(line)) return true;
+				if (this.isUniform(line, name)) return true;
 			}
-		}
-		else {
+		} else {
 			var line = lines;
-			if(line.match("uniform\s+"+name)) return true;
+			if(!line.match(this.regexpUniformDeclaration)) return false;
+			if(!line.match(name)) return false;
+			return true;
 		}
 	}
 }
@@ -2707,6 +2713,9 @@ o3gl.ProgramInstance.prototype.program = function() {
 		for (var name in this._uniforms) {
 			variables.push(name);
 		}
+		for (var name in this._samplers) {
+			variables.push(name);
+		}
 		for (var name in this._attributes) {
 			variables.push(name);
 		}
@@ -3018,7 +3027,7 @@ o3gl.ProgramSources.prototype = {
 				identifiers.push(arguments[i]);
 			}
 		}
-		var program = this.programs[identifiers];
+		var program = null; this.programs[identifiers];
 		if (program == null) {
 			var vertexShaderSource 		= this.vertexShaderSource;
 			var fragmentShaderSource 	= this.fragmentShaderSource;
@@ -3039,7 +3048,7 @@ o3gl.ProgramSources.prototype = {
 				o3gl.CreateShader(fragmentShaderSource.join("\n"))
 			);	
 			
-			this.programs[arguments] = program;
+			this.programs[identifiers] = program;
 		}
 		
 		return program;
@@ -3050,13 +3059,13 @@ o3gl.ProgramSources.prototype = {
 	}
 	,
 	_isUniform : function(name) {
-		if (Preprocessor.isUniform(this.vertexShaderSource)) return true;
-		if (Preprocessor.isUniform(this.fragmentShaderSource)) return true;
+		if (Preprocessor.isUniform(this.vertexShaderSource, name)) return true;
+		if (Preprocessor.isUniform(this.fragmentShaderSource, name)) return true;
 		return false;
 	}
 	,
 	_isAttribute : function(name) {
-		if (Preprocessor.isAttribute(this.vertexShaderSource)) return true;
+		if (Preprocessor.isAttribute(this.vertexShaderSource, name)) return true;
 		return false;		
 	}
 }

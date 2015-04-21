@@ -57,12 +57,12 @@
 		var materialSpecular 	= [1.0, 1.0, 1.0, 1.0];
 		var materialAmbient 	= [0.0, 0.0, 0.0, 1.0];
 				
-		var textureNormal 		= o3gl.CreateTexture2D().FilterLinear().WrapClampToEdge().Image(imageNormal);
-		var textureDiffuse		= o3gl.CreateTexture2D().Image(imageDiffuse);
-		var textureAmbient 		= o3gl.CreateTexture2D().Image(imageAmbient);
-		var textureSpecular		= o3gl.CreateTexture2D().Image(imageSpecular);
+		var textureNormal 		= o3gl.CreateTexture2D().FilterLinearMipmapLinear().WrapClampToEdge().Image(imageNormal).GenerateMipmap();
+		var textureDiffuse		= o3gl.CreateTexture2D().FilterLinear().Image(imageDiffuse);
+		var textureAmbient 		= o3gl.CreateTexture2D().FilterLinear().Image(imageAmbient);
+		var textureSpecular		= o3gl.CreateTexture2D().FilterLinear().Image(imageSpecular);
 
-		var textureCubeMap	 	= o3gl.CreateTextureCubeMap().
+		var textureCubeMap	 	= o3gl.CreateTextureCubeMap().FilterLinear().
 			positiveX().Image(imagePX).
 			negativeX().Image(imageNX).
 			positiveY().Image(imagePY).
@@ -83,11 +83,11 @@
 		function getBuffers(mesh) {
 			normalize(mesh.positions);
 			return {
-				positions : 	o3gl.CreateArrayBuffer(mesh.positions),
-				normals : 		o3gl.CreateArrayBuffer(mesh.normals),				
-				tangents : 		o3gl.CreateArrayBuffer(mesh.tangents),				
-				textureCoords : o3gl.CreateArrayBuffer(mesh.textureCoords),				
-				indexes : 		o3gl.CreateElementArrayBuffer(mesh.indexes)
+				positions : 	o3gl.CreateArrayBuffer().Data(mesh.positions),
+				normals : 		o3gl.CreateArrayBuffer().Data(mesh.normals),				
+				tangents : 		o3gl.CreateArrayBuffer().Data(mesh.tangents),				
+				textureCoords : o3gl.CreateArrayBuffer().Data(mesh.textureCoords),				
+				indexes : 		o3gl.CreateElementArrayBuffer().Data(mesh.indexes)
 			}
 		}
 		
@@ -99,27 +99,15 @@
 		
 		programs = [];
 		for (var i = 0; i < 3; ++i) {
+			programs[i] = [];
 			for (var j = 0; j < 3; ++j) {
 				var program = phongSources.newInstance();
-			
-				mat4.identity(matrixM);
-				mat4.translate(matrixM, [ (i - 1) * 3 , (j - 1) * 3 , 0]);
-				mat4.multiply(matrixM,matrixRotation, matrixM);
-			
-				mat4.identity(matrixMV);
-				mat4.multiply(matrixM, matrixMV, matrixMV);
-				mat4.multiply(matrixV, matrixMV, matrixMV);				
-				mat4.toInverseMat3(matrixMV, matrixN);
-				mat3.transpose(matrixN);
-
 				
 				if (i===0) mesh = cube;
 				if (i===1) mesh = sphere;
 				if (i===2) mesh = teapot;
 				
 				program.
-					Set("uMatrixM", 		matrixM).
-					Set("uMatrixN", 		matrixN).
 					Set("aPosition", 		mesh.positions).
 					Set("aNormal", 			mesh.normals).
 					Set("aTangent", 		mesh.tangents).
@@ -133,18 +121,18 @@
 
 				// Declare material traits
 				if (i === 0) program.Set("uMaterialDiffuse", 1.0, 0.0, 0.0, 1.0);
-				//if (i === 1) program.Set("uSamplerDiffuse", 	textureDiffuse);
+				if (i === 1) program.Set("uSamplerDiffuse", 	textureDiffuse);
 				if (i === 2) {
 					program.Set("uMaterialDiffuse", 0.0, 1.0, 0.0, 1.0);
 					program.Set("uSamplerDiffuse", 	textureDiffuse);
 				}
-				//if (j === 0) program.Set("uSamplerNormal", 	textureNormal);
-				//if (j === 1) program.Set("uSamplerCube", 	textureCubeMap);
+				if (j === 1) program.Set("uSamplerCube", 	textureCubeMap);
 				if (j === 2) {
-					//program.Set("uSamplerNormal", textureNormal);
-					//program.Set("uSamplerCube", textureCubeMap);
+					program.Set("uSamplerCube", textureCubeMap);
 				}
-				programs.push(program)
+				
+				program.Set("uSamplerNormal", 	textureNormal);
+				programs[i][j] = program;
 			}
 		}
 	}
@@ -154,15 +142,28 @@
 		gl.clearColor(0.5, 0.5, 0.5, 1.0);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
 		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-	
-		//programs[0].DrawTriangles();
-	
-	
-		for (var i = 0; i < programs.length; ++i) {
-			program = programs[i];
-			program.DrawTriangles();
-		}	
-	
+		
+		
+		for (var i = 0; i < 3; ++i) {
+			for (var j = 0; j < 3; ++j) {
+				program = programs[i][j];
+			
+				mat4.identity(matrixM);
+				mat4.translate(matrixM, [ (i - 1) * 3 , (j - 1) * 3 , 0]);
+				mat4.multiply(matrixM,matrixRotation, matrixM);
+			
+				mat4.identity(matrixMV);
+				mat4.multiply(matrixM, matrixMV, matrixMV);
+				mat4.multiply(matrixV, matrixMV, matrixMV);				
+				mat4.toInverseMat3(matrixMV, matrixN);
+				mat3.transpose(matrixN);
+
+				program.
+					Set("uMatrixM", 		matrixM).
+					Set("uMatrixN", 		matrixN).
+					DrawTriangles();
+			}
+		}
     }
     
     function update() {
