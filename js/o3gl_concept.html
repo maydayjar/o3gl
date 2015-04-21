@@ -318,24 +318,36 @@ console.log(a2 instanceof ArrayBuffer);
 */
 
 
-var flatten = function () {
-	var result = [];
-	for (var i = 0; i < arguments.length; ++i) {
-		var argument = arguments[i];
-		if (argument instanceof Array) {
-			for (var j = 0; j < argument.length; ++j) {
-				result = result.concat(flatten(argument[j]));
-			}
-		} else {
-			result.push(argument);
-		}
-	}
-	return result;		
-}
+/*
+// External matricies:
+mat4.identity(matrixM);
+mat4.translate(matrixM, [ (i - 1) * 3 , (j - 1) * 3 , 0]);
+mat4.multiply(matrixM,matrixRotation, matrixM);
 
-var a = [1,2,[3,[4,{},[],"olololo"]], "lolololo"];
+mat4.identity(matrixMV);
+mat4.multiply(matrixM, matrixMV, matrixMV);
+mat4.multiply(matrixV, matrixMV, matrixMV);				
+mat4.toInverseMat3(matrixMV, matrixN);
+mat3.transpose(matrixN);
 
-console.log(flatten(a));
+program.
+	Set("uMatrixM", 		matrixM).
+	Set("uMatrixN", 		matrixN).
+	DrawTriangles();
+
+o3gl.matrix()
+	
+// Builtin matrix
+program.
+	matrix("uMatrixM").identity().translate([1,0,0]).multiply(matrixRotation)
+	Identity("uMatrixM").Translate()
+	
+
+
+	
+	
+	
+*/
 
 
 </script>

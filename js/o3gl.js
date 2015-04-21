@@ -2292,7 +2292,7 @@ o3gl.Program.prototype = {
 	,
 	_isAttribute : function(name) {
 		var attributeLocation = this.GetAttributeLocation(name);
-		return attributeLocation !== null;
+		return attributeLocation >=0; // the value is -1 when no attribute found
 	}
 	,
 	_isUniformBlock : function(name) {
@@ -3020,13 +3020,14 @@ o3gl.ProgramSources.prototype = {
 		// TODO: Delete all the programs and shaders
 	}
 	,
-	CreateProgram : function(identifiers) {
-		if (!(identifiers instanceof Array)) {
-			identifiers = [];
-			for (var i = 0; i < arguments.length; ++i) {
-				identifiers.push(arguments[i]);
-			}
+	CreateProgram : function() {
+		// Accept both varargs and string array
+		var identifiers = []
+		for (var i = 0; i < arguments.length; ++i) {
+			identifiers.push(arguments[i]);
 		}
+		identifiers = Preprocessor.flatten(identifiers);
+
 		var program = null; this.programs[identifiers];
 		if (program == null) {
 			var vertexShaderSource 		= this.vertexShaderSource;

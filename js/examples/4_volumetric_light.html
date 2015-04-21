@@ -147,9 +147,8 @@
 		// Update projection matrix
 		mat4.frustum(-1,1,-1/viewport.aspect,1/viewport.aspect,1,30, matrixP);
 
-		//fbScene.Bind().ClearDepth().ClearColor(0.0, 0.0, 0.0, 1.0).Viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-		
         fbScene.Bind().ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer();		
+
 		
 		// Draw regular geometry
 		var step = 2.5;
@@ -173,7 +172,8 @@
 			var b = (z + 1) / 2;
 
 			programPhong.
-				FrameBuffer(fbScene).DepthTest(true).DepthMask(true).
+				FrameBuffer(fbScene).
+				DepthTest(true).DepthMask(true).
 				Set("uMatrixV", 	matrixV). 		
 				Set("uMatrixP", 	matrixP).		
 				Set("uMatrixM", 	matrixM).
