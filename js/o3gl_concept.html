@@ -175,6 +175,16 @@ program.DepthTest(true);		// Depth test and mask are program-specific features
 program.DepthMask(true);		// Depth test and mask are program-specific features 
 */
 
+/*
+rbDepth.Clear();
+textureColor.Clear();
+
+instance.FrameBuffer().Color(textureColor).Depth(rbDepth).Clear();
+
+
+*/
+
+
 /**
 UBO extension
 var ubo = o3gl.createUniformBuffer();
@@ -220,72 +230,6 @@ program.DepthTest(true).DepthMask(false)
 */
 
 
-/**
-Currying aspect
-*/
-/*
-function Deffered(src, dst, methodNameRegexp) {
-	var result = {};
-
-	function DefferedMethod(src, dst, methodName) {
-		var method = src[methodName];
-		dst[methodName] = function() {
-			var args = arguments;
-			var that = src;
-			result[methodName] = function() {
-				method.apply(that, args);
-			}
-		}
-	}
-	
-	for (var name in src) {
-		if (name.match(methodNameRegexp)) {
-			DefferedMethod(src, dst, name);
-		}
-	}
-	
-	return function() {
-		for (var name in result) {
-			var defferedMethod = result[name];
-			if (this) {
-				defferedMethod.call(this);
-			} else {
-				defferedMethod(this);
-			}
-		}
-	}
-}
-
-
-var o1 = {
-	value : 0
-	,
-	f1 : function(value) {
-		this.value = value;
-		console.log(value);
-	}
-	,
-	f2 : function(value) {
-		this.value = value;
-		console.log(value);
-	}
-	,
-	f3 : function(value) {
-		this.value = value;
-		console.log(value);
-	}
-}
-var o2 = {}
-var deffered = Deffered(o1, o2, /f2|f1|f3/);
-o1.f1(1);
-o2.f3(3);
-o2.f2(2);
-
-console.log(o1.value);
-deffered();
-console.log(o1.value);
-*/
-
 
 /**
 ACCESSORS
@@ -302,19 +246,6 @@ pi.Viewport = [0, 0, 100, 100]
 
 pi.aPosition = ab.pointer();
 pi.uMatrixM = matrix;
-*/
-
-/*
-var i = 1;
-console.log(i instanceof Number);
-
-var a1 = [];
-console.log(a1 instanceof Array);
-console.log(a2 instanceof Array);
-
-var a2 = new Float32Array();
-console.log(a2 instanceof Float32Array);
-console.log(a2 instanceof ArrayBuffer);
 */
 
 

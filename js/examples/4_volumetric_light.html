@@ -147,8 +147,20 @@
 		// Update projection matrix
 		mat4.frustum(-1,1,-1/viewport.aspect,1/viewport.aspect,1,30, matrixP);
 
-        fbScene.Bind().ClearColorBuffer(0.0, 0.0, 0.0, 1.0).ClearDepthBuffer();		
-
+		// Clear scene framebuffers
+        fbScene.Clear();
+		fbEmissive.Clear();
+		
+		programPhong.
+			// View and projection
+			Set("uMatrixV", 	matrixV). 		
+			Set("uMatrixP", 	matrixP).		
+			// Geometry
+			Set("aPosition", 	vboCube.positions.pointer()).
+			Set("aNormal", 		vboCube.normals.pointer()).
+			Elements(vboCube.indexes).
+			FrameBuffer(fbScene).
+			DepthMask(true).DepthTest(true);
 		
 		// Draw regular geometry
 		var step = 2.5;
@@ -166,24 +178,18 @@
 			mat4.toInverseMat3(matrixMV, matrixN);
 			mat3.transpose(matrixN);
 			
-
 			var r = (x + 1) / 2;
 			var g = (y + 1) / 2;
 			var b = (z + 1) / 2;
 
 			programPhong.
-				FrameBuffer(fbScene).
-				DepthTest(true).DepthMask(true).
-				Set("uMatrixV", 	matrixV). 		
-				Set("uMatrixP", 	matrixP).		
+				// Model transformation
 				Set("uMatrixM", 	matrixM).
 				Set("uMatrixN", 	matrixN).
-				Set("uMaterialDiffuse", r, g, b, 1.0).	
+				// Phong material settings
 				Set("uMaterialAmbient", 0.0, 0.0, 0.0, 1.0).	
 				Set("uMaterialSpecular", 0.2, 0.2, 0.2, 1.0).	
-				Set("aPosition", 	vboCube.positions.pointer()).
-				Set("aNormal", 		vboCube.normals.pointer()).
-				Elements(vboCube.indexes).
+				Set("uMaterialDiffuse", r, g, b, 1.0).	
 				DrawTriangles();
 		}
 
@@ -203,25 +209,19 @@
 		*/
 		
 		// Draw emmissive geometry
-        fbEmissive.ClearColorBuffer(0,0,0,1);
 		mat4.identity(matrixM);
 		mat4.translate(matrixM, [0, 0, 0]);
 		mat4.multiply(matrixV, matrixM , matrixMV);
 		mat4.toInverseMat3(matrixMV, matrixN);		
 		mat3.transpose(matrixN);
+				
 		programPhong.
 			FrameBuffer(fbEmissive).
-			DepthTest(true).DepthMask(true).
-			Set("uMatrixV", 	matrixV). 		
-			Set("uMatrixP", 	matrixP).		
 			Set("uMatrixM", 	matrixM).
 			Set("uMatrixN", 	matrixN).
 			Set("uMaterialDiffuse", 0, 0, 0, 1.0).	
 			Set("uMaterialAmbient", 1.0, 1.0, 1.0, 1.0).	
 			Set("uMaterialSpecular", 0.0, 0.0, 0.0, 1.0).	
-			Set("aPosition", 	vboCube.positions.pointer()).
-			Set("aNormal", 		vboCube.normals.pointer()).
-			Elements(vboCube.indexes).
 			DrawTriangles();
 			
 /*		
