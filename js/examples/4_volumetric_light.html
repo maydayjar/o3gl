@@ -120,10 +120,10 @@
 				"uLightPosition"
 			).newInstance();
 			
-		programConvolution 	= o3gl.sources(Shaders.Convolution).CreateProgram().newInstance();
-		programBlurRadial 	= o3gl.sources(Shaders.BlurRadial).CreateProgram().newInstance();
-		programBlend 		= o3gl.sources(Shaders.BlendAdditive).CreateProgram().newInstance();
-		programFlush 		= o3gl.sources(Shaders.Default).CreateProgram().newInstance();
+		programConvolution 	= o3gl.sources(Shaders.Convolution).CreateProgram();
+		programBlurRadial 	= o3gl.sources(Shaders.BlurRadial).CreateProgram();
+		programBlend 		= o3gl.sources(Shaders.BlendAdditive).CreateProgram();
+		programFlush 		= o3gl.sources(Shaders.Default).CreateProgram();
 
 		// Create frame buffer textures
 		var ppScale = 0.5;
@@ -160,7 +160,7 @@
 			Set("aNormal", 		vboCube.normals.pointer()).
 			Elements(vboCube.indexes).
 			FrameBuffer(fbScene).
-			DepthMask(true).DepthTest(true);
+			DepthTest(true);
 		
 		// Draw regular geometry
 		var step = 2.5;
@@ -216,12 +216,13 @@
 		mat3.transpose(matrixN);
 				
 		programPhong.
-			FrameBuffer(fbEmissive).
+			FrameBuffer(fbEmissive).DepthTest(true).
 			Set("uMatrixM", 	matrixM).
 			Set("uMatrixN", 	matrixN).
 			Set("uMaterialDiffuse", 0, 0, 0, 1.0).	
 			Set("uMaterialAmbient", 1.0, 1.0, 1.0, 1.0).	
 			Set("uMaterialSpecular", 0.0, 0.0, 0.0, 1.0).	
+			Elements(vboCube.indexes).
 			DrawTriangles();
 			
 /*		
@@ -237,11 +238,11 @@
 
 		programConvolution.
 			FrameBuffer(fbConvolutionPass1).
-			DepthTest(false).
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uStep", 0.9/fbConvolutionPass1.getWidth(), 0).							
 			Set("uSampler0", textureEmissive).		
+			Elements(null).
 			DrawTriangles();
 		
 		programConvolution.
@@ -250,27 +251,28 @@
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uStep", 0, 0.9/fbConvolutionPass2.getHeight()).
 			Set("uSampler0", textureConvolutionPass1).		
+			Elements(null).
 			DrawTriangles();
 		
 		programBlurRadial.
 			FrameBuffer(fbBlurRadial).
-			DepthTest(false).
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uOrigin", 0.5, 0.5, 0.5, 0.5).
 			//Set("uCenter", 0.0, 0.0, 0.0, 0.0).
 			Set("uSampler0", textureConvolutionPass2).		
 //			Set("uSampler0", textureScene).		
+			Elements(null).
 			DrawTriangles();
 	
 		// Flush to the screen
 		programBlend.
 			FrameBuffer(fbDefault).
-			DepthTest(false).
 			Set("aPosition", 	 vboPlane.positions.pointer()).
 			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
 			Set("uSampler0", textureBlurRadial).		
 			Set("uSampler1", textureScene).		
+			Elements(null).
 			DrawTriangles();
 
 		return;

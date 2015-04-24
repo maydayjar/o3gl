@@ -2440,6 +2440,15 @@ o3gl.Program.prototype = {
 		return this;
 	}
 	,
+	Elements : function(elementArrayBuffer) {
+		if (elementArrayBuffer) {
+			elementArrayBuffer.Bind();
+		} else {
+			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+		}
+		return this;
+	}
+	,
 	// Uniform buffer object API
 	_DrawArrays : function(glMode, first, count, primcount) {				
 		if (!first) {
@@ -2577,6 +2586,42 @@ o3gl.Program.prototype = {
 	,
 	DrawLineLoop : function(first, count, primcount) {
 		this._DrawPrimitives(gl.LINE_LOOP, first, count, primcount);
+		return this;
+	}
+	,	
+	FrameBuffer : function(frameBuffer) {
+		if (frameBuffer) {
+			frameBuffer.Bind();
+			// Default values:
+			this.Viewport(0, 0, frameBuffer.getWidth(), frameBuffer.getHeight());
+			this.DepthTest(false);
+			this.StencilTest(false);
+			
+			// TODO:
+			// gl.depthFunc(gl.LEQUAL); // Default
+			// gl.depthRange(0.0, 1.0); // Default
+		}
+		return this;
+	}
+	,
+	DepthTest : function (enable) {
+		if (enable)
+			gl.enable(gl.DEPTH_TEST);
+		else
+			gl.disable(gl.DEPTH_TEST);
+		return this;
+	}
+	,
+	StencilTest : function (enable) {
+		if (enable)
+			gl.enable(gl.STENCIL_TEST);
+		else
+			gl.disable(gl.STENCIL_TEST);
+		return this;
+	}
+	,
+	Viewport : function(x,y,width,height) {
+		gl.viewport(x, y, width, height);
 		return this;
 	}
 }

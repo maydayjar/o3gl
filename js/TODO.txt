@@ -41,6 +41,8 @@
 
 	
 	+ Scissor test affects both program output and framebuffer clear methods.
+	
+	- DepthTest and StencilTest must be methods of Program. They allow explicitly set corresponding tests
 
 	- Runnable instance with configured draw mode, first element, elements count
 	
@@ -50,7 +52,20 @@
 	
 	- Draw points and point size
 	
-	- ProgramInstance logic:
+	- Viewport and framebuffer
+		
+		- Program.FrameBuffer(fb) 	// Bind frame buffer. Enables depth/stencil if there are attachments. Set up maximum viewport size by default. 
+		
+		- Program.Color(t1, t2)		// Set up color attachements. Set up viewport size
+		
+		- Program.Depth(db) 		// Set up depth attachment, viewport size
+		
+	
+	- ProgramInstance:
+		
+		- Keep settings for uniforms and attributes
+		
+		- Allow shader preprocessing and deferred initialization
 		
 		- If VAO is set, attribute setters are executed immediately. Otherwise assgnment is deffered
 		

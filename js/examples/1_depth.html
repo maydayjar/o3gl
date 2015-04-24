@@ -53,6 +53,7 @@ void main() {
 	var pMatrix 		= mat4.create();
 	var mvMatrix = mat4.create();
 	var program;
+	var defaultFrameBuffer;
 	var positions;
 	var indexes;
 	var cube;
@@ -127,12 +128,9 @@ void main() {
 		
 		program 	= o3gl.CreateProgram(o3gl.CreateShader(vertexShaderSource), o3gl.CreateShader(fragmentShaderSource));
 		positions 	= o3gl.CreateArrayBuffer().Data(new Int16Array(cubeVertex));
-		indexes 	= o3gl.CreateElementArrayBuffer().Data(cubeIndex);
-				
-		/*
-		program.
-			Attribute3f("aPosition", positions.pointer());
-		*/
+		indexes 	= o3gl.CreateElementArrayBuffer().Data(cubeIndex);				
+		defaultFrameBuffer = o3gl.CreateFrameBuffer();
+		
 	}
 	
 	function render() {
@@ -147,9 +145,9 @@ void main() {
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
 		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 			
-		// Set up program properties that won't change
-		indexes.Bind();
-		program.Use().
+		program.
+			FrameBuffer(defaultFrameBuffer).DepthTest(true).
+			Elements(indexes).
 			Set("aPosition", positions.pointer()).
 			Set("uModelViewMatrix", 	mvMatrix).
 			Set("uProjectionMatrix", 	pMatrix).
