@@ -42,6 +42,28 @@
 	
 	+ Scissor test affects both program output and framebuffer clear methods.
 	
+	? QI Links:
+		
+		- Nice examples with explanation: http://www.nutty.ca/?page_id=352&link=ssao
+	
+		- http://www.webgl.com/
+		
+		- Fireball explosion: http://www.clicktorelease.com/code/perlin/explosion.html
+	
+		- http://inear.se/fireshader/
+	
+		- http://glslsandbox.com/
+	
+		- raymarching.com
+		
+		- Asteroids hiting earth: http://webglsamples.org/spacerocks/spacerocks.html
+	
+	
+	
+	- Choose and implement 3d format
+	
+	- SSAO + DoF + deffered rendering (MRT) renderer
+	
 	- DepthTest and StencilTest must be methods of Program. They allow explicitly set corresponding tests
 
 	- Runnable instance with configured draw mode, first element, elements count

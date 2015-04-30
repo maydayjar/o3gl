@@ -267,18 +267,26 @@ program.
 	Set("uMatrixM", 		matrixM).
 	Set("uMatrixN", 		matrixN).
 	DrawTriangles();
-
-o3gl.matrix()
 	
 // Builtin matrix
-program.
-	matrix("uMatrixM").identity().translate([1,0,0]).multiply(matrixRotation)
-	Identity("uMatrixM").Translate()
+
+program.mat4("uMatrixM").rotate()
+program.mat4("").identity().translate().
+
+program.mat4().rotate().translate().Set("")
+program.vec3().
+program.mat4("name").rotate().translate().Set("")
 	
+	
+program.mat4("uMatrixM").mat4("uMatrixV").multiply()
+
+// Stack
+program.mat4("uMatrixM").rotation().translation().invert().vec3(1,0,0).
+
+program.mat4("uMatrixM").rotation().translation().invert().vec3(1,0,0).
 
 
-	
-	
+program.matrix("uMatrixM").multiply("uMatrixV").toInverseMat3().transpose()
 	
 */
 

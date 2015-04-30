@@ -118,7 +118,7 @@
 				"uMaterialSpecular",
 				"uMaterialAmbient",
 				"uLightPosition"
-			).newInstance();
+			);
 			
 		programConvolution 	= o3gl.sources(Shaders.Convolution).CreateProgram();
 		programBlurRadial 	= o3gl.sources(Shaders.BlurRadial).CreateProgram();
@@ -158,9 +158,9 @@
 			// Geometry
 			Set("aPosition", 	vboCube.positions.pointer()).
 			Set("aNormal", 		vboCube.normals.pointer()).
-			Elements(vboCube.indexes).
-			FrameBuffer(fbScene).
-			DepthTest(true);
+			Elements(vboCube.indexes).			
+			FrameBuffer(fbScene)
+			;
 		
 		// Draw regular geometry
 		var step = 2.5;
@@ -192,7 +192,7 @@
 				Set("uMaterialDiffuse", r, g, b, 1.0).	
 				DrawTriangles();
 		}
-
+		
 		/*
 		// Flush to the screen
 		fbDefault.Bind().ClearDepthBuffer();
@@ -216,7 +216,7 @@
 		mat3.transpose(matrixN);
 				
 		programPhong.
-			FrameBuffer(fbEmissive).DepthTest(true).
+			FrameBuffer(fbEmissive).
 			Set("uMatrixM", 	matrixM).
 			Set("uMatrixN", 	matrixN).
 			Set("uMaterialDiffuse", 0, 0, 0, 1.0).	
@@ -276,7 +276,6 @@
 			DrawTriangles();
 
 		return;
-
 		programFlush.FrameBuffer().ClearColorBuffer(1,0,0,1);
 		programFlush.DepthTest(false).
 			Set("aPosition", 	 vboPlane.positions.pointer()).

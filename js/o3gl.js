@@ -2594,12 +2594,25 @@ o3gl.Program.prototype = {
 			frameBuffer.Bind();
 			// Default values:
 			this.Viewport(0, 0, frameBuffer.getWidth(), frameBuffer.getHeight());
-			this.DepthTest(false);
-			this.StencilTest(false);
+
+			// Depth and stencil test
+			if(frameBuffer._depthAttachment) {
+				this.DepthTest(true);
+			} else {
+				this.DepthTest(false);
+			}
+			if(frameBuffer._stencilAttachment) {
+				this.StencilTest(true);
+			} else {
+				this.StencilTest(false);
+			}
 			
 			// TODO:
 			// gl.depthFunc(gl.LEQUAL); // Default
 			// gl.depthRange(0.0, 1.0); // Default
+		} else {
+			this.DepthTest(false);
+			this.StencilTest(false);			
 		}
 		return this;
 	}
