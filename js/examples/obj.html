@@ -1,0 +1,341 @@
+﻿<html>
+
+<head>
+<title>Phong lighting shader usage example</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<!--
+<script type="text/javascript" src="jquery-1.4.2.min.js"></script>
+-->
+<script type="text/javascript" src="stats.min.js"></script>
+<script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
+<script type="text/javascript" src="webgl-utils.js"></script>
+<script type="text/javascript" src="../o3gl.js"></script>
+<script type="text/javascript" src="../shaders/phong.js"></script>
+<script type="text/javascript" src="../utils/utils.js"></script>
+<script type="text/javascript" src="../utils/primitives.js"></script>
+
+<style type='text/css'>    
+	html, body {
+		width:  100%;
+		height: 100%;
+		margin: 0px;
+	}
+</style>
+
+<script type="text/javascript">
+    var o3gl;	
+	var angle = 0;
+	
+	// Referenced by the shader program variables
+	var viewport 			= {};
+	var matrixRotation 	= mat4.create();
+	var matrixM 		= mat4.create();
+	var matrixV 		= mat4.create();
+	var matrixMV 		= mat4.create();
+	var matrixP 		= mat4.create();
+	var matrixN 		= mat3.create();
+	
+	var program;
+
+	var model;
+
+
+	
+	function getJSON(url, onReady) {
+		var client = new XMLHttpRequest();
+		client.open('GET', url);
+		client.onreadystatechange = function() {
+			onReady(JSON.parse(client.responseText));
+		}
+		client.send();
+	}
+	
+	function getText(url, onReady) {
+		var client = new XMLHttpRequest();
+		client.open('GET', url);
+		client.onreadystatechange = function() {
+			if(client.readyState === 4)
+			{
+				if(client.status === 200 || client.status == 0)
+				{
+					onReady(client.responseText);
+				}
+			}			
+		}
+		client.send();
+	}
+
+	
+	function getArrayBuffer(url, onReady) {
+		var xhr = new XMLHttpRequest();
+		xhr.open('GET', url, true);
+		xhr.responseType = 'arraybuffer';
+
+		xhr.onload = function(e) {
+			var uInt8Array = new ArrayBuffer(this.response);
+			onReady(arrayBuffer);
+		}
+	}
+	
+	function init() {				
+//		getText("file:///C:/work/workspace/o3gl/js/examples/model/obj/FA-22_Raptor/FA-22_Raptor.obj", function(data) {
+		getText("file:///C:/work/workspace/o3gl/js/examples/model/obj/dark_fighter_6/dark_fighter_6.obj", function(data) {
+			data = data.split("\n");
+			var obj = {}
+			var group = obj;
+			
+			for (var i = 0; i < data.length; ++i) {
+				var line = data[i].trim().split(" ");
+				if (line[0] === "#") continue;
+
+				if (line[0] === "g") {
+					if (line[1]) {
+						var groupName = line[1];
+						if (!obj.g) obj.g = {}
+						obj.g[groupName] = {};
+						group = obj.g[groupName];
+					} else {
+						group = obj;
+					}
+				}
+				
+				if (line[0] === "v") {
+					if (!group.v) group.v = [];					
+					group.v.push(parseFloat(line[1]));
+					group.v.push(parseFloat(line[2]));
+					group.v.push(parseFloat(line[3]));
+				}
+				
+				if (line[0] === "vt") {
+					if (!group.vt) group.vt = [];					
+					group.vt.push(parseFloat(line[1]));
+					group.vt.push(parseFloat(line[2]));
+				}
+
+				if (line[0] === "vn") {
+					if (!group.vn) group.vn = [];					
+					group.vn.push(parseFloat(line[1]));
+					group.vn.push(parseFloat(line[2]));
+				}
+
+				if (line[0] === "f") {
+					var v1 = line[1].split("/");
+					var v2 = line[2].split("/");
+					var v3 = line[3].split("/");
+					
+					
+					if (!group.f) group.f = {v:[], t:[], n:[]};					
+
+					if (v1[0]) group.f.v.push(parseInt(v1[0]));
+					if (v1[1]) group.f.t.push(parseInt(v1[1]));
+					if (v1[2]) group.f.n.push(parseInt(v1[2]));					
+					
+					if (v2[0]) group.f.v.push(parseInt(v2[0]));
+					if (v2[1]) group.f.t.push(parseInt(v2[1]));
+					if (v2[2]) group.f.n.push(parseInt(v2[2]));					
+
+					if (v3[0]) group.f.v.push(parseInt(v3[0]));
+					if (v3[1]) group.f.t.push(parseInt(v3[1]));
+					if (v3[2]) group.f.n.push(parseInt(v3[2]));					
+
+				}
+			}
+
+			model = {};
+
+			function convert(obj, model) {
+				if (obj.v) model.v = o3gl.CreateArrayBuffer().Data(new Float32Array(obj.v));
+				if (obj.vt) model.vt = o3gl.CreateArrayBuffer().Data(new Float32Array(obj.vt));
+				if (obj.vn) model.vn = o3gl.CreateArrayBuffer().Data(new Float32Array(obj.vn));
+				if (obj.f) {
+					model.f = {};
+					if (obj.f.v) model.f.v = o3gl.CreateElementArrayBuffer().Data(new Int16Array(obj.f.v));
+					if (obj.f.t) model.f.t = o3gl.CreateElementArrayBuffer().Data(new Int16Array(obj.f.t));
+					if (obj.f.n) model.f.n = o3gl.CreateElementArrayBuffer().Data(new Int16Array(obj.f.n));
+				} 
+			}
+			
+			convert(obj, model);
+			if (obj.g) {
+				model.g = {};
+				for(var name in obj.g) {
+					model.g[name] = {};
+					convert(obj.g[name], model.g[name]);
+				}
+			}
+			
+
+			
+			/*
+			if(obj.g) {
+				model.g = {}
+				for (var name in obj.g) {
+					model.g[name] = {}
+					
+					var obj = obj.g[name];
+					var model = obj.g[name];
+					
+					var v = g.v;
+					var vt = obj.g[g].vt;
+					var vn = obj.g[g].vn;
+					var fv =  obj.g[g].v;
+					var ft = obj.g[g].vt;
+					var fn = obj.g[g].vn;
+
+					
+					if (obj[g].v) model[g].v = o3gl.CreateArrayBuffer().Data(new Float32Array(obj[g].v));
+					if (obj[g].vt) model[g].vt = o3gl.CreateArrayBuffer().Data(new Float32Array(obj[g].vt));
+					if (obj[g].vn) model[g].vn = o3gl.CreateArrayBuffer().Data(new Float32Array(obj[g].vn));
+					
+					if (obj[g].f) {
+						model[g].f = {};
+						if (obj[g].f.v) model[g].f.v = o3gl.CreateElementArrayBuffer().Data(new Int16Array(obj[g].f.v));
+						if (obj[g].f.t) model[g].f.t = o3gl.CreateElementArrayBuffer().Data(new Int16Array(obj[g].f.t));
+						if (obj[g].f.n) model[g].f.n = o3gl.CreateElementArrayBuffer().Data(new Int16Array(obj[g].f.n));
+					} 
+
+				}
+			}
+			*/
+		});
+
+		program = o3gl.
+			// Retain only essential shader variables and related code
+			sources(Shaders.Phong.Vertex, Shaders.Phong.Fragment). //short: sources(Shaders.Phong)
+			CreateProgram(
+				"aPosition", 
+				//"aNormal", 
+				"uMatrixV",
+				"uMatrixP",
+				"uMatrixM",
+				"uMatrixN",
+				"uMaterialDiffuse",
+				"uMaterialSpecular",
+				"uMaterialAmbient"
+				//"uLightPosition"
+			);
+		
+		window.onresize();
+
+		// Initialize matrices
+		mat4.perspective(45, viewport.width / viewport.height, 0.1, 100.0, matrixP);
+		mat4.identity(matrixRotation);
+		mat4.identity(matrixV);
+		mat4.translate(matrixV, [0,0,-15]);
+		mat4.identity(matrixM);
+		mat4.identity(matrixMV);
+		mat4.scale(matrixM, [0.01, 0.01, 0.01]);
+	}
+	
+	function render() {
+		mat4.identity(matrixMV);
+		mat4.multiply(matrixM, matrixMV, matrixMV);
+		mat4.multiply(matrixV, matrixMV, matrixMV);				
+		mat4.toInverseMat3(matrixMV, matrixN);
+		mat3.transpose(matrixN);
+
+		o3gl.CreateFrameBuffer().ClearColorBuffer(0,0,0,1);
+		
+		program.
+			Set("uMatrixV", matrixV).
+			Set("uMatrixP", matrixP).
+			Set("uMatrixM", matrixM).
+			//Set("uMatrixN", matrixN).
+			Set("uMaterialDiffuse", 0.5, 0.5, 0.5, 1.0).
+			Set("uMaterialSpecular", 0.5, 0.5, 0.5, 1.0).
+			Set("uMaterialAmbient", 0.5, 0.5, 0.5, 1.0);
+			//Set("uLightPosition", 0.5, 0.5, 0.5, 1.0).
+		
+		if (model) {		
+			if (model.v) program.Set("aPosition", model.v);
+			
+			program.DrawTriangles(0, 50);
+			/*
+			if (model.g) {
+				for (var name in model.g) {
+					program.
+						Elements(model.g[name].f.v).
+						DrawTriangles(0, 500);
+				}
+			}
+			*/
+		}
+    }
+    
+    function update() {
+		angle += 0.01;
+		stats.begin();
+		render();
+		stats.end();
+		requestAnimFrame(update)
+    }
+
+    function webGLStart() {	
+		stats = new Stats();
+		stats.setMode(0); // 0: fps, 1: ms
+		// Align top-left
+		stats.domElement.style.position = 'absolute';
+		stats.domElement.style.left = '0px';
+		stats.domElement.style.top = '0px';
+
+		document.body.appendChild( stats.domElement );
+	
+        var canvas = document.getElementById("canvas");
+		var gl = WebGLUtils.setupWebGL(canvas);
+		o3gl = O3GL(gl)
+		init();
+        update();
+		
+		addMouseListener(function (dx, dy, lb, rb, mb) {
+			var r = mat4.create();
+			mat4.identity(r);
+			mat4.rotate(r, 0.05, [dy, dx, 0]);
+			mat4.multiply(r, matrixM, matrixM);
+		}) ;
+    }
+	
+	window.onresize = function() {
+		gl.canvas.width  = document.body.clientWidth;
+		gl.canvas.height = document.body.clientHeight;			
+		viewport.x 		= 0;
+		viewport.y 		= 0;
+		viewport.width 	= gl.canvas.width;
+		viewport.height = gl.canvas.height;
+		mat4.perspective(45, viewport.width / viewport.height, 0.1, 100.0, matrixP);
+	}
+	
+	function addMouseListener(listener) {
+		var x;
+		var y;
+		var isMouseDown = false;
+		addEventListener("mousemove", function(e) {
+			if (isMouseDown) {
+				listener(e.clientX - x, e.clientY - y);
+				x = e.clientX;
+				y = e.clientY;
+			}
+		}); 
+		
+		addEventListener("mousedown", function(e) {
+			isMouseDown = true;
+		}); 
+
+		addEventListener("mouseup", function(e) {
+			isMouseDown = false;
+		});
+	
+	}
+	
+</script>
+
+
+</head>
+
+
+<body onload="webGLStart();" style="overflow: hidden">
+	<div>
+		<canvas id="canvas" style="border: none; margin:0; padding:0; " width="300" height="300"></canvas>
+	</div>
+</body>
+
+</html>

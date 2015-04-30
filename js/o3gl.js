@@ -2296,6 +2296,9 @@ o3gl.Program.prototype = {
 	}
 	,
 	_isUniformBlock : function(name) {
+		// TODO: temporary disabled
+		return false;
+		
 		var uniformBlockIndex = this.GetUniformBlockIndex(name);
 		return (uniformBlockIndex !== gl.INVALID_INDEX);
 	}
