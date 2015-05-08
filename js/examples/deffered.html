@@ -1,0 +1,269 @@
+﻿<html>
+
+<head>
+<title>Phong lighting shader usage example</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<!--
+<script type="text/javascript" src="jquery-1.4.2.min.js"></script>
+-->
+<script type="text/javascript" src="stats.min.js"></script>
+<script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
+<script type="text/javascript" src="webgl-utils.js"></script>
+<script type="text/javascript" src="../o3gl.js"></script>
+<script type="text/javascript" src="../shaders/phong.js"></script>
+<script type="text/javascript" src="../shaders/deffered.js"></script>
+<script type="text/javascript" src="../utils/utils.js"></script>
+<script type="text/javascript" src="../utils/primitives.js"></script>
+
+
+<style type='text/css'>    
+	html, body {
+		width:  100%;
+		height: 100%;
+		margin: 0px;
+	}
+</style>
+
+<script type="text/javascript">
+    var o3gl;	
+	var angle = 0;
+	
+	// Referenced by the shader program variables
+	var viewport 			= {};
+	var matrixRotation 	= mat4.create();
+	var matrixM 		= mat4.create();
+	var matrixV 		= mat4.create();
+	var matrixMV 		= mat4.create();
+	var matrixP 		= mat4.create();
+	var matrixN 		= mat3.create();
+	
+	var programDefferedDepth;
+	var programDefferedNormal;
+	var programDefferedMaterial;
+	var programPhong;
+
+	var fbTextureDepth;
+	var fbTextureNormal;
+	var fbTextureDiffuse;
+	var fbTextureAmbient;
+	var fbDefault;
+	
+	var cube;
+	var sphere;
+	var teapot;
+	var plane;
+
+	var programs = [];
+	function init() {				
+		
+	/*
+		var imageDiffuse 		= document.getElementById("diffuse");
+		var imageNormal 		= document.getElementById("normal");
+		var imageSpecular 		= document.getElementById("specular");
+		var imageAmbient 		= document.getElementById("ambient");
+		var imagePX 			= document.getElementById("px");
+		var imageNX 			= document.getElementById("nx");
+		var imagePY 			= document.getElementById("py");
+		var imageNY 			= document.getElementById("ny");
+		var imagePZ 			= document.getElementById("pz");
+		var imageNZ 			= document.getElementById("nz");	
+	*/
+		var materialDiffuse 	= [0.5, 0.5, 0.5, 1.0];
+		var materialSpecular 	= [1.0, 1.0, 1.0, 1.0];
+		var materialAmbient 	= [0.0, 0.0, 0.0, 1.0];
+
+/*		
+		var textureNormal 		= o3gl.CreateTexture2D().FilterMagLinear().FilterMinLinearMipmapLinear().WrapClampToEdge().Image(imageNormal).GenerateMipmap();
+		var textureNormal 		= o3gl.CreateTexture2D().FilterMagLinear().FilterMagLinear().WrapClampToEdge().Image(imageNormal).GenerateMipmap();
+		var textureDiffuse		= o3gl.CreateTexture2D().FilterLinear().Image(imageDiffuse);
+		var textureAmbient 		= o3gl.CreateTexture2D().FilterLinear().Image(imageAmbient);
+		var textureSpecular		= o3gl.CreateTexture2D().FilterLinear().Image(imageSpecular);
+		
+		var textureCubeMap	 	= o3gl.CreateTextureCubeMap().FilterLinear().
+			positiveX().Image(imagePX).
+			negativeX().Image(imageNX).
+			positiveY().Image(imagePY).
+			negativeY().Image(imageNY).
+			positiveZ().Image(imagePZ).
+			negativeZ().Image(imageNZ);
+*/
+		window.onresize();
+
+		// Initialize matrices
+		mat4.perspective(45, viewport.width / viewport.height, 0.1, 100.0, matrixP);
+		mat4.identity(matrixRotation);
+		mat4.identity(matrixV);
+		mat4.translate(matrixV, [0,0,-15]);
+		mat4.identity(matrixM);
+		mat4.identity(matrixMV);
+		
+		function getBuffers(mesh) {
+			normalize(mesh.positions);
+			return {
+				positions : 	o3gl.CreateArrayBuffer().Data(mesh.positions),
+				normals : 		o3gl.CreateArrayBuffer().Data(mesh.normals),				
+				tangents : 		o3gl.CreateArrayBuffer().Data(mesh.tangents),				
+				textureCoords : o3gl.CreateArrayBuffer().Data(mesh.textureCoords),				
+				indexes : 		o3gl.CreateElementArrayBuffer().Data(mesh.indexes)
+			}
+		}
+		
+		cube 	= getBuffers(new Cube());
+		sphere 	= getBuffers(new Sphere(32,32));
+		teapot 	= getBuffers(new Teapot());
+		
+		phongSources = o3gl.sources(Shaders.Phong.Vertex, Shaders.Phong.Fragment);
+		
+		programDefferedDepth = o3gl.sources(Shaders.Deffered.Depth.Vertex, Shaders.Deffered.Depth.Fragment).CreateProgram();
+		programDefferedNormal = o3gl.sources(Shaders.Deffered.Normal.Vertex, Shaders.Deffered.Normal.Fragment).newInstance();
+		programDefferedMaterial = o3gl.sources(Shaders.Deffered.Material.Vertex, Shaders.Deffered.Material.Fragment).CreateProgram();
+		
+		fbTextureDepth = o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
+		//fbTextureNormal = o3gl.CreateTexture2D().Image(viewport.width, viewport.height);
+		//fbTextureDiffuse = o3gl.CreateTexture2D().Image(viewport.width, viewport.height);
+		//fbTextureAmbient = o3gl.CreateTexture2D().Image(viewport.width, viewport.height);
+		//fbTextureSpecular = o3gl.CreateTexture2D().Image(viewport.width, viewport.height);
+
+		/*
+		programDefferedDepth.FrameBuffer().Color(fbTextureDepth).Depth(o3gl.CreateRenderBufferDepth().Storage(viewport.width, viewport.height));
+		programDefferedNormal.FrameBuffer().Color(fbTextureDepth);
+		programDefferedNormal.FrameBuffer().Depth(o3gl.CreateRenderBufferDepth().Storage(viewport.width, viewport.height));
+		programDefferedMaterial.FrameBuffer().Color(fbTextureDiffuse, fbTextureAmbient, fbTextureSpecular);
+		programDefferedMaterial.FrameBuffer().Depth(o3gl.CreateRenderBufferDepth().Storage(viewport.width, viewport.height));
+		*/
+		
+		fbDefault = o3gl.CreateFrameBuffer();
+	}
+	
+	function render() {
+		mat4.identity(matrixM);
+		mat4.translate(matrixM, [ 0 , 0 , 0]);
+		mat4.multiply(matrixM,matrixRotation, matrixM);
+	
+		mat4.identity(matrixMV);
+		mat4.multiply(matrixM, matrixMV, matrixMV);
+		mat4.multiply(matrixV, matrixMV, matrixMV);				
+		mat4.toInverseMat3(matrixMV, matrixN);
+		mat3.transpose(matrixN);
+
+		//programDefferedDepth.FrameBuffer().Clear();
+		
+		fbDefault.ClearColorBuffer(0,0,1,1);
+		/*
+		programDefferedDepth.
+			FrameBuffer(fbDefault).
+			Viewport(0,0, viewport.width, viewport.height).
+			Elements(teapot.indexes).
+			Set("aPosition", teapot.positions).
+			Set("uMatrixProjection", matrixP).
+			Set("uMatrixModelView", matrixMV).
+			DrawTriangles();
+		*/
+		
+		programDefferedNormal.
+			FrameBuffer(fbDefault).
+			Viewport(0,0, viewport.width, viewport.height).
+			Elements(teapot.indexes).
+			Set("aPosition", teapot.positions).
+			Set("aNormal", teapot.normals).
+			Set("uMatrixProjection", matrixP).
+			Set("uMatrixModelView", matrixMV).
+			DrawTriangles();
+
+	
+		/*
+		fbDefault.ClearColorBuffer(1,0,0,1);
+		o3gl.DrawPlane2D(fbTextureDepth, fbDefault);
+		*/
+    }
+    
+    function update() {
+		angle += 0.01;
+		stats.begin();
+		render();
+		stats.end();
+		requestAnimFrame(update)
+    }
+
+    function webGLStart() {	
+		stats = new Stats();
+		stats.setMode(0); // 0: fps, 1: ms
+		// Align top-left
+		stats.domElement.style.position = 'absolute';
+		stats.domElement.style.left = '0px';
+		stats.domElement.style.top = '0px';
+
+		document.body.appendChild( stats.domElement );
+	
+        var canvas = document.getElementById("canvas");
+		var gl = WebGLUtils.setupWebGL(canvas);
+		o3gl = O3GL(gl)
+		init();
+        update();
+		
+		addMouseListener(function (dx, dy, lb, rb, mb) {
+			var r = mat4.create();
+			mat4.identity(r);
+			mat4.rotate(r, 0.05, [dy, dx, 0]);
+			mat4.multiply(r, matrixRotation, matrixRotation);
+		}) ;
+    }
+	
+	window.onresize = function() {
+		gl.canvas.width  = document.body.clientWidth;
+		gl.canvas.height = document.body.clientHeight;			
+		viewport.x 		= 0;
+		viewport.y 		= 0;
+		viewport.width 	= gl.canvas.width;
+		viewport.height = gl.canvas.height;
+		mat4.perspective(45, viewport.width / viewport.height, 0.1, 100.0, matrixP);
+	}
+	
+	function addMouseListener(listener) {
+		var x;
+		var y;
+		var isMouseDown = false;
+		addEventListener("mousemove", function(e) {
+			if (isMouseDown) {
+				listener(e.clientX - x, e.clientY - y);
+				x = e.clientX;
+				y = e.clientY;
+			}
+		}); 
+		
+		addEventListener("mousedown", function(e) {
+			isMouseDown = true;
+		}); 
+
+		addEventListener("mouseup", function(e) {
+			isMouseDown = false;
+		});
+	
+	}
+	
+</script>
+
+
+</head>
+
+
+<body onload="webGLStart();" style="overflow: hidden">
+	<img id="diffuse" 	src = "texture/diffuse.png" 	hidden />
+	<img id="normal" 	src = "texture/normal.png" 	hidden />
+	<img id="specular" 	src = "texture/ao.png" 		hidden />
+	<img id="bump" 		src = "texture/bump.png" 		hidden />
+	<img id="ambient" 	src = "texture/full.png" 		hidden />
+	<img id="ao" 		src = "texture/ao.png" 		hidden />
+	
+	<img id="px" src = "textureCube/positive_x.png" hidden />	
+	<img id="nx" src = "textureCube/negative_x.png" hidden />	
+	<img id="py" src = "textureCube/positive_y.png" hidden />	
+	<img id="ny" src = "textureCube/negative_y.png" hidden />	
+	<img id="pz" src = "textureCube/positive_z.png" hidden />	
+	<img id="nz" src = "textureCube/negative_z.png" hidden />	
+	<div>
+		<canvas id="canvas" style="border: none; margin:0; padding:0; " width="300" height="300"></canvas>
+	</div>
+</body>
+
+</html>

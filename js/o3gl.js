@@ -704,9 +704,25 @@ Extend(o3gl.Texture2D, o3gl.Texture,
 		
 		return true;
 //		return true;
-	}
+	}	
 	,
 	Filter : function (glTextureMinFilter, glTextureMagFilter) {
+		// TODO: When using floating-point textures, only gl.NEAREST is supported. The following shows possible calling values :
+		// texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+		// texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+		// texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+		// texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+		// texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+		// texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST)
+		// texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR)
+		// texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST)
+		// texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+		// texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+		// texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT)
+		// texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+		// texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+		// texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT)
+		
 		this.Bind();
 		gl.texParameteri(this._target, gl.TEXTURE_MIN_FILTER, glTextureMinFilter);		
 		gl.texParameteri(this._target, gl.TEXTURE_MAG_FILTER, glTextureMagFilter);		
@@ -721,17 +737,7 @@ Extend(o3gl.Texture2D, o3gl.Texture,
 	FilterMagNearest : function () {
 		gl.texParameteri(this._target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);		
 		return this;
-	}
-	,
-	FilterMagLinearMipmapNearest : function () {
-		gl.texParameteri(this._target, gl.TEXTURE_MAG_FILTER, gl.LINEAR_MIPMAP_NEAREST);		
-		return this;
-	}
-	,
-	FilterMagLinearMipmapLinear : function () {
-		gl.texParameteri(this._target, gl.TEXTURE_MAG_FILTER, gl.LINEAR_MIPMAP_LINEAR);		
-		return this;
-	}
+	}	
 	,
 	FilterMinLinear : function () {
 		gl.texParameteri(this._target, gl.TEXTURE_MIN_FILTER, gl.LINEAR);		
@@ -1527,6 +1533,8 @@ o3gl.FrameBuffer.prototype = {
 			var textureLevel = 0; // Must be 0; target._level 
 						
 			texture.Bind();
+			texture.WrapClampToEdge();
+			//texture.FilterLinear().WrapClampToEdge();
 			// texture.FilterLinear().WrapClampToEdge(); // What requirements should be here???
 			
 			if (!texture.isFrameBufferCompatible()) {
@@ -3218,7 +3226,7 @@ Aspect(o3gl.Program.prototype).after(/^Use$/, function() {
 
 // Resource methods
 o3gl.CreateTexture2D = function() {
-	return new o3gl.Texture2D().Bind();
+	return new o3gl.Texture2D().Bind().FilterMinNearestMipmapLinear().FilterMagLinear(); //TODO: Explicitly set up default values
 }
 o3gl.CreateTextureCubeMap = function() {
 	return new o3gl.TextureCubeMap().Bind();
@@ -3259,6 +3267,59 @@ o3gl.CreateProgram = function(shader1,shader2) {
 
 	return result;
 }
+
+var _planeProgram = null;
+var _planePositions = null;
+var _planeTextureCoordinates = null;
+
+o3gl.DrawPlane2D = function(texture, framebuffer) {
+	if (_planeProgram == null) {
+		_planeProgram = o3gl.CreateProgram(
+			o3gl.CreateShader(
+				"attribute vec2 		aPosition;" +
+				"attribute vec2 		aTextureCoordinate;" +
+				"varying vec2 			vTextureCoordinate;" +
+				"void main() {" +
+				"	vTextureCoordinate = aTextureCoordinate;" +
+				"	gl_Position = vec4(aPosition, 0.0, 1.0);" +
+				"}"
+			)
+			,
+			o3gl.CreateShader(
+				"precision mediump float;"+
+				"uniform sampler2D uSampler;"+
+				"varying vec2 vTextureCoordinate;"+
+				"void main() {" +
+				"	gl_FragColor = texture2D(uSampler, vTextureCoordinate);" +
+				"}"
+			)
+		);		
+		_planePositions = o3gl.CreateArrayBuffer().Data([
+			-1.0,-1.0,
+			1.0,-1.0,
+			-1.0, 1.0,
+			-1.0, 1.0,
+			1.0,-1.0,
+			1.0, 1.0
+		]);
+		_planeTextureCoordinates = o3gl.CreateArrayBuffer().Data([
+			0.0, 0.0,
+			1.0, 0.0,
+			0.0, 1.0,
+			0.0, 1.0,
+			1.0, 0.0,
+			1.0, 1.0
+		]);
+	}	
+	_planeProgram.
+		FrameBuffer(framebuffer).
+		Elements(null).
+		Set("aPosition", _planePositions).
+		Set("aTextureCoordinate", _planeTextureCoordinates).
+		Set("uSampler", texture).
+		DrawTriangles(0,6);
+}
+
 
 o3gl.sources = function(sources1, sources2) {
 	return new o3gl.ProgramSources(sources1, sources2);
