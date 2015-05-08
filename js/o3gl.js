@@ -2486,7 +2486,7 @@ o3gl.Program.prototype = {
 					if (!defaultElementsCount) 
 						defaultElementsCount = currentCount;
 					else if (defaultElementsCount != currentCount) {
-						throw new TypError("Active vertex arrays have different elements count");
+						throw new TypeError("Active vertex arrays have different elements count");
 					}
 				}
 			}

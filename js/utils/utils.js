@@ -1,6 +1,19 @@
 /*********************************************
 * 			UTILITY FUNCTIONS
 **********************************************/	
+function toNonIndexed(array, indices, components) {
+	var result = [];
+	
+	for (var i= 0; i < indices.length; ++i) {
+		var index = indices[i];
+		for (var c = 0; c < components; ++c) {
+			result.push(array[index * components + c]);
+		}
+	}
+	
+	return result;
+}
+
 //indices have to be completely defined NO TRIANGLE_STRIP only TRIANGLES
 function calculateNormals(vs, ind){
 	var x=0; 
@@ -58,6 +71,9 @@ function calculateNormals(vs, ind){
 	
 	return ns;
 }
+
+
+
 
 function calculateTangents(vs, tc, ind){
 	var i;
@@ -138,3 +154,4 @@ function normalize(array){
 			array[i] = 0;
 	}
 }
+

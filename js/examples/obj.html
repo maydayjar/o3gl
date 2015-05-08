@@ -39,6 +39,8 @@
 
 	var model;
 
+	var cubeVertexBuffer;
+	var cubeIndexBuffer;
 
 	
 	function getJSON(url, onReady) {
@@ -77,126 +79,129 @@
 		}
 	}
 	
-	function init() {				
-//		getText("file:///C:/work/workspace/o3gl/js/examples/model/obj/FA-22_Raptor/FA-22_Raptor.obj", function(data) {
-		getText("file:///C:/work/workspace/o3gl/js/examples/model/obj/dark_fighter_6/dark_fighter_6.obj", function(data) {
-			data = data.split("\n");
-			var obj = {}
-			var group = obj;
-			
-			for (var i = 0; i < data.length; ++i) {
-				var line = data[i].trim().split(" ");
-				if (line[0] === "#") continue;
-
-				if (line[0] === "g") {
-					if (line[1]) {
-						var groupName = line[1];
-						if (!obj.g) obj.g = {}
-						obj.g[groupName] = {};
-						group = obj.g[groupName];
-					} else {
-						group = obj;
-					}
-				}
-				
-				if (line[0] === "v") {
-					if (!group.v) group.v = [];					
-					group.v.push(parseFloat(line[1]));
-					group.v.push(parseFloat(line[2]));
-					group.v.push(parseFloat(line[3]));
-				}
-				
-				if (line[0] === "vt") {
-					if (!group.vt) group.vt = [];					
-					group.vt.push(parseFloat(line[1]));
-					group.vt.push(parseFloat(line[2]));
-				}
-
-				if (line[0] === "vn") {
-					if (!group.vn) group.vn = [];					
-					group.vn.push(parseFloat(line[1]));
-					group.vn.push(parseFloat(line[2]));
-				}
-
-				if (line[0] === "f") {
-					var v1 = line[1].split("/");
-					var v2 = line[2].split("/");
-					var v3 = line[3].split("/");
-					
-					
-					if (!group.f) group.f = {v:[], t:[], n:[]};					
-
-					if (v1[0]) group.f.v.push(parseInt(v1[0]));
-					if (v1[1]) group.f.t.push(parseInt(v1[1]));
-					if (v1[2]) group.f.n.push(parseInt(v1[2]));					
-					
-					if (v2[0]) group.f.v.push(parseInt(v2[0]));
-					if (v2[1]) group.f.t.push(parseInt(v2[1]));
-					if (v2[2]) group.f.n.push(parseInt(v2[2]));					
-
-					if (v3[0]) group.f.v.push(parseInt(v3[0]));
-					if (v3[1]) group.f.t.push(parseInt(v3[1]));
-					if (v3[2]) group.f.n.push(parseInt(v3[2]));					
-
+	function parseObj(data) {
+		data = data.split("\n");
+		var obj = {}
+		var group = obj;
+		
+		for (var i = 0; i < data.length; ++i) {
+			var line = data[i].trim().split(" ");
+			var lineNoEmpty = [];
+			for (var s in line) {
+				if (line[s]) {
+					lineNoEmpty.push(line[s]);
 				}
 			}
+			line = lineNoEmpty;
+			
+			if (line[0] === "#") continue;
 
+			if (line[0] === "g") {
+				var groupName = line[1];				
+				if (groupName) {
+					if (!obj.g) obj.g = {};
+					obj.g[groupName] = {};
+					group = obj.g[groupName];
+				} else {
+					// close group
+					group = obj.g;
+				}
+			}
+			
+			if (line[0] === "v") {
+				if (!group.v) group.v = [];					
+				group.v.push(parseFloat(line[1]));
+				group.v.push(parseFloat(line[2]));
+				group.v.push(parseFloat(line[3]));
+			}
+			
+			if (line[0] === "vt") {
+				if (!group.vt) group.vt = [];					
+				group.vt.push(parseFloat(line[1]));
+				group.vt.push(-parseFloat(line[2]));
+			}
+
+			if (line[0] === "vn") {
+				if (!group.vn) group.vn = [];					
+				group.vn.push(parseFloat(line[1]));
+				group.vn.push(parseFloat(line[2]));
+				group.vn.push(parseFloat(line[3]));
+			}
+
+			if (line[0] === "f") {
+				var v1 = line[1].split("/");
+				var v2 = line[2].split("/");
+				var v3 = line[3].split("/");
+								
+				if (!group.f) group.f = [];					
+
+				if (v1[0] && v2[0] && v3[0] && !group.f[0]) group.f[0] = [];
+				if (v1[1] && v2[1] && v3[1] && !group.f[1]) group.f[1] = [];
+				if (v1[2] && v2[2] && v3[2] && !group.f[2]) group.f[2] = [];
+			
+				if (v1[0]) { group.f[0].push(parseInt(v1[0]) - 1); }
+				if (v1[1]) { group.f[1].push(parseInt(v1[1]) - 1); }
+				if (v1[2]) { group.f[2].push(parseInt(v1[2]) - 1); }
+				if (v2[0]) { group.f[0].push(parseInt(v2[0]) - 1); }
+				if (v2[1]) { group.f[1].push(parseInt(v2[1]) - 1); }
+				if (v2[2]) { group.f[2].push(parseInt(v2[2]) - 1); }
+				if (v3[0]) { group.f[0].push(parseInt(v3[0]) - 1); }
+				if (v3[1]) { group.f[1].push(parseInt(v3[1]) - 1); }
+				if (v3[2]) { group.f[2].push(parseInt(v3[2]) - 1); }
+				
+			}
+		}
+
+		return obj;
+	}
+		
+	function init() {	
+
+		var cube = new Cube();
+		cubeVertexBuffer = o3gl.CreateArrayBuffer().Data(cube.positions);
+		cubeIndexBuffer = o3gl.CreateElementArrayBuffer().Data(cube.indexes);
+	
+		getText("model/obj/FA-22_Raptor/FA-22_Raptor.obj", function(data) {
+//		getText("model/obj/dark_fighter_6/dark_fighter_6.obj", function(data) {
+			var obj = parseObj(data);
+
+			data = null;
+			
 			model = {};
 
-			function convert(obj, model) {
-				if (obj.v) model.v = o3gl.CreateArrayBuffer().Data(new Float32Array(obj.v));
-				if (obj.vt) model.vt = o3gl.CreateArrayBuffer().Data(new Float32Array(obj.vt));
-				if (obj.vn) model.vn = o3gl.CreateArrayBuffer().Data(new Float32Array(obj.vn));
-				if (obj.f) {
-					model.f = {};
-					if (obj.f.v) model.f.v = o3gl.CreateElementArrayBuffer().Data(new Int16Array(obj.f.v));
-					if (obj.f.t) model.f.t = o3gl.CreateElementArrayBuffer().Data(new Int16Array(obj.f.t));
-					if (obj.f.n) model.f.n = o3gl.CreateElementArrayBuffer().Data(new Int16Array(obj.f.n));
-				} 
+			var diffuse = new Image();
+			diffuse.src = "model/obj/FA-22_Raptor/FA-22_Raptor_P01.png";		
+//			diffuse.src = "model/obj/dark_fighter_6/dark_fighter_6_color.png";
+			diffuse.onload = function () {
+				model.diffuse = o3gl.CreateTexture2D().FilterLinear().Image(diffuse);
 			}
+
+			var normal = new Image();
+			normal.src = "model/obj/FA-22_Raptor/FA-22_Raptor_N.png";		
+			normal.onload = function () {
+				model.normal = o3gl.CreateTexture2D().Image(normal);
+			}
+
 			
-			convert(obj, model);
 			if (obj.g) {
-				model.g = {};
-				for(var name in obj.g) {
-					model.g[name] = {};
-					convert(obj.g[name], model.g[name]);
-				}
-			}
-			
-
-			
-			/*
-			if(obj.g) {
-				model.g = {}
 				for (var name in obj.g) {
-					model.g[name] = {}
+				var group = obj.g[name];
+					var v = group.v ? group.v : obj.v;
+					var tc = group.vt ? group.vt : obj.vt;
+					var n = group.vn ? group.vn : obj.vn;
 					
-					var obj = obj.g[name];
-					var model = obj.g[name];
+					if (group.f) {
+						if (group.f[0]) v = toNonIndexed(v, group.f[0], 3);
+						if (group.f[1]) tc = toNonIndexed(tc, group.f[1], 2);
+						if (group.f[2]) n = toNonIndexed(n, group.f[2], 3);
+					}
 					
-					var v = g.v;
-					var vt = obj.g[g].vt;
-					var vn = obj.g[g].vn;
-					var fv =  obj.g[g].v;
-					var ft = obj.g[g].vt;
-					var fn = obj.g[g].vn;
-
-					
-					if (obj[g].v) model[g].v = o3gl.CreateArrayBuffer().Data(new Float32Array(obj[g].v));
-					if (obj[g].vt) model[g].vt = o3gl.CreateArrayBuffer().Data(new Float32Array(obj[g].vt));
-					if (obj[g].vn) model[g].vn = o3gl.CreateArrayBuffer().Data(new Float32Array(obj[g].vn));
-					
-					if (obj[g].f) {
-						model[g].f = {};
-						if (obj[g].f.v) model[g].f.v = o3gl.CreateElementArrayBuffer().Data(new Int16Array(obj[g].f.v));
-						if (obj[g].f.t) model[g].f.t = o3gl.CreateElementArrayBuffer().Data(new Int16Array(obj[g].f.t));
-						if (obj[g].f.n) model[g].f.n = o3gl.CreateElementArrayBuffer().Data(new Int16Array(obj[g].f.n));
-					} 
-
+					model[name] = {};
+					if (v) model[name].vertexes = o3gl.CreateArrayBuffer().Data(new Float32Array(v));
+					if (tc) model[name].textureCoords = o3gl.CreateArrayBuffer().Data(new Float32Array(tc));
+					if (n) model[name].normals = o3gl.CreateArrayBuffer().Data(new Float32Array(n));
 				}
-			}
-			*/
+			}						
 		});
 
 		program = o3gl.
@@ -204,15 +209,19 @@
 			sources(Shaders.Phong.Vertex, Shaders.Phong.Fragment). //short: sources(Shaders.Phong)
 			CreateProgram(
 				"aPosition", 
-				//"aNormal", 
+				"aTextureCoord", 
+				"aNormal", 
 				"uMatrixV",
 				"uMatrixP",
 				"uMatrixM",
 				"uMatrixN",
 				"uMaterialDiffuse",
 				"uMaterialSpecular",
-				"uMaterialAmbient"
-				//"uLightPosition"
+				"uMaterialAmbient",
+				"uSamplerDiffuse",
+				"uSamplerAmbient",
+				"uSamplerNormal",
+				"uLightPosition"
 			);
 		
 		window.onresize();
@@ -224,7 +233,7 @@
 		mat4.translate(matrixV, [0,0,-15]);
 		mat4.identity(matrixM);
 		mat4.identity(matrixMV);
-		mat4.scale(matrixM, [0.01, 0.01, 0.01]);
+		mat4.scale(matrixM, [0.5, 0.5, 0.5]);
 	}
 	
 	function render() {
@@ -234,31 +243,35 @@
 		mat4.toInverseMat3(matrixMV, matrixN);
 		mat3.transpose(matrixN);
 
-		o3gl.CreateFrameBuffer().ClearColorBuffer(0,0,0,1);
-		
+		var frameBuffer = o3gl.CreateFrameBuffer().ClearColorBuffer(0,0,0,1);
+				
 		program.
+			FrameBuffer(frameBuffer).DepthTest(true).
 			Set("uMatrixV", matrixV).
 			Set("uMatrixP", matrixP).
 			Set("uMatrixM", matrixM).
-			//Set("uMatrixN", matrixN).
-			Set("uMaterialDiffuse", 0.5, 0.5, 0.5, 1.0).
-			Set("uMaterialSpecular", 0.5, 0.5, 0.5, 1.0).
-			Set("uMaterialAmbient", 0.5, 0.5, 0.5, 1.0);
-			//Set("uLightPosition", 0.5, 0.5, 0.5, 1.0).
+			Set("uMatrixN", matrixN).
+			Set("uMaterialDiffuse", 0.0, 0.0, 0.0, 1.0).
+			//Set("uMaterialSpecular", 0.5, 0.5, 0.5, 1.0).
+			Set("uMaterialAmbient", 0.0, 0.0, 0.0, 1.0);
 		
+		program.Set("uLightPosition", 0.5, 0.5, 0.5);
+		
+		//program.Set("aPosition", cubeVertexBuffer).Elements(cubeIndexBuffer).DrawTriangles();
+
+		program.Elements(null);
+				
 		if (model) {		
-			if (model.v) program.Set("aPosition", model.v);
-			
-			program.DrawTriangles(0, 50);
-			/*
-			if (model.g) {
-				for (var name in model.g) {
-					program.
-						Elements(model.g[name].f.v).
-						DrawTriangles(0, 500);
-				}
+			for (var name in model) {
+				var group = model["LOD0"];
+				if (group.vertexes) program.Set("aPosition", group.vertexes);
+				if (group.normals) program.Set("aNormal", group.normals);
+				if (group.textureCoords) program.Set("aTextureCoord", group.textureCoords);
+				if (model.diffuse) program.Set("uSamplerDiffuse", model.diffuse);
+				if (model.normal) program.Set("uSamplerNormal", model.normal);
+				program.DrawTriangles();
+				break;
 			}
-			*/
 		}
     }
     

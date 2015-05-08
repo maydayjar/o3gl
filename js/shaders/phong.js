@@ -68,7 +68,8 @@ Shaders.Phong.Fragment = [
 	"	normal 				= vNormal;",
 	"	vec3 texelNormal	= texture2D(uSamplerNormal, vec2(vTextureCoord.s, vTextureCoord.t)).xyz;",
 	"	texelNormal			= normalize(2.0 * (texelNormal - 0.5));",
-	"	normal 				= texelNormal.x * vTangent + texelNormal.y * vBitangent + texelNormal.z * vNormal;",
+//	"	normal 				= texelNormal.x * vTangent + texelNormal.y * vBitangent + texelNormal.z * vNormal;",
+	"	normal 				+= texelNormal;",
 	/*
 	"		mat3 tbnMatrix = mat3(" +
 	"			vTangent.x, vBitangent.x, vNormal.x," +
