@@ -58,7 +58,7 @@
 		
 		- Asteroids hiting earth: http://webglsamples.org/spacerocks/spacerocks.html
 	
-	
+		- Bumpnormal mapping http://www.chandlerprall.com/webgl/bumpmaps/parallax.html
 	
 	- Choose and implement 3d format
 	
