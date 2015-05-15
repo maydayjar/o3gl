@@ -290,5 +290,37 @@ program.matrix("uMatrixM").multiply("uMatrixV").toInverseMat3().transpose()
 	
 */
 
+/*TEXTURE TYPE CONCEPT*/
+
+
+o3gl.PixelsUnsignedByteRGB(image)
+o3gl.PixelsUnsignedShortRGB(). Image2D(1024, 768).Image2D(image).Image2D(buffer, width, heitgh);
+o3gl.PixelsFloatRGBA(image)
+o3gl.PixelsFloatRGBA(image)
+
+o3gl.CreateTexture2D().typeUnsignedShort().formatDepthComponent().Image(100,100);
+
+o3gl.CreateTexture2D().typeUnsignedShort_5_6_5().formatDepthComponent().Image(100,100);
+o3gl.CreateTexture2D().typeUnsignedByte_8_8_8_8().formatDepthComponent().Image(100,100);
+
+o3gl.CreateTextureUnsignedByte_8_8_8_8();
+o3gl.CreateTextureUnsignedByteDepthComponent();
+o3gl.CreateTextureRGB();
+o3gl.CreateTextureRGBA().Image(1) // 1d image
+o3gl.CreateTextureRGBA().Image(1,2) // 2d image
+o3gl.CreateTextureRGBA().mipmapLevel(0).Image(1,2) // 2d image
+o3gl.CreateTextureRGBA().CubeMap(100, 100) // cubemap
+o3gl.CreateTextureRGBA().CubeMap(image2d) // cubemap
+o3gl.CreateTextureRGBA().CubeMap(image2d) // cubemap
+
+o3gl.CreateTextureRGBA().Image(1,2) // 2d image
+o3gl.CreateTexture().UnsignedShort().R5G6B5(). Image(1,2) // 2d image
+o3gl.CreateTexture().UnsignedShort().Depth()
+o3gl.CreateTexture2D().typeFloat().formatDepthComponent().level(0).Image()
+
+
+o3gl.CreateTextureLuminance();
+o3gl.CreateTextureDepthComponent(o3gl.);
+
 
 </script>

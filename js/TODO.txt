@@ -42,6 +42,8 @@
 	
 	+ Scissor test affects both program output and framebuffer clear methods.
 	
+	- Textures format, internal format and type of texture data
+	
 	? QI Links:
 		
 		- Nice examples with explanation: http://www.nutty.ca/?page_id=352&link=ssao
