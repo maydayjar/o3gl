@@ -561,6 +561,10 @@ o3gl.Texture = function() {
 	// gl.UNSIGNED_SHORT_4_4_4_4	Represents colors in a Uint16Array where red = 4 bits, green=4 bits, blue=4 bits, and alpha=4 bits.
 	// gl.UNSIGNED_SHORT_5_5_5_1	Represents colors in a Uint16Array where red = 5 bits, green=5 bits, blue=5 bits and alpha=1 bit.
 	this._type 			= gl.UNSIGNED_BYTE;
+
+	this._format 			= undefined; 
+	this._internalFormat 	= undefined;
+	this._type 				= undefined;
 	
 	// auxillary texture size data
 	// TODO: Is it impossible to get texture size using gl methods ?
@@ -602,38 +606,39 @@ Extend(o3gl.Texture, o3gl.Resource, {
 		return this.Bind();
 	}
 	,
-	typeUnsignedByte : function() { 
-		this._type = gl.UNSIGNED_BYTE;
-		return this;
-	}
-	,
-	format : function(value) {
-		this._format = value;
-		return this;
-	}
-	,
-	formatAlpha : function(value) {
+	formatAlpha : function() {
 		this._format = gl.ALPHA;
 		return this;
 	}
 	,
-	formatRGB : function(value) {
+	formatRGB : function() {
 		this._format = gl.RGB;
 		return this;
 	}
 	,
-	formatRGBA : function(value) {
+	formatRGBA : function() {
 		this._format = gl.RGBA;
 		return this;
 	}
 	,
-	formatLuminance : function(value) {
+	formatLuminance : function() {
 		this._format = gl.LUMINANCE;
+		return this;
+	}
+	,
+	formatDepthComponent : function() {
+		if (!gl.getExtension("WEBGL_depth_texture")) throw new TypeError("Depth textures are not supported");
+		this._format = gl.DEPTH_COMPONENT;
 		return this;
 	}
 	,
 	typeUnsignedByte : function() {
 		this._type = gl.UNSIGNED_BYTE;
+		return this;
+	}
+	,
+	typeUnsignedShort : function() {
+		this._type = gl.UNSIGNED_SHORT;
 		return this;
 	}
 	,
