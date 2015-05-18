@@ -93,7 +93,7 @@
 		mat4.perspective(45, viewport.width / viewport.height, 0.1, 100.0, matrixP);
 		mat4.identity(matrixRotation);
 		mat4.identity(matrixV);
-		mat4.translate(matrixV, [0,0,-15]);
+		mat4.translate(matrixV, [0,0,-5]);
 		mat4.identity(matrixM);
 		mat4.identity(matrixMV);
 		
@@ -114,23 +114,21 @@
 		
 		phongSources = o3gl.sources(Shaders.Phong.Vertex, Shaders.Phong.Fragment);
 		
-		programDefferedDepth = o3gl.sources(Shaders.Deffered.Depth.Vertex, Shaders.Deffered.Depth.Fragment).CreateProgram();
+		programDefferedDepth = o3gl.sources(Shaders.Deffered.Depth.Vertex, Shaders.Deffered.Depth.Fragment).newInstance();
 		programDefferedNormal = o3gl.sources(Shaders.Deffered.Normal.Vertex, Shaders.Deffered.Normal.Fragment).newInstance();
-		programDefferedMaterial = o3gl.sources(Shaders.Deffered.Material.Vertex, Shaders.Deffered.Material.Fragment).CreateProgram();
+		programDefferedMaterial = o3gl.sources(Shaders.Deffered.Material.Vertex, Shaders.Deffered.Material.Fragment).newInstance();
 		
 		fbTextureDepth = o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
-		//fbTextureNormal = o3gl.CreateTexture2D().Image(viewport.width, viewport.height);
-		//fbTextureDiffuse = o3gl.CreateTexture2D().Image(viewport.width, viewport.height);
-		//fbTextureAmbient = o3gl.CreateTexture2D().Image(viewport.width, viewport.height);
-		//fbTextureSpecular = o3gl.CreateTexture2D().Image(viewport.width, viewport.height);
+		fbTextureNormal = o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
+		fbTextureDiffuse = o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
+		fbTextureAmbient = o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
+		fbTextureSpecular = o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
 
-		/*
+		
 		programDefferedDepth.FrameBuffer().Color(fbTextureDepth).Depth(o3gl.CreateRenderBufferDepth().Storage(viewport.width, viewport.height));
-		programDefferedNormal.FrameBuffer().Color(fbTextureDepth);
-		programDefferedNormal.FrameBuffer().Depth(o3gl.CreateRenderBufferDepth().Storage(viewport.width, viewport.height));
-		programDefferedMaterial.FrameBuffer().Color(fbTextureDiffuse, fbTextureAmbient, fbTextureSpecular);
-		programDefferedMaterial.FrameBuffer().Depth(o3gl.CreateRenderBufferDepth().Storage(viewport.width, viewport.height));
-		*/
+		programDefferedNormal.FrameBuffer().Color(fbTextureNormal).Depth(o3gl.CreateRenderBufferDepth().Storage(viewport.width, viewport.height));
+		programDefferedMaterial.FrameBuffer().Color(fbTextureDiffuse, fbTextureAmbient, fbTextureSpecular).Depth(o3gl.CreateRenderBufferDepth().Storage(viewport.width, viewport.height));
+		
 		
 		fbDefault = o3gl.CreateFrameBuffer();
 	}
@@ -146,31 +144,34 @@
 		mat4.toInverseMat3(matrixMV, matrixN);
 		mat3.transpose(matrixN);
 
-		//programDefferedDepth.FrameBuffer().Clear();
-		
-		fbDefault.ClearColorBuffer(0,0,1,1);
-		/*
+		programDefferedDepth.FrameBuffer().Clear();		
 		programDefferedDepth.
-			FrameBuffer(fbDefault).
-			Viewport(0,0, viewport.width, viewport.height).
 			Elements(teapot.indexes).
 			Set("aPosition", teapot.positions).
 			Set("uMatrixProjection", matrixP).
 			Set("uMatrixModelView", matrixMV).
 			DrawTriangles();
-		*/
-		
+
+		programDefferedNormal.FrameBuffer().Clear();
 		programDefferedNormal.
-			FrameBuffer(fbDefault).
-			Viewport(0,0, viewport.width, viewport.height).
+//			Viewport(0,0, viewport.width, viewport.height).
 			Elements(teapot.indexes).
 			Set("aPosition", teapot.positions).
 			Set("aNormal", teapot.normals).
 			Set("uMatrixProjection", matrixP).
 			Set("uMatrixModelView", matrixMV).
+			Set("uMatrixNormal", matrixN).
 			DrawTriangles();
 
-	
+		programDefferedMaterial.FrameBuffer().Clear();			
+		programDefferedMaterial.
+			Elements(teapot.indexes).
+			Set("aPosition", teapot.positions).
+			Set("uMaterialDiffuse", 0.5, 0.5, 0.5, 1.0).
+			Set("uMaterialSpecular", 1.0, 1.0, 1.0, 1.0).
+			Set("uMaterialAmbient", 0.1, 0.1, 0.1, 1.0).
+			DrawTriangles();
+
 		/*
 		fbDefault.ClearColorBuffer(1,0,0,1);
 		o3gl.DrawPlane2D(fbTextureDepth, fbDefault);

@@ -284,7 +284,7 @@ var Preprocessor = {
     ,
 	regexpShaderVertex : /(attribute|gl_Position)/
 	,
-	regexpShaderFragment : /(gl_FragColor|gl_FragData|texture2D)/
+	regexpShaderFragment : /(gl_FragColor|gl_FragData|texture2D|textureCube)/
 	,
 	getDeclarationQualifier : function (line) {
 		var match = line.match(this.regexpDeclaration);
@@ -1756,11 +1756,11 @@ Extend(o3gl.RenderBufferStencil, o3gl.RenderBuffer, {
  * @constructor
  */
 o3gl.Shader = function(sources) {
-    this.shaderType = Utils.glShaderType(sources);
-    if (sources instanceof Array) {
-        sources = Preprocessor.getLines(sources);   // Convert to one-dimension String array
-        sources = sources.join("\n");               // Merge to the string
-    }
+    this.shaderType = undefined;
+	var regexpShaderVertex = /(attribute|gl_Position)/
+	var regexpShaderFragment = /(gl_FragColor|gl_FragData|texture2D|textureCube)/
+	if (sources.match(regexpShaderVertex) && !sources.match(regexpShaderFragment)) this.shaderType = gl.VERTEX_SHADER;
+	if (!sources.match(regexpShaderVertex) && sources.match(regexpShaderFragment)) this.shaderType = gl.FRAGMENT_SHADER;
 	this.shaderId = gl.createShader(this.shaderType);
 	this.Source(sources).Compile();
 }

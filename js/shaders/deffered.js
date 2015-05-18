@@ -33,14 +33,15 @@ Shaders.Deffered.Depth.Vertex = 	[
 	"void main(void) {",
 	"	vec4 position 	= uMatrixModelView * vec4(aPosition, 1.0);",
 	"	gl_Position		= uMatrixProjection * position;",
-	"	vDepth = position.z;",
+	"	vDepth = (gl_Position.z / gl_Position.w + 1.0) / 2.0;",
 	"}"
 ];
 Shaders.Deffered.Depth.Fragment = [
 	"#ifdef GL_ES",
 	"precision highp float;",
 	"#endif",
-	"varying float vDepth;", 	
+	"varying float vDepth;", 
+/*	
 	"vec4 pack (float depth) {",
 	"	const vec4 bias = vec4(1.0 / 255.0,1.0 / 255.0,1.0 / 255.0,0.0);",
 	"	float r = depth;",
@@ -50,8 +51,17 @@ Shaders.Deffered.Depth.Fragment = [
 	"	vec4 color = vec4(r, g, b, a);",
 	"	return color - (color.yzww * bias);",
 	"}",
+	"vec4 encodeFloatRGBA(float v) {",
+	"	vec4 color = vec4(1.0, 255.0, 65025.0, 160581375.0) * v;",
+	"	color = fract(color);",
+	"	color -= color.yzww * vec4(1.0/255.0, 1.0/255.0, 1.0/255.0, 0.0);",
+	"	return color;",
+	"}",
+*/
 	"void main(void) {",
-	"	gl_FragColor = pack(vDepth);",
+//	"	gl_FragColor = encodeFloatRGBA(vDepth);",
+	"	floatBitsToInt(vDepth);",
+	"	gl_FragColor = vec4(vDepth,vDepth,vDepth,1);",
 	"}"
 ];
 
@@ -95,7 +105,7 @@ Shaders.Deffered.Normal.Fragment = [
 	"	vec3 texelNormal	= texture2D(uSamplerNormal, vec2(vTextureCoordinate.s, vTextureCoordinate.t)).xyz;",
 	"	texelNormal			= normalize(2.0 * (texelNormal - 0.5));",
 	"	normal 				= texelNormal.x * vTangent + texelNormal.y * vBitangent + texelNormal.z * vNormal;",
-	"	gl_FragColor = vec4(normal, 0);",
+	"	gl_FragColor = vec4(normal, 1);",
 	"}"
 ];
 
@@ -161,7 +171,7 @@ Shaders.Deffered.Material.Fragment = [
 	"	materialSpecular		+= texture2D(uSamplerSpecular, vec2(vTextureCoordinate.s, vTextureCoordinate.t));",
 	
 	"	gl_FragData[0]			= materialDiffuse;",
-//	"	gl_FragData[1]			= materialAmbient;",
-//	"	gl_FragData[2]			= materialSpecular;",	
+	"	gl_FragData[1]			= materialAmbient;",
+	"	gl_FragData[2]			= materialSpecular;",	
 	"}"
 ];
