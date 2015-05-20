@@ -43,7 +43,15 @@
 
 	
 	+ Scissor test affects both program output and framebuffer clear methods.
-
+	
+	- Enable clear method for renderbuffer, textures. Implicit framebuffers for programs, textures and renderbuffers
+	
+	- VertexArray example and test
+	
+	- Array of sampler2D. Elements of array must be sequentially initialized too. 
+	
+	- Check whether one texture can store both 2d and cubemap data and used in corresponding samplers.
+	
 	- ArrayBuffer.Pointer and Texture.Target should be replaced with new instance generation. 
 
 	- TextureCubeMap is not explicit instance of Texture2D, but it provides access to six Texture2D sides of the cubemap.

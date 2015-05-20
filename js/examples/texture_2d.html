@@ -26,12 +26,15 @@
 
 <script id="vs" type="x-shader/x-vertex">
 attribute vec3 	aPosition;
+attribute vec2 	aTextureCoordinate;
 uniform mat4 	uModelViewMatrix;
 uniform mat4 	uProjectionMatrix;
 varying vec4 	vPosition;
+varying vec2 	vTextureCoordinate;
 
 void main() {
 	vPosition 	= uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
+	vTextureCoordinate = aTextureCoordinate;
 	gl_Position = vPosition;
 }
 </script>
@@ -39,10 +42,11 @@ void main() {
 #ifdef GL_ES
 precision highp float;
 #endif
+uniform sampler2D uSampler2D;
 varying vec4 vPosition;
+varying vec2 vTextureCoordinate;
 void main() {
-	vec4 pos = (vPosition / vPosition.w + 1.0) / 2.0;
-	gl_FragColor = vec4(pos.z, pos.z, pos.z, 1.0);
+	gl_FragColor = texture2D(uSampler2D, vTextureCoordinate);
 }
 </script>
 
@@ -55,13 +59,12 @@ void main() {
 	var program;
 	var defaultFrameBuffer;
 	var positions;
+	var textureCoordinates;
 	var indexes;
-	var cube;
-
 	var vertexShaderSource = document.getElementById("vs").textContent;
-	var fragmentShaderSource = document.getElementById("fs").textContent;
-	
-	var viewport 			= {};
+	var fragmentShaderSource = document.getElementById("fs").textContent;	
+	var viewport = {};
+	var mesh = new Cube();
 	
 	function init() {					
 		// Referenced by the shader program variables
@@ -80,57 +83,25 @@ void main() {
 		}		
 		window.onresize();
 
-		var cubeVertex = [
-			// Front face
-			-1.0, -1.0,  1.0,
-			 1.0, -1.0,  1.0,
-			 1.0,  1.0,  1.0,
-			-1.0,  1.0,  1.0,
+		// Initialize images
+		var imageDiffuse 		= document.getElementById("diffuse");
+		var imageNormal 		= document.getElementById("normal");
+		var imageSpecular 		= document.getElementById("specular");
+		var imageAmbient 		= document.getElementById("ambient");
+		var imagePX 			= document.getElementById("px");
+		var imageNX 			= document.getElementById("nx");
+		var imagePY 			= document.getElementById("py");
+		var imageNY 			= document.getElementById("ny");
+		var imagePZ 			= document.getElementById("pz");
+		var imageNZ 			= document.getElementById("nz");	
 
-			// Back face
-			-1.0, -1.0, -1.0,
-			-1.0,  1.0, -1.0,
-			 1.0,  1.0, -1.0,
-			 1.0, -1.0, -1.0,
-
-			// Top face
-			-1.0,  1.0, -1.0,
-			-1.0,  1.0,  1.0,
-			 1.0,  1.0,  1.0,
-			 1.0,  1.0, -1.0,
-
-			// Bottom face
-			-1.0, -1.0, -1.0,
-			 1.0, -1.0, -1.0,
-			 1.0, -1.0,  1.0,
-			-1.0, -1.0,  1.0,
-
-			// Right face
-			 1.0, -1.0, -1.0,
-			 1.0,  1.0, -1.0,
-			 1.0,  1.0,  1.0,
-			 1.0, -1.0,  1.0,
-
-			// Left face
-			-1.0, -1.0, -1.0,
-			-1.0, -1.0,  1.0,
-			-1.0,  1.0,  1.0,
-			-1.0,  1.0, -1.0,
-		];
-		var cubeIndex = [
-			0, 1, 2,      0, 2, 3,    // Front face
-			4, 5, 6,      4, 6, 7,    // Back face
-			8, 9, 10,     8, 10, 11,  // Top face
-			12, 13, 14,   12, 14, 15, // Bottom face
-			16, 17, 18,   16, 18, 19, // Right face
-			20, 21, 22,   20, 22, 23  // Left face
-		];
-		
-		program 	= o3gl.CreateProgram(o3gl.CreateShader(vertexShaderSource), o3gl.CreateShader(fragmentShaderSource));
-		positions 	= o3gl.CreateArrayBuffer().Data(new Int16Array(cubeVertex));
-		indexes 	= o3gl.CreateElementArrayBuffer().Data(cubeIndex);				
-		defaultFrameBuffer = o3gl.CreateFrameBuffer();
-		
+		// Create o3gl resources
+		program 			= o3gl.CreateProgram(o3gl.CreateShader(vertexShaderSource), o3gl.CreateShader(fragmentShaderSource));
+		texture				= o3gl.CreateTexture2D().FilterMinLinearMipmapLinear().FilterMagLinear().Image(imageNormal).GenerateMipmap();
+		indexes 			= o3gl.CreateElementArrayBuffer().Data(mesh.indexes);
+		positions 			= o3gl.CreateArrayBuffer().Data(mesh.positions);
+		textureCoordinates 	= o3gl.CreateArrayBuffer().Data(mesh.textureCoordinates);
+		defaultFrameBuffer	= o3gl.CreateFrameBuffer();
 	}
 	
 	function render() {
@@ -139,16 +110,15 @@ void main() {
 		mat4.inverse(cameraMatrix, mvMatrix);
 //		mat4.translate(mvMatrix, [-1, 0, 0]);
 		mat4.rotate(mvMatrix, angle, [1, 0, 0]);
-
-		gl.enable(gl.DEPTH_TEST);
-		gl.clearColor(0.0, 0.0, 0.0, 1.0);
-		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
-		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+		
+		defaultFrameBuffer.Clear();
 			
 		program.
 			FrameBuffer(defaultFrameBuffer).DepthTest(true).
 			Elements(indexes).
 			Set("aPosition", positions).
+			Set("aTextureCoordinate", textureCoordinates).
+			Set("uSampler2D", texture).
 			Set("uModelViewMatrix", 	mvMatrix).
 			Set("uProjectionMatrix", 	pMatrix).
 			// End up with drawcall
@@ -184,13 +154,11 @@ void main() {
         update();
     }
 	
-	var mesh;
-	
 	function switchMesh() {
 		if (!mesh) {
-			mesh = new Sphere(10,10);
+			mesh = new Sphere(100,100);
 		}else if (mesh instanceof Teapot) {
-			mesh = new Sphere(10,10);
+			mesh = new Sphere(100,100);
 		} else if (mesh instanceof Sphere) {
 			mesh = new Cube();		
 		} else if (mesh instanceof Cube) {
@@ -199,6 +167,7 @@ void main() {
 		}
 		
 		positions.Data(mesh.positions);
+		textureCoordinates.Data(mesh.textureCoordinates);
 		indexes.Data(mesh.indexes);
 		
 		/*
@@ -218,6 +187,21 @@ void main() {
 
 
 <body onload="webGLStart();" onclick="switchMesh();" style="overflow: hidden">
+
+	<img id="diffuse" 	src = "texture/diffuse.png" hidden />
+	<img id="normal" 	src = "texture/normal.png" 	hidden />
+	<img id="specular" 	src = "texture/ao.png" 		hidden />
+	<img id="bump" 		src = "texture/bump.png" 	hidden />
+	<img id="ambient" 	src = "texture/full.png" 	hidden />
+	<img id="ao" 		src = "texture/ao.png" 		hidden />
+	
+	<img id="px" src = "textureCube/positive_x.png" hidden />	
+	<img id="nx" src = "textureCube/negative_x.png" hidden />	
+	<img id="py" src = "textureCube/positive_y.png" hidden />	
+	<img id="ny" src = "textureCube/negative_y.png" hidden />	
+	<img id="pz" src = "textureCube/positive_z.png" hidden />	
+	<img id="nz" src = "textureCube/negative_z.png" hidden />	
+
 	<div>
 		<canvas id="canvas" style="border: none; margin:0; padding:0; " width="300" height="300"></canvas>
 	</div>
