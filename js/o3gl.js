@@ -553,7 +553,6 @@ o3gl.Texture = function() {
 	this._border 		= 0;
 	// Specifies the format of the pixel data. The following symbolic values are accepted: GL_RED, GL_RG, GL_RGB, GL_BGR, GL_RGBA, and GL_BGRA.
 	this._format 		= gl.RGBA; // Contains the format for the source pixel data. Must match internalformat
-	
 	// Specifies the data type of the pixel data. 
 	// gl.UNSIGNED_BYTE				Provides 8 bits per channel for gl.RGBA.
 	// gl.FLOAT						Call getExtension("gl.OES_texture_float") first to enable. This creates 128 bit-per-pixel textures instead of 32 bit-per-pixel for the image.
@@ -582,6 +581,67 @@ o3gl.Texture = function() {
 	}
 }
 
+/*
+Sized Internal Format		Format			Type				Red Bits	Green Bits	Blue Bits	Alpha Bits	Shared Bits	Color renderable	Texture filterable
+GL_R8						GL_RED			GL_UNSIGNED_BYTE	8	 	 	 	 											Y					Y
+GL_R8_SNORM					GL_RED			GL_BYTE				s8	 	 	 	 	 										Y
+GL_R16F	GL_RED	GL_HALF_FLOAT,GL_FLOAT	f16	 	 	 	 	 	Y
+GL_R32F	GL_RED	GL_FLOAT	f32	 	 	 	 	 	 
+GL_R8UI	GL_RED_INTEGER	GL_UNSIGNED_BYTE	ui8	 	 	 	 	Y	 
+GL_R8I	GL_RED_INTEGER	GL_BYTE	i8	 	 	 	 	Y	 
+GL_R16UI	GL_RED_INTEGER	GL_UNSIGNED_SHORT	ui16	 	 	 	 	Y	 
+GL_R16I	GL_RED_INTEGER	GL_SHORT	i16	 	 	 	 	Y	 
+GL_R32UI	GL_RED_INTEGER	GL_UNSIGNED_INT	ui32	 	 	 	 	Y	 
+GL_R32I	GL_RED_INTEGER	GL_INT	i32	 	 	 	 	Y	 
+GL_RG8	GL_RG	GL_UNSIGNED_BYTE	8	8	 	 	 	Y	Y
+GL_RG8_SNORM	GL_RG	GL_BYTE	s8	s8	 	 	 	 	Y
+GL_RG16F	GL_RG	GL_HALF_FLOAT,GL_FLOAT	f16	f16	 	 	 	 	Y
+GL_RG32F	GL_RG	GL_FLOAT	f32	f32	 	 	 	 	 
+GL_RG8UI	GL_RG_INTEGER	GL_UNSIGNED_BYTE	ui8	ui8	 	 	 	Y	 
+GL_RG8I	GL_RG_INTEGER	GL_BYTE	i8	i8	 	 	 	Y	 
+GL_RG16UI	GL_RG_INTEGER	GL_UNSIGNED_SHORT	ui16	ui16	 	 	 	Y	 
+GL_RG16I	GL_RG_INTEGER	GL_SHORT	i16	i16	 	 	 	Y	 
+GL_RG32UI	GL_RG_INTEGER	GL_UNSIGNED_INT	ui32	ui32	 	 	 	Y	 
+GL_RG32I	GL_RG_INTEGER	GL_INT	i32	i32	 	 	 	Y	 
+GL_RGB8	GL_RGB	GL_UNSIGNED_BYTE	8	8	8	 	 	Y	Y
+GL_SRGB8	GL_RGB	GL_UNSIGNED_BYTE	8	8	8	 	 	 	Y
+GL_RGB565	GL_RGB	GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT_5_6_5	5	6	5	 	 	Y	Y
+GL_RGB8_SNORM	GL_RGB	GL_BYTE	s8	s8	s8	 	 	 	Y
+GL_R11F_G11F_B10F	GL_RGB	GL_UNSIGNED_INT_10F_11F_11F_REV, GL_HALF_FLOAT, GL_FLOAT	f11	f11	f10	 	 	 	Y
+GL_RGB9_E5	GL_RGB	GL_UNSIGNED_INT_5_9_9_9_REV, GL_HALF_FLOAT, GL_FLOAT	9	9	9	 	5	 	Y
+GL_RGB16F	GL_RGB	GL_HALF_FLOAT, GL_FLOAT	f16	f16	f16	 	 	 	Y
+GL_RGB32F	GL_RGB	GL_FLOAT	f32	f32	f32	 	 	 	 
+GL_RGB8UI	GL_RGB_INTEGER	GL_UNSIGNED_BYTE	ui8	ui8	ui8	 	 	 	 
+GL_RGB8I	GL_RGB_INTEGER	GL_BYTE	i8	i8	i8	 	 	 	 
+GL_RGB16UI	GL_RGB_INTEGER	GL_UNSIGNED_SHORT	ui16	ui16	ui16	 	 	 	 
+GL_RGB16I	GL_RGB_INTEGER	GL_SHORT	i16	i16	i16	 	 	 	 
+GL_RGB32UI	GL_RGB_INTEGER	GL_UNSIGNED_INT	ui32	ui32	ui32	 	 	 	 
+GL_RGB32I	GL_RGB_INTEGER	GL_INT	i32	i32	i32	 	 	 	 
+GL_RGBA8	GL_RGBA	GL_UNSIGNED_BYTE	8	8	8	8	 	Y	Y
+GL_SRGB8_ALPHA8	GL_RGBA	GL_UNSIGNED_BYTE	8	8	8	8	 	Y	Y
+GL_RGBA8_SNORM	GL_RGBA	GL_BYTE	s8	s8	s8	s8	 	 	Y
+GL_RGB5_A1	GL_RGBA	GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT_5_5_5_1, GL_UNSIGNED_INT_2_10_10_10_REV	5	5	5	1	 	Y	Y
+GL_RGBA4	GL_RGBA	GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT_4_4_4_4	4	4	4	4	 	Y	Y
+GL_RGB10_A2	GL_RGBA	GL_UNSIGNED_INT_2_10_10_10_REV	10	10	10	2	 	Y	Y
+GL_RGBA16F	GL_RGBA	GL_HALF_FLOAT, GL_FLOAT	f16	f16	f16	f16	 	 	Y
+GL_RGBA32F	GL_RGBA	GL_FLOAT	f32	f32	f32	f32	 	 	 
+GL_RGBA8UI	GL_RGBA_INTEGER	GL_UNSIGNED_BYTE	ui8	ui8	ui8	ui8	 	Y	 
+GL_RGBA8I	GL_RGBA_INTEGER	GL_BYTE	i8	i8	i8	i8	 	Y	 
+GL_RGB10_A2UI	GL_RGBA_INTEGER	GL_UNSIGNED_INT_2_10_10_10_REV	ui10	ui10	ui10	ui2	 	Y	 
+GL_RGBA16UI	GL_RGBA_INTEGER	GL_UNSIGNED_SHORT	ui16	ui16	ui16	ui16	 	Y	 
+GL_RGBA16I	GL_RGBA_INTEGER	GL_SHORT	i16	i16	i16	i16	 	Y	 
+GL_RGBA32I	GL_RGBA_INTEGER	GL_INT	i32	i32	i32	i32	 	Y	 
+GL_RGBA32UI	GL_RGBA_INTEGER	GL_UNSIGNED_INT	ui32	ui32	ui32	ui32	 	Y	 
+
+Sized Internal Format		Format					Type									Depth Bits		Stencil Bits
+GL_DEPTH_COMPONENT16		GL_DEPTH_COMPONENT		GL_UNSIGNED_SHORT, GL_UNSIGNED_INT		16	 
+GL_DEPTH_COMPONENT24		GL_DEPTH_COMPONENT		GL_UNSIGNED_INT							24	 
+GL_DEPTH_COMPONENT32F		GL_DEPTH_COMPONENT		GL_FLOAT								f32	 
+GL_DEPTH24_STENCIL8			GL_DEPTH_STENCIL		GL_UNSIGNED_INT_24_8					24				8
+GL_DEPTH32F_STENCIL8		GL_DEPTH_STENCIL		GL_FLOAT_32_UNSIGNED_INT_24_8_REV		f32				8
+*/
+
+
 Extend(o3gl.Texture, o3gl.Resource, {
 	Id : function() {
 		return this._textureId;
@@ -606,78 +666,69 @@ Extend(o3gl.Texture, o3gl.Resource, {
 		return this.Bind();
 	}
 	,
-	formatAlpha : function() {
-		this._format = gl.ALPHA;
-		return this;
-	}
-	,
-	formatRGB : function() {
-		this._format = gl.RGB;
-		return this;
-	}
-	,
-	formatRGBA : function() {
-		this._format = gl.RGBA;
-		return this;
-	}
-	,
-	formatLuminance : function() {
-		this._format = gl.LUMINANCE;
-		return this;
-	}
-	,
-	formatDepthComponent : function() {
-		if (!gl.getExtension("WEBGL_depth_texture")) throw new TypeError("Depth textures are not supported");
-		this._format = gl.DEPTH_COMPONENT;
-		return this;
-	}
-	,
-	typeUnsignedByte : function() {
+	rgba8 : function() {
+		// this._internalFormat = gl.RGBA8;
+		this._internalFormat = gl.RGBA;
+		this._format = gl.RGBA; 
 		this._type = gl.UNSIGNED_BYTE;
 		return this;
 	}
 	,
-	typeUnsignedShort : function() {
-		this._type = gl.UNSIGNED_SHORT;
+	rgba32f : function() {
+		// this._internalFormat = gl.RGBA32F;
+		this._internalFormat = gl.RGBA;
+		this._format = gl.RGBA; 
+		this._type = gl.FLOAT;
 		return this;
 	}
 	,
-	typeUnsignedShort_5_6_5 : function() {
-		this._type = gl.UNSIGNED_SHORT_5_6_5;
+	rgb5_a1 : function() {
+		// this._internalFormat = gl.RGB5_A1;
+		this._internalFormat = gl.RGBA;
+		this._format = gl.RGBA; 
+		this._type = gl.GL_UNSIGNED_SHORT_5_5_5_1;
+		
+		// TODO: Aceptable type values are:
+		// GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT_5_5_5_1, GL_UNSIGNED_INT_2_10_10_10_REV
+		// In typed language this method returns extended interface with extra ImageRGB8, ImageRGB5_A1 methods.
 		return this;
 	}
 	,
-	typeUnsignedShort_4_4_4_4 : function() {
-		this._type = gl.UNSIGNED_SHORT_4_4_4_4;
+	depth16 : function() {
+		// this._internalFormat = gl.DEPTH_COMPONENT16;
+		this._internalFormat = gl.DEPTH_COMPONENT;
+		this._format = gl.DEPTH_COMPONENT; 
+		this._type = gl.GL_UNSIGNED_SHORT; // TODO: UNSIGNED_INT 
 		return this;
 	}
 	,
-	typeUnsignedShort_5_5_5_1 : function() {
-		this._type = gl.UNSIGNED_SHORT_5_5_5_1;
+	// TODO: WebGL 2.0 ?
+	depth24 : function() {
+		// this._internalFormat = gl.DEPTH_COMPONENT24;
+		this._internalFormat = gl.DEPTH_COMPONENT;
+		this._format = gl.DEPTH_COMPONENT; 
+		this._type = gl.GL_UNSIGNED_INT; 
 		return this;
 	}
-	,	
-	typeFloat : function() { 
-		var isExtension = gl.getExtension("OES_texture_float");
-		if (isExtension) {
-			this._type = gl.FLOAT;
-		} else {
-			throw new TypeError("Float textures are not supported");
-		}
+	,
+	// TODO: WebGL 2.0 ?
+	depth32f : function() {
+		// this._internalFormat = gl.DEPTH_COMPONENT32F;
+		this._internalFormat = gl.DEPTH_COMPONENT;
+		this._format = gl.DEPTH_COMPONENT; 
+		this._type = gl.GL_FLOAT; 
 		return this;
 	}
-});
-
-o3gl.Texture2D = function() {
-	// Super constructor
-	o3gl.Texture.call(this);
-	
-	// Target
-	this._target = gl.TEXTURE_2D;
-}
-// Extend Texture
-Extend(o3gl.Texture2D, o3gl.Texture,
-{
+	,
+	// TODO: WebGL 2.0 ?
+	depth32f_stencil8 : function() {
+		// this._internalFormat = gl.DEPTH32F_STENCIL8;
+		this._internalFormat = gl.DEPTH_STENCIL;
+		this._format = gl.DEPTH_STENCIL; 
+		this._type = gl.GL_FLOAT_32_UNSIGNED_INT_24_8_REV; 
+		return this;
+	}
+	,
 	GenerateMipmap : function() {
 		this.Bind();
 		gl.generateMipmap(this._target);
@@ -697,19 +748,6 @@ Extend(o3gl.Texture2D, o3gl.Texture,
 		return false;
 //		return true;
 	}
-	,
-	isFrameBufferCompatible : function() {
-		if (this.isFilterRequiresMipmap()) return false;
-		
-		var glWrapS = gl.getTexParameter(this._target, gl.TEXTURE_WRAP_S);
-		var glWrapT = gl.getTexParameter(this._target, gl.TEXTURE_WRAP_T);
-		
-		if (glWrapS !== gl.CLAMP_TO_EDGE) return false;
-		if (glWrapT !== gl.CLAMP_TO_EDGE) return false;
-		
-		return true;
-//		return true;
-	}	
 	,
 	Filter : function (glTextureMinFilter, glTextureMagFilter) {
 		// TODO: When using floating-point textures, only gl.NEAREST is supported. The following shows possible calling values :
@@ -802,6 +840,92 @@ Extend(o3gl.Texture2D, o3gl.Texture,
         return this.FilterMinLinearMipmapNearest().FilterMagLinearMipmapNearest();
     }
     ,
+	Image2D : function() {
+		
+		this.Bind();
+		
+		var data;
+		var width;
+		var height;
+		// Collect vararg parameters
+		if (arguments.length == 1) {
+			data 	= arguments[0];
+		}
+		if (arguments.length == 2) {
+			width 	= arguments[0];
+			height 	= arguments[1];
+		}
+		
+		// TODO: we must consider following texture methods:
+		// texImage2D						//
+		// texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels)					// Replaces a portion of an existing 2D texture image with all of another image.
+		// compressedTexImage2D				//
+		// compressedTexSubImage2D			//
+		
+		// copyTexImage2D(target, level, format, x, y, width, height, border);									// Copies a rectangle of pixels from the current WebGLFramebuffer into a texture image.
+		// copyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);								// Replaces a portion of an existing 2D texture image with data from the current framebuffer.
+		
+		if (data) {
+			gl.texImage2D(
+				this._targetTexture,
+				this._level, 
+				this._internalFormat, 
+				this._format, 
+				this._type, 
+				data
+			);		
+				
+			this._size[this._targetTexture] = [data.width, data.height];
+		} else if (width && height) {		
+			gl.texImage2D(
+				this._targetTexture,
+				this._level, 
+				this._internalFormat, 
+				width, height, 
+				this._border, 
+				this._format, 
+				this._type, 
+				null
+			);
+				
+			this._size[this._targetTexture] = [width, height];				
+		}
+						
+		if (this.isFilterRequiresMipmap()) {
+			if (this.isPowerOfTwo()) {
+				this.GenerateMipmap();
+			} else {
+				// Filter settings are incorrect
+			}
+		}
+		
+		return this;
+	}	
+});
+
+o3gl.Texture2D = function() {
+	// Super constructor
+	o3gl.Texture.call(this);
+	
+	// Target
+	this._target = gl.TEXTURE_2D;
+}
+// Extend Texture
+Extend(o3gl.Texture2D, o3gl.Texture,
+{
+	isFrameBufferCompatible : function() {
+		if (this.isFilterRequiresMipmap()) return false;
+		
+		var glWrapS = gl.getTexParameter(this._target, gl.TEXTURE_WRAP_S);
+		var glWrapT = gl.getTexParameter(this._target, gl.TEXTURE_WRAP_T);
+		
+		if (glWrapS !== gl.CLAMP_TO_EDGE) return false;
+		if (glWrapT !== gl.CLAMP_TO_EDGE) return false;
+		
+		return true;
+//		return true;
+	}	
+	,
 	Wrap : function(glTextureWrapS, glTextureWrapT) {
 		this.Bind();
 		gl.texParameteri(this._target, gl.TEXTURE_WRAP_S, glTextureWrapS);
@@ -833,19 +957,6 @@ Extend(o3gl.Texture2D, o3gl.Texture,
 	,
 	mipmapLevel : function(level) {
 		return this.target().mipmapLevel(level);
-	}
-	,
-	Image : function() {
-		if (arguments.length === 1) {
-			var data = arguments[0];
-			this.target().Image(data);
-		}
-		if (arguments.length === 2) {
-			var width = arguments[0];
-			var height = arguments[1];
-			this.target().Image(width, height);
-		}
-		return this;
 	}
 });
 
@@ -909,8 +1020,7 @@ o3gl.Texture2D.Target.prototype = {
 		// copyTexImage2D(target, level, format, x, y, width, height, border);									// Copies a rectangle of pixels from the current WebGLFramebuffer into a texture image.
 		// copyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);								// Replaces a portion of an existing 2D texture image with data from the current framebuffer.
 		
-		if (data) {
-			
+		if (data) {			
 			if (this._xOffset && this._yOffset) {
 				width = data.width;
 				height = data.height;

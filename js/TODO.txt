@@ -19,7 +19,9 @@
 	? Do we need first, count and instances count to be properties of the program instance. And gl draw mode too.
 	
 	? Include sources preprocessing to the ProgramInstance. Is sources preprocessing a good way of dealing with shaders?
-	
+
+	? Method available check mode instead of extension check. Mock objects???	
+
 	+ Depth mask and color mask must be set in frame buffer ClearXXXX methods. Should them be used as Program methods? No they are more related to the frame buffer Clear() method.
 
 	+ Difference between attribute index and location is that index is program-specific and constant value while location is vertex attribute pointer 
@@ -41,6 +43,14 @@
 
 	
 	+ Scissor test affects both program output and framebuffer clear methods.
+
+	- ArrayBuffer.Pointer and Texture.Target should be replaced with new instance generation. 
+
+	- TextureCubeMap is not explicit instance of Texture2D, but it provides access to six Texture2D sides of the cubemap.
+
+	- Implement all texture methods in the basic Texture class. Its subclasses just make some of those methods available via interfaces.
+
+	- Textures internal format. OpenglES 3.0 allows sized version of the internal format. https://www.khronos.org/opengles/sdk/docs/man3/ texImage2D description.
 	
 	- Textures format, internal format and type of texture data
 	
