@@ -1,67 +1,3 @@
-	? Change "aspects" to the proxy objects
-
-	? Program automatic restore to the default settings
-
-	? Framebuffer texture available settings
-
-	? Default sampler uniforms sequential values assignment. https://www.khronos.org/webgl/wiki/TextureState. In progress.
-
-	? ProgramSources proxy mode. Is programmatical shader sources preprocessing a good idea?
-	
-	? `Uber shader program` (with list of uniforms like useLighting, useAlphaMap) in most cases are not good.
-	
-	? Multiple textures demo
-	
-	? Bind resources just after creation to allow instant chained methods building. Eliminate client state tracking. Rely on explicit Bind operation. In java provide different interfaces to force binding where necessary.
-	
-	? Client state tracking wrappers
-
-	? Do we need first, count and instances count to be properties of the program instance. And gl draw mode too.
-	
-	? Include sources preprocessing to the ProgramInstance. Is sources preprocessing a good way of dealing with shaders?
-
-	? Method available check mode instead of extension check. Mock objects???	
-
-	+ Depth mask and color mask must be set in frame buffer ClearXXXX methods. Should them be used as Program methods? No they are more related to the frame buffer Clear() method.
-
-	+ Difference between attribute index and location is that index is program-specific and constant value while location is vertex attribute pointer 
-	
-	+ Default draw arrays elements count. 
-		- Check o3gl CST variable to retrieve current element array buffer elements type.
-
-	+ Array buffer pointer type must not match only possible vertex attribute float type. Pointer size (components count) can not match decalred attribute type (though this is very weird case). Pointer itself contains all the necessary type and size information. But 
-
-	+ Uniform types must match glUniformXXX by type and arguments size. No type conversion or partial value are applied. Therefore uniform type unambiguously matches one of glUniform setter method.
-
-	+ Frame buffer related `gl.clear` method is affected by the following settings:
-		
-		`clearColor` and `clearDepth`
-		
-		scissor test enabled/disabled
-		
-		depth and color mask
-
-	
-	+ Scissor test affects both program output and framebuffer clear methods.
-	
-	- Enable clear method for renderbuffer, textures. Implicit framebuffers for programs, textures and renderbuffers
-	
-	- VertexArray example and test
-	
-	- Array of sampler2D. Elements of array must be sequentially initialized too. 
-	
-	- Check whether one texture can store both 2d and cubemap data and used in corresponding samplers.
-	
-	- ArrayBuffer.Pointer and Texture.Target should be replaced with new instance generation. 
-
-	- TextureCubeMap is not explicit instance of Texture2D, but it provides access to six Texture2D sides of the cubemap.
-
-	- Implement all texture methods in the basic Texture class. Its subclasses just make some of those methods available via interfaces.
-
-	- Textures internal format. OpenglES 3.0 allows sized version of the internal format. https://www.khronos.org/opengles/sdk/docs/man3/ texImage2D description.
-	
-	- Textures format, internal format and type of texture data
-	
 	? QI Links:
 		
 		- Nice examples with explanation: http://www.nutty.ca/?page_id=352&link=ssao
@@ -79,18 +15,98 @@
 		- Asteroids hiting earth: http://webglsamples.org/spacerocks/spacerocks.html
 	
 		- Bumpnormal mapping http://www.chandlerprall.com/webgl/bumpmaps/parallax.html
+
 	
-	- Choose and implement 3d format
+	? Change "aspects" to the proxy objects
+
+	? Program automatic restore to the default settings
+
+	? Framebuffer texture available settings
+
+	? Default sampler uniforms sequential values assignment. https://www.khronos.org/webgl/wiki/TextureState. In progress.
+		
+		- Array of sampler2D. Elements of array must be sequentially initialized too. 
+
+	? ProgramSources proxy mode. Is programmatical shader sources preprocessing a good idea?
+	
+	? `Uber shader program` (with list of uniforms like useLighting, useAlphaMap) in most cases are not good.
+	
+	? Bind resources just after creation to allow instant chained methods building. Eliminate client state tracking. Rely on explicit Bind operation. In java provide different interfaces to force binding where necessary.
+	
+	? Client state tracking wrappers
+	
+	? Method available check mode instead of extension check. Mock objects???	
+
+	? Depth mask and color mask must be set in frame buffer ClearXXXX methods. Should them be used as Program methods? No they are more related to the frame buffer Clear() method. But they also affect program's output.
+
+	? Clear method for renderbuffers, textures. With color/depth mask. Implicit framebuffers for programs, textures and renderbuffers
+	
+	+ Difference between attribute index and location is that index is program-specific and constant value while location is vertex attribute pointer 
+	
+	+ Default draw arrays elements count. 
+
+	+ Array buffer pointer type must not match the only possible vertex attribute float type. Pointer size (components count) can not match decalred attribute type (though this is very weird case). Pointer itself contains all the necessary type and size information. But 
+
+	+ Uniform types must match glUniformXXX by type and arguments size. No type conversion or partial value are applied. Therefore uniform type unambiguously matches one of glUniform setter method.
+
+	+ Frame buffer related `gl.clear` method is affected by the following settings:
+		
+		`clearColor` and `clearDepth`
+		
+		scissor test enabled/disabled
+		
+		depth and color mask
+
+	
+	+ Scissor test affects both program output and framebuffer clear methods.
+
+	+ Depth mask and color mask affect both program output and framebuffer clear methods.
+
+	+ ArrayBuffer.Pointer and Texture.Target should be replaced with new instance generation. 
+	
+	+ Array buffer `View` helper object instead of pointer. With _count property.
+	
+	? FrameBuffer ClearColor and ClearDepth methods must be static
+	
+	? ***Mask methods affect both framebuffer clear method and program output. Should they be global static methods of o3gl ?
+	
+	- Client state tracking wrapper, profiling. _GetVertexAttributeArrayBufferCount is too slow on chrome
+	
+	- MRT sources preprocessing
+	
+	- Does stencil test affects framebuffer Clear methods?
+	
+	- Examples
+		
+		- Texturing. Multiple textures demo? 
+		
+		- VertexArray example and test
+
+	- Texturing
+		
+		- Check whether one texture can store both 2d and cubemap data and used in corresponding samplers.
+
+		- TextureCubeMap is not explicit instance of Texture2D, but it provides access to six Texture2D sides of the cubemap.
+
+		? Implement all texture methods in the basic Texture class. Its subclasses just make some of those methods available via interfaces.
+
+		- Textures internal format. OpenglES 3.0 allows sized version of the internal format. https://www.khronos.org/opengles/sdk/docs/man3/ texImage2D description. Partially implemented. 
+	
+		- Textures format, internal format and type of texture data
+		
+	- Choose and implement 3d models format
+	
+		- GLTF loader
+		
+		- OBJ loader
 	
 	- SSAO + DoF + deffered rendering (MRT) renderer
 	
-	- DepthTest and StencilTest must be methods of Program. They allow explicitly set corresponding tests
+	- DepthTest and StencilTest must be (static?) methods of Program. They allow explicitly set corresponding tests
 
 	- Runnable instance with configured draw mode, first element, elements count
 	
 	- Vertex array VertexAttributeXXXX methods. Do we need to consider instanced arrays in these methods
-
-	- Proram instance functor
 	
 	- Draw points and point size
 	
@@ -116,6 +132,10 @@
 		- Viewport binding
 		
 		- Depth/Color Mask, DepthTest, Blending
+		
+		- Program instance. Do we need first, count and instances count to be properties of the program instance. And gl draw mode too. Is sources preprocessing a good way of dealing with shaders?
+	
+		- Proram instance functor
 	
 	- Uniform and attribute setters method name contains size and type information and can accept values of different types. For example fv accepth both array and js typed array. 
 	
@@ -162,10 +182,6 @@
 	
 	- Embedded matrices builder module
 		
-	- GLTF loader
-	
-	- Array buffer `View` helper object instead of pointer. With _count property. 
-	
 	- Resource factories. To create preconfigured resources.
 	
 	

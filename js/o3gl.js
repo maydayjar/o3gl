@@ -99,6 +99,7 @@ var o3gl = {
 };
 
 
+
 // client state tracking variables
 // querying the GL for such information (like currently bound texture id) should be avoided because it has an important performance cost
 o3gl.programs 			= [];
@@ -117,6 +118,14 @@ o3gl.RENDERBUFFER_BINDING			= undefined;
 o3gl.TEXTURE_BINDING_2D 			= undefined;
 o3gl.TEXTURE_BINDING_CUBE_MAP 		= undefined;
 o3gl.CURRENT_PROGRAM 				= undefined;
+
+
+var glBindTexture 	= gl.bindTexture;
+var glBindBuffer 	= gl.bindBuffer;
+var glBind 			= gl.bindBuffer;
+var glUseProgram 	= gl.useProgram;
+
+
 
 
 /*
@@ -967,16 +976,49 @@ o3gl.FrameBuffer = function() {
 	this._colorAttachment = [];
 	this._depthAttachment = undefined;
 	this._stencilAttachment = undefined;
+}
 
-	// State variables
-	
-	this._clearColor = null;
-	this._clearDepth = null;
+o3gl.DepthMask = function (value) {
+	gl.depthMask(value);	
+	return o3gl;
+}
 
-	this._colorMask = null;
-	this._depthMask = null;
+o3gl.ColorMask = function (r, g, b, a) {
+	gl.colorMask(r,g,b,a);
+	return o3gl;
+}
 
-	
+o3gl.ScissorTest = function (x, y, width, height) {
+	if (arguments.length === 4) {
+		gl.enable(gl.SCISSOR_TEST);
+		gl.scissor(x, y, width, height);
+	} else {
+		var enable = arguments[0];
+		if (enable) {		
+			gl.enable(gl.SCISSOR_TEST);
+		} else {
+			gl.disable(gl.SCISSOR_TEST);
+		}
+	}
+	return this;
+}
+
+
+o3gl.FrameBuffer.ClearColor = function(r, g, b, a) {
+	if (arguments.length === 0) {
+		gl.clearColor(0, 0, 0, 0);	// Specification default values are 0,0,0,0
+	} else {
+		gl.clearColor(r, g, b, a);
+	}
+	return o3gl.FrameBuffer;
+}
+o3gl.FrameBuffer.ClearDepth = function(value) {
+	if (arguments.length == 0)  {
+		gl.clearDepth(1.0); // Specification default value
+	} else {
+		gl.clearDepth(value);			
+	}
+	return o3gl.FrameBuffer;	
 }
 
 o3gl.FrameBuffer.prototype = {
@@ -1016,19 +1058,6 @@ o3gl.FrameBuffer.prototype = {
 	,
 	Bind : function() {
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBufferId);
-		
-		if (this._colorMask !== null) {
-			var r = this._colorMask.r;
-			var g = this._colorMask.g;
-			var b = this._colorMask.b;
-			var a = this._colorMask.a;
-			gl.colorMask(r,g,b,a);
-		}
-		if (this._depthMask !== null) {
-			var value = this._depthMask;
-			gl.depthMask(value);			
-		}
-		
 		return this;
 	}
 	,
@@ -1160,112 +1189,29 @@ o3gl.FrameBuffer.prototype = {
 		}
 	}
 	,
-	ClearColorBuffer : function(r,g,b,a) {
+	ClearColorBuffer : function() {
 		this.Bind();
-		
-		var isR = (r !== null);
-		var isG = (g !== null);
-		var isB = (b !== null);
-		var isA = (a !== null);
-		gl.colorMask(isR, isG, isB, isA);
-		
-		if (arguments.length === 0) {
-			gl.clearColor(0, 0, 0, 0);			// Specification default values
-		} else {
-			gl.clearColor(r, g, b, a);
-		}
 		gl.clear(gl.COLOR_BUFFER_BIT);
 		return this;
 	}
 	,
 	ClearDepthBuffer : function(depth) {
 		this.Bind();		
-		
-		gl.depthMask(true);	// Without this set to true no effect will take place
-
-		if (arguments.length == 0)  {
-			gl.clearDepth(1.0); // Specification default value
-		} else {
-			gl.clearDepth(depth);			
-		}
 		gl.clear(gl.DEPTH_BUFFER_BIT);
 		return this;
 	}	
 	,
 	Clear : function() {
 		this.Bind();		
-		
 		//gl.colorMask(true, true, true, true);
 		//gl.depthMask(true);	// Without this set to true no effect will take place
 		// TODO check attachements
-		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);		
-		return this;
-	}
-	,
-	ClearColor : function(r,g,b,a) {		
-		if (arguments.length === 1) {
-			var value = arguments[0];
-			this._clearColor = {r : value, g : value, b : value, a : value};
-			gl.clearColor(value, value, value, value);			// Specification default values ar 0,0,0,0
-		} else {
-			this._clearColor = {r : r, g : g, b : b, a : a};
-			gl.clearColor(r, g, b, a);
-		}
-		return this;
-	}
-	,
-	ClearDepth : function(value) {		
-		if (arguments.length == 0)  {
-			gl.clearDepth(1.0); // Specification default value
-		} else {
-			gl.clearDepth(value);			
-		}
-		return this;
-	}
-	,
-	ScissorTest : function (enable) {
-		if (enable) {
-			gl.enable(gl.SCISSOR_TEST);
-		} else {
-			gl.disable(gl.SCISSOR_TEST);
-		}
-		return this;
-	}
-	,
-	Scissor : function (x, y , width, height) {
-		// turn on the scissor test.
-		gl.enable(gl.SCISSOR_TEST);		
-		// set the scissor rectangle.
-		gl.scissor(x, y, width, height);
-		return this;
-	}	
-	,
-	DepthMask : function(enable) {
-		if (enable === null) {
-			this._depthMask = null;
-		} else {
-			this._depthMask = enable;					
-			gl.depthMask(enable);
-		}
-		return this;
-	}
-	,
-	ColorMask : function(r,g,b,a) {
-		if (arguments.length === 1) {
-			var value = arguments[0];
-			if (value === null) {
-				this._colorMask = null;
-			} else {
-				this._colorMask = {r : value, g : value, b : value, a : value};
-				gl.colorMask(value, value, value, value);
-			}
-		} else {
-			this._colorMask = {r : r, g : g, b : b, a : a};
-			gl.colorMask(r,g,b,a);
-		}
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);		
 		return this;
 	}
 };
+
+
 
 o3gl.RenderBuffer = function() {
 	this._renderBufferId = gl.createRenderbuffer();
@@ -1648,10 +1594,6 @@ o3gl.Program.prototype = {
 		}
 		var usable = this;
 		return usable;
-	}
-	,
-	newInstance : function() {
-		return new o3gl.ProgramInstance(this);
 	}
 	,
 	GetAttributeIndex : function(name) {
@@ -2157,61 +2099,58 @@ o3gl.Program.prototype = {
 		this._DrawPrimitives(gl.LINE_LOOP, first, count, primcount);
 		return this;
 	}
-	,	
-	FrameBuffer : function(frameBuffer) {
-		if (frameBuffer) {
-			frameBuffer.Bind();
-			// Default values:
-			this.Viewport(0, 0, frameBuffer.getWidth(), frameBuffer.getHeight());
-
-			// Depth and stencil test
-			if(frameBuffer._depthAttachment) {
-				this.DepthTest(true);
-			} else {
-				this.DepthTest(false);
-			}
-			if(frameBuffer._stencilAttachment) {
-				this.StencilTest(true);
-			} else {
-				this.StencilTest(false);
-			}
-			
-			// TODO:
-			// gl.depthFunc(gl.LEQUAL); // Default
-			// gl.depthRange(0.0, 1.0); // Default
-		} else {
-			this.DepthTest(false);
-			this.StencilTest(false);			
-		}
-		return this;
-	}
-	,
-	DepthTest : function (enable) {
-		if (enable)
-			gl.enable(gl.DEPTH_TEST);
-		else
-			gl.disable(gl.DEPTH_TEST);
-		return this;
-	}
-	,
-	StencilTest : function (enable) {
-		if (enable)
-			gl.enable(gl.STENCIL_TEST);
-		else
-			gl.disable(gl.STENCIL_TEST);
-		return this;
-	}
-	,
-	Viewport : function(x,y,width,height) {
-		gl.viewport(x, y, width, height);
-		return this;
-	}
 }
 
 
+o3gl.Program.Viewport = function(x,y,width,height) {
+	gl.viewport(x, y, width, height);
+	return o3gl.Program;
+}
+	
+o3gl.Program.DepthTest = function (enable) {
+	if (enable)
+		gl.enable(gl.DEPTH_TEST);
+	else
+		gl.disable(gl.DEPTH_TEST);
+	return o3gl.Program;
+}
+o3gl.Program.StencilTest = function (enable) {
+	if (enable)
+		gl.enable(gl.STENCIL_TEST);
+	else
+		gl.disable(gl.STENCIL_TEST);
+	return o3gl.Program;
+}
 
+o3gl.Program.FrameBuffer = function(frameBuffer) {
+	if (frameBuffer) {
+		frameBuffer.Bind();
+		// Default values:
+		o3gl.Program.Viewport(0, 0, frameBuffer.getWidth(), frameBuffer.getHeight());
 
-
+		// Depth and stencil test
+		if(frameBuffer._depthAttachment) {
+			o3gl.Program.DepthTest(true);
+		} else {
+			o3gl.Program.DepthTest(false);
+		}
+		if(frameBuffer._stencilAttachment) {
+			o3gl.Program.StencilTest(true);
+		} else {
+			o3gl.Program.StencilTest(false);
+		}
+		
+		// TODO:
+		// gl.depthFunc(gl.LEQUAL); // Default
+		// gl.depthRange(0.0, 1.0); // Default
+	} else {
+		o3gl.CreateFrameBuffer().Bind(); // Default frame buffer
+		o3gl.Program.Viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+		o3gl.Program.DepthTest(false);
+		o3gl.Program.StencilTest(false);			
+	}
+	return o3gl.Program;
+}
 
 
 /*************************************************
@@ -2279,58 +2218,6 @@ o3gl.CreateProgram = function(shader1,shader2) {
 	}
 
 	return result;
-}
-
-var _planeProgram = null;
-var _planePositions = null;
-var _planeTextureCoordinates = null;
-
-o3gl.DrawPlane2D = function(texture, framebuffer) {
-	if (_planeProgram == null) {
-		_planeProgram = o3gl.CreateProgram(
-			o3gl.CreateShader(
-				"attribute vec2 		aPosition;" +
-				"attribute vec2 		aTextureCoordinate;" +
-				"varying vec2 			vTextureCoordinate;" +
-				"void main() {" +
-				"	vTextureCoordinate = aTextureCoordinate;" +
-				"	gl_Position = vec4(aPosition, 0.0, 1.0);" +
-				"}"
-			)
-			,
-			o3gl.CreateShader(
-				"precision mediump float;"+
-				"uniform sampler2D uSampler;"+
-				"varying vec2 vTextureCoordinate;"+
-				"void main() {" +
-				"	gl_FragColor = texture2D(uSampler, vTextureCoordinate);" +
-				"}"
-			)
-		);		
-		_planePositions = o3gl.CreateArrayBuffer().Data([
-			-1.0,-1.0,
-			1.0,-1.0,
-			-1.0, 1.0,
-			-1.0, 1.0,
-			1.0,-1.0,
-			1.0, 1.0
-		]);
-		_planeTextureCoordinates = o3gl.CreateArrayBuffer().Data([
-			0.0, 0.0,
-			1.0, 0.0,
-			0.0, 1.0,
-			0.0, 1.0,
-			1.0, 0.0,
-			1.0, 1.0
-		]);
-	}	
-	_planeProgram.
-		FrameBuffer(framebuffer).
-		Elements(null).
-		Set("aPosition", _planePositions).
-		Set("aTextureCoordinate", _planeTextureCoordinates).
-		Set("uSampler", texture).
-		DrawTriangles(0,6);
 }
 
 return o3gl;

@@ -10,6 +10,7 @@
 <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
 <script type="text/javascript" src="../o3gl.js"></script>
+<script type="text/javascript" src="../o3gl_utils.js"></script>
 <script type="text/javascript" src="../shaders/phong.js"></script>
 <script type="text/javascript" src="../utils/utils.js"></script>
 <script type="text/javascript" src="../utils/primitives.js"></script>
@@ -204,7 +205,7 @@
 			}						
 		});
 
-		program = o3gl.
+		program = o3gl.utils.
 			// Retain only essential shader variables and related code
 			sources(Shaders.Phong.Vertex, Shaders.Phong.Fragment). //short: sources(Shaders.Phong)
 			CreateProgram(
@@ -243,10 +244,11 @@
 		mat4.toInverseMat3(matrixMV, matrixN);
 		mat3.transpose(matrixN);
 
-		var frameBuffer = o3gl.CreateFrameBuffer().ClearColorBuffer(0,0,0,1);
+		var frameBuffer = o3gl.CreateFrameBuffer().Clear();
 				
+		o3gl.Program.FrameBuffer(frameBuffer).DepthTest(true);
+			
 		program.
-			FrameBuffer(frameBuffer).DepthTest(true).
 			Set("uMatrixV", matrixV).
 			Set("uMatrixP", matrixP).
 			Set("uMatrixM", matrixM).
@@ -295,7 +297,8 @@
 	
         var canvas = document.getElementById("canvas");
 		var gl = WebGLUtils.setupWebGL(canvas);
-		o3gl = O3GL(gl)
+		o3gl = O3GL(gl);
+		o3gl.utils = O3GL_UTILS(o3gl);
 		init();
         update();
 		

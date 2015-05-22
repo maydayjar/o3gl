@@ -3,12 +3,12 @@ var Shaders = Shaders || {};
 Shaders.Default = {}
 Shaders.Default.Vertex = [
 	"attribute vec2 		aPosition;",
-	"attribute vec2 		aTextureCoord;",
+	"attribute vec2 		aTextureCoordinate;",
 	"uniform sampler2D 		uSampler0;",		
 	"uniform sampler2D 		uSampler1;",		
-	"varying vec2 			vTextureCoord;",
+	"varying vec2 			vTextureCoordinate;",
 	"void main() {",
-	"	vTextureCoord = aTextureCoord;",
+	"	vTextureCoordinate = aTextureCoordinate;",
 	"	gl_Position = vec4(aPosition, 0.0, 1.0);",
 	"}"
 ];
@@ -16,11 +16,14 @@ Shaders.Default.Fragment = [
 	"precision mediump float;",
 	"uniform sampler2D 		uSampler0;",		
 	"uniform sampler2D 		uSampler1;",		
-	"varying vec2 			vTextureCoord;",	
+	"varying vec2 			vTextureCoordinate;",	
 	"void main() {",
-	"	gl_FragColor = texture2D(uSampler0, vTextureCoord);",
+	"	gl_FragColor = texture2D(uSampler0, vTextureCoordinate);",
 	"}"
 ];
+
+// Alias
+Shaders.Copy = Shaders.Default;
 
 Shaders.Fade = {};
 Shaders.Fade.Vertex = Shaders.Default.Vertex;
@@ -28,9 +31,9 @@ Shaders.Fade.Fragment = [
 	"precision mediump float;",
 	"uniform sampler2D 	uSampler0;",		
 	"uniform sampler2D 	uSampler1;",		
-	"varying vec2 		vTextureCoord;",
+	"varying vec2 		vTextureCoordinate;",
 	"void main() {",
-	"	vec4 frameColor = texture2D(uSampler0, vTextureCoord);",
+	"	vec4 frameColor = texture2D(uSampler0, vTextureCoordinate);",
 	"	//float luminance = frameColor.r * 0.3 + frameColor.g * 0.59 + frameColor.b * 0.11;",
 	"	float luminance = (frameColor.r + frameColor.g + frameColor.b) / 3.0;",
 	"	gl_FragColor = vec4(luminance, luminance, luminance, frameColor.a);",
@@ -43,7 +46,7 @@ Shaders.Convolution.Fragment = [
 	"precision mediump float;",
 	"uniform sampler2D 	uSampler0;",		
 	"uniform sampler2D 	uSampler1;",		
-	"varying vec2 		vTextureCoord;",
+	"varying vec2 		vTextureCoordinate;",
 
 	"uniform vec2 		uStep;",
 	"const int 			blurKernelSize = 16;",
@@ -59,7 +62,7 @@ Shaders.Convolution.Fragment = [
 	"	vec4 color = vec4(0.0);",
 	"	for (int i = 0; i < blurKernelSize; ++i) {",
 	"		float offset 		= float(i - blurKernelSize / 2);",
-	"		vec2 textureCoord 	= vTextureCoord + uStep * offset;",
+	"		vec2 textureCoord 	= vTextureCoordinate + uStep * offset;",
 	"		color 				+= texture2D(uSampler0, textureCoord) * gaussian(offset * blurStrength, deviation);",
 	"	}",
 	"	gl_FragColor = clamp(color, 0.0, 1.0);",
@@ -73,7 +76,7 @@ Shaders.BlurRadial.Fragment = [
 	"precision mediump float;",
 	"uniform sampler2D 	uSampler0;",		
 	"uniform sampler2D 	uSampler1;",		
-	"varying vec2 		vTextureCoord;",
+	"varying vec2 		vTextureCoordinate;",
 
 	"const int MAX_SAMPLES = 20;",
 	"uniform vec4 		uOrigin;",
@@ -82,10 +85,10 @@ Shaders.BlurRadial.Fragment = [
 
 	"void main() {",
 		"vec2 center 	= vec2(0.0);",
-		"center.x 		= uOrigin[0] + (uOrigin[2] - uOrigin[0]) * vTextureCoord.x;",
-		"center.y 		= uOrigin[1] + (uOrigin[3] - uOrigin[1]) * vTextureCoord.y;",
-		"vec2 tc 		= vTextureCoord.st;",
-		"vec2 tcDelta 	= vec2(center.xy - vTextureCoord.st);",
+		"center.x 		= uOrigin[0] + (uOrigin[2] - uOrigin[0]) * vTextureCoordinate.x;",
+		"center.y 		= uOrigin[1] + (uOrigin[3] - uOrigin[1]) * vTextureCoordinate.y;",
+		"vec2 tc 		= vTextureCoordinate.st;",
+		"vec2 tcDelta 	= vec2(center.xy - vTextureCoordinate.st);",
 		"float distance = length(tcDelta);",
 		"float numSamples = float(MAX_SAMPLES);",	
 		//"numSamples 	= length(tcDelta) / length(uStep);",
@@ -110,7 +113,7 @@ Shaders.BlurStroke.Fragment = [
 "	uniform sampler2D uSampler0;                                                                                         							",
 "	uniform int uViewportWidth;                                                                                               						",
 "	uniform int uViewportHeight;                                                                                              						",
-"	varying vec2 vTextureCoord;                                                                                                  					",
+"	varying vec2 vTextureCoordinate;                                                                                                  					",
 "	void main(void)                                                                                                            						",
 "	{                                                                                                                          						",
 "		float width = (float(uViewportWidth) - 1.0);                                                                  								",
@@ -123,7 +126,7 @@ Shaders.BlurStroke.Fragment = [
 "				// if(i == 0 && j == 0)                                                                                        						",
 "				//  continue;       																												",
 "				vec2 offset = vec2(float(i) / width, float(j) / height);                                                                     		",
-"				color += texture2D(uSampler0, vTextureCoord + offset);                                  											",
+"				color += texture2D(uSampler0, vTextureCoordinate + offset);                                  											",
 "			}                                                                                                                  						",
 "		}                                                                                                                      						",
 "		gl_FragColor = color / 49.0;                                                                                                  				",
@@ -138,10 +141,10 @@ Shaders.BlendAdditive.Fragment = [
 	"precision mediump float;",
 	"uniform sampler2D 	uSampler0;",		
 	"uniform sampler2D 	uSampler1;",		
-	"varying vec2 		vTextureCoord;",
+	"varying vec2 		vTextureCoordinate;",
 	"void main() {",
-	"	vec4 dst = texture2D(uSampler0, vTextureCoord);",
-	"	vec4 src = texture2D(uSampler1, vTextureCoord);",
+	"	vec4 dst = texture2D(uSampler0, vTextureCoordinate);",
+	"	vec4 src = texture2D(uSampler1, vTextureCoordinate);",
 	"	gl_FragColor = min(src + dst, 1.0);",
 	"}"
 ];
@@ -151,10 +154,10 @@ Shaders.BlendScreen.Fragment = [
 	"precision mediump float;",
 	"uniform sampler2D 	uSampler0;",		
 	"uniform sampler2D 	uSampler1;",		
-	"varying vec2 		vTextureCoord;",
+	"varying vec2 		vTextureCoordinate;",
 	"void main() {",
-	"	vec4 dst = texture2D(uSampler0, vTextureCoord);",
-	"	vec4 src = texture2D(uSampler1, vTextureCoord);",
+	"	vec4 dst = texture2D(uSampler0, vTextureCoordinate);",
+	"	vec4 src = texture2D(uSampler1, vTextureCoordinate);",
 	"	gl_FragColor = clamp((src + dst) - (src * dst), 0.0, 1.0);",
 	"	gl_FragColor.w = 1.0;",
 	"}"
@@ -165,10 +168,10 @@ Shaders.BlendSoftlight.Fragment = [
 	"precision mediump float;",
 	"uniform sampler2D 	uSampler0;",		
 	"uniform sampler2D 	uSampler1;",		
-	"varying vec2 		vTextureCoord;",
+	"varying vec2 		vTextureCoordinate;",
 	"void main () {",
-	"	vec4 dst = texture2D(uSampler0, vTextureCoord);",
-	"	vec4 src = texture2D(uSampler1, vTextureCoord);",
+	"	vec4 dst = texture2D(uSampler0, vTextureCoordinate);",
+	"	vec4 src = texture2D(uSampler1, vTextureCoordinate);",
 		// Softlight blending (light result, no overexposure)
 		// Due to the nature of soft lighting, we need to bump the black region of the source to 0.5, 
 		// otherwise the blended result will be dark (black soft lighting will darken the image).
@@ -187,10 +190,10 @@ Shaders.BlendMultiply.Fragment = [
 	"precision mediump float;",
 	"uniform sampler2D 	uSampler0;",		
 	"uniform sampler2D 	uSampler1;",		
-	"varying vec2 		vTextureCoord;",
+	"varying vec2 		vTextureCoordinate;",
 	"void main() {",
-	"	vec4 dst = texture2D(uSampler0, vTextureCoord);",
-	"	vec4 src = texture2D(uSampler1, vTextureCoord);",
+	"	vec4 dst = texture2D(uSampler0, vTextureCoordinate);",
+	"	vec4 src = texture2D(uSampler1, vTextureCoordinate);",
 	"	gl_FragColor = min(src * dst, 1.0);",
 	"}"
 ];
@@ -202,7 +205,7 @@ Shaders.RadialBlur.Fragment = [
 	"precision mediump float;",
 	"uniform sampler2D 	uSampler0;",		
 	"uniform sampler2D 	uSampler1;",		
-	"varying vec2 		vTextureCoord;",
+	"varying vec2 		vTextureCoordinate;",
 
 	"const int NUM_SAMPLES = 20;",
 	
@@ -239,8 +242,8 @@ Shaders.RadialBlur.Fragment = [
 		"fClamp 	= uClamp;",
 		"center 	= uCenter;",
 		
-		"vec2 tc 		= vTextureCoord.st;",
-		"vec2 tcDelta 	= vec2(center.xy - vTextureCoord.st);",
+		"vec2 tc 		= vTextureCoordinate.st;",
+		"vec2 tcDelta 	= vec2(center.xy - vTextureCoordinate.st);",
 		"tcDelta 		*= 1.0 /  float(NUM_SAMPLES) * fDensity;",
 		"float decay 	= 1.0;",
 

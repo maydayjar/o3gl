@@ -1,4 +1,6 @@
+function O3GL_UTILS(o3gl) {
 
+var o3gl_utils = {};
 
 /*********************************************
 * ASPECT
@@ -407,7 +409,7 @@ var Preprocessor = {
  * @param {Shader} shader2
  * @constructor
  */
-o3gl.ProgramInstance = function(program) {
+o3gl_utils.ProgramInstance = function(program) {
 	if (program instanceof o3gl.Program) {
 		this._program = program;
 	}
@@ -456,23 +458,23 @@ o3gl.ProgramInstance = function(program) {
 	this._drawMode = gl.TRIANGLES;
 }
 
-o3gl.ProgramInstance.prototype = {}
-o3gl.ProgramInstance.prototype.run = function() {
+o3gl_utils.ProgramInstance.prototype = {}
+o3gl_utils.ProgramInstance.prototype.run = function() {
 	this._DrawPrimitives(this._drawMode, this._elementFirst, this._elementsCount, this._instancesCount);
 }
-o3gl.ProgramInstance.prototype.Delete = function () {
+o3gl_utils.ProgramInstance.prototype.Delete = function () {
 	// TODO: delete assotiated resources ???
 	// Generated inner framebuffers / uniform buffers / vertex 
 }
-o3gl.ProgramInstance.prototype._isUniform = function(name) {
+o3gl_utils.ProgramInstance.prototype._isUniform = function(name) {
 	if (this._program) return this._program._isUniform(name);
 	if (this._programSources) return this._programSources._isUniform(name);
 }
-o3gl.ProgramInstance.prototype._isAttribute = function(name) {
+o3gl_utils.ProgramInstance.prototype._isAttribute = function(name) {
 	if (this._program) return this._program._isAttribute(name);
 	if (this._programSources) return this._programSources._isAttribute(name);
 }
-o3gl.ProgramInstance.prototype.program = function() {
+o3gl_utils.ProgramInstance.prototype.program = function() {
 	if (!this._program) {
 		var variables = [];
 		for (var name in this._uniforms) {
@@ -488,7 +490,7 @@ o3gl.ProgramInstance.prototype.program = function() {
 	}
 	return this._program;		
 }
-o3gl.ProgramInstance.prototype.VertexArray = function(value) {
+o3gl_utils.ProgramInstance.prototype.VertexArray = function(value) {
 	if (value || value === null) {
 		this._vertexArrayObject = value;
 	} else {
@@ -503,7 +505,7 @@ o3gl.ProgramInstance.prototype.VertexArray = function(value) {
 		return this._vertexArrayObject;			
 	}		
 }
-o3gl.ProgramInstance.prototype.FrameBuffer = function(value) {
+o3gl_utils.ProgramInstance.prototype.FrameBuffer = function(value) {
 	if (arguments.length === 1) {
 		this._frameBuffer = value;
 		return this;
@@ -515,10 +517,10 @@ o3gl.ProgramInstance.prototype.FrameBuffer = function(value) {
 		return this._frameBuffer;
 	}
 }
-o3gl.ProgramInstance.prototype.UniformBuffer = function(names) {
+o3gl_utils.ProgramInstance.prototype.UniformBuffer = function(names) {
 	throw new TypeError("Unimplemented method");
 }
-o3gl.ProgramInstance.prototype.Set = function (name, v1, v2, v3, v4) {	
+o3gl_utils.ProgramInstance.prototype.Set = function (name, v1, v2, v3, v4) {	
 	if (this._isUniform(name)) {
 		if (v1 instanceof o3gl.Texture2D || v1 instanceof o3gl.TextureCubeMap) { // Or sampler :)
 			this._samplers[name] = v1;
@@ -542,7 +544,7 @@ o3gl.ProgramInstance.prototype.Set = function (name, v1, v2, v3, v4) {
 	}
 	return this;
 }
-o3gl.ProgramInstance.prototype.Elements = function(elementArrayBuffer) {
+o3gl_utils.ProgramInstance.prototype.Elements = function(elementArrayBuffer) {
 	if (this._vertexArray) {
 		this._elementArrayBuffer = null;
 		this._vertexArray.Bind().Elements(elementArrayBuffer);
@@ -551,19 +553,19 @@ o3gl.ProgramInstance.prototype.Elements = function(elementArrayBuffer) {
 	}
 	return this;
 }
-o3gl.ProgramInstance.prototype.DepthMask = function(value) {
+o3gl_utils.ProgramInstance.prototype.DepthMask = function(value) {
 	this._depthMask = value ? true : false;
 	return this;
 }
-o3gl.ProgramInstance.prototype.DepthTest = function(value) {
+o3gl_utils.ProgramInstance.prototype.DepthTest = function(value) {
 	this._depthTest = value ? true : false;
 	return this;
 }
-o3gl.ProgramInstance.prototype.Stencil = function(attachment) {
+o3gl_utils.ProgramInstance.prototype.Stencil = function(attachment) {
 	this.FrameBuffer().Bind().Stencil(attachment);
 	return this;
 }
-o3gl.ProgramInstance.prototype.Viewport = function(x,y,width,height) {
+o3gl_utils.ProgramInstance.prototype.Viewport = function(x,y,width,height) {
 	if (arguments.length == 0) {
 		this._viewport = null;
 	} 
@@ -580,15 +582,15 @@ o3gl.ProgramInstance.prototype.Viewport = function(x,y,width,height) {
 	}
 	return this;
 }
-o3gl.ProgramInstance.prototype.BlendFunc = function(glBlendFactorSrc, glBlendFactorDst) {
+o3gl_utils.ProgramInstance.prototype.BlendFunc = function(glBlendFactorSrc, glBlendFactorDst) {
 	this._glBlendFactorSrc = glBlendFactorSrc;
 	this._glBlendFactorDst = glBlendFactorDst;
 	return this;
 }
-o3gl.ProgramInstance.prototype.BlendFuncSrcAlphaOne = function() {
+o3gl_utils.ProgramInstance.prototype.BlendFuncSrcAlphaOne = function() {
 	return this.BlendFunc(gl.SRC_ALPHA, gl.ONE);
 }
-o3gl.ProgramInstance.prototype._DrawPrimitives = function(glMode, first, count, primcount) {
+o3gl_utils.ProgramInstance.prototype._DrawPrimitives = function(glMode, first, count, primcount) {
 	// Get program or create from sources
 	var program = this.program();
 	
@@ -664,36 +666,36 @@ o3gl.ProgramInstance.prototype._DrawPrimitives = function(glMode, first, count, 
 	
 	return this;		
 }
-o3gl.ProgramInstance.prototype.DrawTriangles = function(first, count, primcount) {
+o3gl_utils.ProgramInstance.prototype.DrawTriangles = function(first, count, primcount) {
 	this._DrawPrimitives(gl.TRIANGLES, first, count, primcount);
 	return this;
 }
-o3gl.ProgramInstance.prototype.DrawTriangleStrip = function(first, count, primcount) {
+o3gl_utils.ProgramInstance.prototype.DrawTriangleStrip = function(first, count, primcount) {
 	this._DrawPrimitives(gl.TRIANGLE_STRIP, first, count, primcount);
 	return this;
 }
-o3gl.ProgramInstance.prototype.DrawTriangleFan = function(first, count, primcount) {
+o3gl_utils.ProgramInstance.prototype.DrawTriangleFan = function(first, count, primcount) {
 	this._DrawPrimitives(gl.TRIANGLE_FAN, first, count, primcount);
 	return this;
 }
-o3gl.ProgramInstance.prototype.DrawPoints = function(first, count, primcount) {
+o3gl_utils.ProgramInstance.prototype.DrawPoints = function(first, count, primcount) {
 	this._DrawPrimitives(gl.POINTS, first, count, primcount);
 	return this;
 }
-o3gl.ProgramInstance.prototype.DrawLines = function(first, count, primcount) {
+o3gl_utils.ProgramInstance.prototype.DrawLines = function(first, count, primcount) {
 	this._DrawPrimitives(gl.LINES, first, count, primcount);
 	return this;
 }
-o3gl.ProgramInstance.prototype.DrawLineStrip = function(first, count, primcount) {
+o3gl_utils.ProgramInstance.prototype.DrawLineStrip = function(first, count, primcount) {
 	this._DrawPrimitives(gl.LINE_STRIP, first, count, primcount);
 	return this;
 }
-o3gl.ProgramInstance.prototype.DrawLineLoop = function(first, count, primcount) {
+o3gl_utils.ProgramInstance.prototype.DrawLineLoop = function(first, count, primcount) {
 	this._DrawPrimitives(gl.LINE_LOOP, first, count, primcount);
 	return this;
 }
 
-o3gl.ProgramSources = function(shaderSource1, shaderSource2, shaderSource3) {
+o3gl_utils.ProgramSources = function(shaderSource1, shaderSource2, shaderSource3) {
 	this.programs = {};
 
 	this.shaders = {};
@@ -725,7 +727,7 @@ o3gl.ProgramSources = function(shaderSource1, shaderSource2, shaderSource3) {
 	}
 }
 
-o3gl.ProgramSources.prototype = {
+o3gl_utils.ProgramSources.prototype = {
 	Delete : function() {
 		// TODO: Delete all the programs and shaders
 	}
@@ -779,4 +781,57 @@ o3gl.ProgramSources.prototype = {
 		if (Preprocessor.isAttribute(this.vertexShaderSource, name)) return true;
 		return false;		
 	}
+}
+
+o3gl_utils.sources = function(shaderSource1, shaderSource2, shaderSource3) {
+	return new o3gl_utils.ProgramSources(shaderSource1, shaderSource2);
+}
+
+/* 
+	Lazy initializaed image post processing programs preconfigured with plane array buffers
+*/
+var _programs = [];
+
+var _arrayBufferPlane2DPositions = null;
+var _arrayBufferPlane2DTextureCoordinates = null;
+
+o3gl_utils.Postprocess = function(sources, settings) {
+	if (!_programs[sources]) {
+		_programs[sources] = o3gl_utils.sources(sources).CreateProgram();
+	}
+	var program = _programs[sources];
+	if (!_arrayBufferPlane2DPositions) {
+		_arrayBufferPlane2DPositions = o3gl.CreateArrayBuffer().typeFloat(2).Data([
+			-1.0,-1.0,
+			1.0,-1.0,
+			-1.0, 1.0,
+			-1.0, 1.0,
+			1.0,-1.0,
+			1.0, 1.0
+		]);
+	}
+	if (!_arrayBufferPlane2DTextureCoordinates) {
+		_arrayBufferPlane2DTextureCoordinates = o3gl.CreateArrayBuffer().typeFloat(2).Data([
+			0.0, 0.0,
+			1.0, 0.0,
+			0.0, 1.0,
+			0.0, 1.0,
+			1.0, 0.0,
+			1.0, 1.0
+		]);
+	}
+	if (settings) {
+		for (var key in settings) {
+			var value = settings[key];
+			program.Set(key, value);
+		}
+		program.Elements(null).AttributePointer("aPosition", _arrayBufferPlane2DPositions).AttributePointer("aTextureCoordinate", _arrayBufferPlane2DTextureCoordinates).DrawTriangles(0, 6);
+	} else {
+		return program.Elements(null).AttributePointer("aPosition", _arrayBufferPlane2DPositions).AttributePointer("aTextureCoordinate", _arrayBufferPlane2DTextureCoordinates);
+	}
+}
+
+
+return o3gl_utils;
+
 }

@@ -179,7 +179,7 @@ void main() {
 			Set("uMatrixMV", 	matrixMV).
 			Set("uSampler0", 	textureDiffuse).		
 			Set("aPosition",	vbo.cube.positions).
-			Set("aTextureCoord",vbo.cube.textureCoords).
+			Set("aTextureCoordinate",vbo.cube.textureCoords).
 			Elements(vbo.cube.indexes).
 			DrawTriangles();
 				
@@ -189,7 +189,7 @@ void main() {
 		programConvolution.		
 			Elements(null).
 			Set("aPosition",	vbo.plane.positions).
-			Set("aTextureCoord",vbo.plane.textureCoords);
+			Set("aTextureCoordinate",vbo.plane.textureCoords);
 		// Render in two passes
 		fbConvolution.Color(fbTexturePass1);
 		programConvolution.			
@@ -207,7 +207,7 @@ void main() {
 		programBlend.
 			Elements(null).
 			Set("aPosition",	vbo.plane.positions).
-			Set("aTextureCoord",vbo.plane.textureCoords).
+			Set("aTextureCoordinate",vbo.plane.textureCoords).
 			Set("uSampler0", fbTextureScene).		
 			Set("uSampler1", fbTexturePass2).
 			DrawTriangles();

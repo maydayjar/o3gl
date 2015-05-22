@@ -10,6 +10,7 @@
 <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
 <script type="text/javascript" src="../o3gl.js"></script>
+<script type="text/javascript" src="../o3gl_utils.js"></script>
 <script type="text/javascript" src="../shaders/phong.js"></script>
 <script type="text/javascript" src="../shaders/postprocess.js"></script>
 <script type="text/javascript" src="../utils/utils.js"></script>
@@ -93,7 +94,7 @@
 			positions : 	o3gl.CreateArrayBuffer().Data(cube.positions),
 			normals : 		o3gl.CreateArrayBuffer().Data(cube.normals),				
 			tangents : 		o3gl.CreateArrayBuffer().Data(cube.tangents),				
-			textureCoords : o3gl.CreateArrayBuffer().Data(cube.textureCoords),				
+			textureCoords : o3gl.CreateArrayBuffer().Data(cube.textureCoordinates),				
 			indexes : 		o3gl.CreateElementArrayBuffer().Data(cube.indexes)			
 		}
 
@@ -101,10 +102,10 @@
 		var plane = new Plane2D(); // Post-process plane
 		vboPlane = {
 			positions : 	o3gl.CreateArrayBuffer().Data(plane.positions),
-			textureCoords : o3gl.CreateArrayBuffer().Data(plane.textureCoords)				
+			textureCoords : o3gl.CreateArrayBuffer().Data(plane.textureCoordinates)				
 		}
 		
-		programPhong = o3gl.
+		programPhong = o3gl.utils.
 			// Retain only essential shader variables and related code
 			sources(Shaders.Phong.Vertex, Shaders.Phong.Fragment). //short: sources(Shaders.Phong)
 			CreateProgram(
@@ -120,10 +121,10 @@
 				"uLightPosition"
 			);
 			
-		programConvolution 	= o3gl.sources(Shaders.Convolution).CreateProgram();
-		programBlurRadial 	= o3gl.sources(Shaders.BlurRadial).CreateProgram();
-		programBlend 		= o3gl.sources(Shaders.BlendAdditive).CreateProgram();
-		programFlush 		= o3gl.sources(Shaders.Default).CreateProgram();
+		programConvolution 	= o3gl.utils.sources(Shaders.Convolution).CreateProgram();
+		programBlurRadial 	= o3gl.utils.sources(Shaders.BlurRadial).CreateProgram();
+		programBlend 		= o3gl.utils.sources(Shaders.BlendAdditive).CreateProgram();
+		programFlush 		= o3gl.utils.sources(Shaders.Default).CreateProgram();
 
 		// Create frame buffer textures
 		var ppScale = 0.5;
@@ -151,16 +152,16 @@
         fbScene.Clear();
 		fbEmissive.Clear();
 		
+		o3gl.Program.FrameBuffer(fbScene);
+		
 		programPhong.
 			// View and projection
 			Set("uMatrixV", 	matrixV). 		
 			Set("uMatrixP", 	matrixP).		
 			// Geometry
-			Set("aPosition", 	vboCube.positions.pointer()).
-			Set("aNormal", 		vboCube.normals.pointer()).
-			Elements(vboCube.indexes).			
-			FrameBuffer(fbScene)
-			;
+			Set("aPosition", 	vboCube.positions).
+			Set("aNormal", 		vboCube.normals).
+			Elements(vboCube.indexes);
 		
 		// Draw regular geometry
 		var step = 2.5;
@@ -215,8 +216,9 @@
 		mat4.toInverseMat3(matrixMV, matrixN);		
 		mat3.transpose(matrixN);
 				
+		o3gl.Program.FrameBuffer(fbEmissive);
+				
 		programPhong.
-			FrameBuffer(fbEmissive).
 			Set("uMatrixM", 	matrixM).
 			Set("uMatrixN", 	matrixN).
 			Set("uMaterialDiffuse", 0, 0, 0, 1.0).	
@@ -230,34 +232,33 @@
 		Viewport();
 		programFlush.Use().
 			Set("aPosition", 	 vboPlane.positions.pointer()).
-			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
+			Set("aTextureCoordinate", vboPlane.textureCoords.pointer()).
 			Set("uSampler0", textureScene).		
 			DrawTriangles();
 */		
 
-
+		o3gl.Program.FrameBuffer(fbConvolutionPass1);
 		programConvolution.
-			FrameBuffer(fbConvolutionPass1).
-			Set("aPosition", 	 vboPlane.positions.pointer()).
-			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
+			Set("aPosition", 	 vboPlane.positions).
+			Set("aTextureCoordinate", vboPlane.textureCoords).
 			Set("uStep", 0.9/fbConvolutionPass1.getWidth(), 0).							
 			Set("uSampler0", textureEmissive).		
 			Elements(null).
 			DrawTriangles();
 		
+		o3gl.Program.FrameBuffer(fbConvolutionPass2);
 		programConvolution.
-			FrameBuffer(fbConvolutionPass2).
-			Set("aPosition", 	 vboPlane.positions.pointer()).
-			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
+			Set("aPosition", 	 vboPlane.positions).
+			Set("aTextureCoordinate", vboPlane.textureCoords).
 			Set("uStep", 0, 0.9/fbConvolutionPass2.getHeight()).
 			Set("uSampler0", textureConvolutionPass1).		
 			Elements(null).
 			DrawTriangles();
 		
+		o3gl.Program.FrameBuffer(fbBlurRadial);
 		programBlurRadial.
-			FrameBuffer(fbBlurRadial).
-			Set("aPosition", 	 vboPlane.positions.pointer()).
-			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
+			Set("aPosition", 	 vboPlane.positions).
+			Set("aTextureCoordinate", vboPlane.textureCoords).
 			Set("uOrigin", 0.5, 0.5, 0.5, 0.5).
 			//Set("uCenter", 0.0, 0.0, 0.0, 0.0).
 			Set("uSampler0", textureConvolutionPass2).		
@@ -266,10 +267,10 @@
 			DrawTriangles();
 	
 		// Flush to the screen
+		o3gl.Program.FrameBuffer(null);
 		programBlend.
-			FrameBuffer(fbDefault).
-			Set("aPosition", 	 vboPlane.positions.pointer()).
-			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
+			Set("aPosition", 	 vboPlane.positions).
+			Set("aTextureCoordinate", vboPlane.textureCoords).
 			Set("uSampler0", textureBlurRadial).		
 			Set("uSampler1", textureScene).		
 			Elements(null).
@@ -278,8 +279,8 @@
 		return;
 		programFlush.FrameBuffer().ClearColorBuffer(1,0,0,1);
 		programFlush.DepthTest(false).
-			Set("aPosition", 	 vboPlane.positions.pointer()).
-			Set("aTextureCoord", vboPlane.textureCoords.pointer()).
+			Set("aPosition", 	 vboPlane.positions).
+			Set("aTextureCoordinate", vboPlane.textureCoords).
 			Set("uSampler0", textureScene).		
 //			Set("uSampler0", textureBlurRadial).		
 			DrawTriangles();
@@ -306,6 +307,8 @@
         var canvas = document.getElementById("canvas");
 		var gl = WebGLUtils.setupWebGL(canvas);
 		o3gl = O3GL(gl);
+		o3gl.utils = O3GL_UTILS(o3gl);
+		
 		init();
         update();
 		
