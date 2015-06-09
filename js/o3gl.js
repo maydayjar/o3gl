@@ -463,22 +463,6 @@ Extend(o3gl.Texture, o3gl.Resource, {
         return this.FilterMinLinear().FilterMagLinear();
     }
     ,
-	FilterLinearMipmapLinear : function() {
-        return this.FilterMinLinearMipmapLinear().FilterMagLinearMipmapLinear();
-    }
-    ,
-	FilterNearestMipmapNearest : function() {
-        return this.FilterMinNearestMipmapNearest().FilterMagNearestMipmapNearest();
-    }
-    ,
-	FilterNearestMipmapLinear : function() {
-        return this.FilterMinNearestMipmapLinear().FilterMagNearestMipmapLinear();
-    }
-    ,
-	FilterLinearMipmapNearest : function() {
-        return this.FilterMinLinearMipmapNearest().FilterMagLinearMipmapNearest();
-    }
-    ,
 	Image : function() {
 		this.Bind();
 		

@@ -10,6 +10,7 @@
 <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
 <script type="text/javascript" src="../o3gl.js"></script>
+<script type="text/javascript" src="../o3gl_utils.js"></script>
 <script type="text/javascript" src="../shaders/phong.js"></script>
 <script type="text/javascript" src="../shaders/postprocess.js"></script>
 <script type="text/javascript" src="../utils/utils.js"></script>
@@ -23,29 +24,6 @@
 		margin: 0px;
 	}
 </style>
-<script id="vs" type="x-shader/x-vertex">
-attribute vec3 		aPosition;
-attribute vec2 		aTextureCoord;
-
-uniform mat4 		uMatrixMV;
-uniform mat4 		uMatrixP;
-
-varying vec2 		vTextureCoord;
-void main() {
-	vTextureCoord	= vec2(aTextureCoord.x, aTextureCoord.y);
-	gl_Position 	= uMatrixP * uMatrixMV * vec4(aPosition, 1.0);
-}
-</script>
-<script id="fs" type="x-shader/x-fragment">
-#ifdef GL_ES
-precision highp float;
-#endif
-uniform sampler2D 	uSampler0;
-varying vec2 	vTextureCoord;
-void main() {
-	gl_FragColor = texture2D(uSampler0, vTextureCoord);
-}
-</script>
 
 <script type="text/javascript">
 	var o3gl;
@@ -74,25 +52,25 @@ void main() {
 	var fbTexturePass1;
 	var fbTexturePass2;
 
-
 	var textureDiffuse;
-	
-	var vboMesh;
-	var vboPlane;
+	var textureAmbient;
+	var textureSpecular;
+	var textureAmbientOcclusion;
+	var textureBump;
+	var textureNormal;
+	var textureCubeMap;
 
-	var mesh;
-	var offscreenSurface;
+	var cubePositions;
+	var cubeTextureCoordinates;
+	var cubeNormals;
+	var cubeTangents;
+	var cubeIndexes;
 
-	var vbo = {
-		cube : {
-		}
-		,
-		teapot : {
-		}
-		,
-		plane : {
-		}
-	}
+	var planePositions;
+	var planeTextureCoordinates;
+	var planeNormals;
+	var planeTangents;
+	var planeIndexes;
 	
 	
 	function init() {
@@ -104,17 +82,38 @@ void main() {
 		mat4.translate(matrixV, [0,0,-5]);
 		mat4.identity(matrixM);
 		mat4.identity(matrixMV);
-		
+				
+		// Initialize textures
+		var imageDiffuse 			= document.getElementById("diffuse");
+		var imageNormal 			= document.getElementById("normal");
+		var imageSpecular 			= document.getElementById("specular");
+		var imageAmbient 			= document.getElementById("ambient");
+		var imageAmbientOcclusion 	= document.getElementById("ao");
+		var imageBump 				= document.getElementById("bump");
+		var imagePX 				= document.getElementById("px");
+		var imageNX 				= document.getElementById("nx");
+		var imagePY 				= document.getElementById("py");
+		var imageNY 				= document.getElementById("ny");
+		var imagePZ 				= document.getElementById("pz");
+		var imageNZ 				= document.getElementById("nz");
 
-		var vertexShaderSource = document.getElementById("vs").textContent;
-		var fragmentShaderSource = document.getElementById("fs").textContent;
-		
-		// Initialize mesh texture
-		var imageDiffuse 	= document.getElementById("specular");
+		textureNormal 		= o3gl.CreateTexture2D().FilterLinear().WrapClampToEdge().Image(imageNormal).GenerateMipmap();
+		textureDiffuse		= o3gl.CreateTexture2D().FilterLinear().Image(imageDiffuse);
+		textureAmbient 		= o3gl.CreateTexture2D().FilterLinear().Image(imageAmbient);
+		textureSpecular		= o3gl.CreateTexture2D().FilterLinear().Image(imageSpecular);
+		textureBump			= o3gl.CreateTexture2D().FilterLinear().Image(imageBump);
+		textureCubeMap	 	= o3gl.CreateTextureCubeMap().FilterLinear().
+			positiveX().Image(imagePX).
+			negativeX().Image(imageNX).
+			positiveY().Image(imagePY).
+			negativeY().Image(imageNY).
+			positiveZ().Image(imagePZ).
+			negativeZ().Image(imageNZ);
+
 		
 		textureDiffuse 		= o3gl.CreateTexture2D().FilterLinear().WrapClampToEdge().Image(imageDiffuse);
 		
-		// Create framebuffers
+		// Framebuffers
 		fbTextureScene 		= o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
 		fbTexturePass1 		= o3gl.CreateTexture2D().FilterLinear().WrapClampToEdge().Image(128, 128);
 		fbTexturePass2 		= o3gl.CreateTexture2D().FilterLinear().WrapClampToEdge().Image(128, 128);
@@ -123,73 +122,64 @@ void main() {
 		fbConvolution		= o3gl.CreateFrameBuffer().Color(fbTexturePass1);
 		fbBlend				= o3gl.CreateFrameBuffer();
 		
-		/*
-		fbTextureTest 		= o3gl.CreateTexture2D().FilterNearest().WrapClampToEdge().Image(viewport.width, viewport.height);
-        fbDepthScene 		= o3gl.CreateRenderBufferDepth().Storage(viewport.width, viewport.height);
-		fbScene 			= o3gl.CreateFrameBuffer().Color(fbTextureScene).Depth(fbDepthScene);
-		fbTexturePass1 		= o3gl.CreateTexture2D().FilterLinear().WrapClampToEdge().Image(128, 128);
-		fbPass1 			= o3gl.CreateFrameBuffer().Color(fbTexturePass1);
-		fbTexturePass2 		= o3gl.CreateTexture2D().FilterLinear().WrapClampToEdge().Image(128, 128);
-		fbPass2 			= o3gl.CreateFrameBuffer().Color(fbTexturePass2);
-		*/
-		
-		// Create vertex buffer objects
+		// Vertex buffers
 		var cube = new Cube();
-		vbo.cube.indexes = o3gl.CreateElementArrayBuffer().Data(cube.indexes);
-		vbo.cube.positions = o3gl.CreateArrayBuffer().Data(cube.positions);
-		vbo.cube.textureCoords = o3gl.CreateArrayBuffer().Data(cube.textureCoordinates);
+		cubePositions = o3gl.CreateArrayBuffer().Data(cube.positions);
+		cubeTextureCoordinates = o3gl.CreateArrayBuffer().Data(cube.textureCoordinates);
+		cubeNormals = o3gl.CreateArrayBuffer().Data(cube.normals);
+		cubeTangents = o3gl.CreateArrayBuffer().Data(cube.tangents);
+		cubeIndexes = o3gl.CreateElementArrayBuffer().Data(cube.indexes);
 		var plane = new Plane2D(); // Post-process plane
-		vbo.plane.positions = o3gl.CreateArrayBuffer().Data(plane.positions);
-		vbo.plane.textureCoords = o3gl.CreateArrayBuffer().Data(plane.textureCoordinates);
+		planePositions = o3gl.CreateArrayBuffer().Data(plane.positions);
+		planeTextureCoordinates = o3gl.CreateArrayBuffer().Data(plane.textureCoordinates);
+		//planeNormals = o3gl.CreateArrayBuffer().Data(plane.normals);
+		//planeTangents = o3gl.CreateArrayBuffer().Data(plane.tangents);
 
-		// Create the programs
-		programDraw 		= o3gl.CreateProgram(o3gl.CreateShader(vertexShaderSource),o3gl.CreateShader(fragmentShaderSource));
-		programDefault 		= o3gl.CreateProgram(o3gl.CreateShader(Shaders.Default.Vertex.join("")),o3gl.CreateShader(Shaders.Default.Fragment.join("")));
-		programConvolution 	= o3gl.CreateProgram(o3gl.CreateShader(Shaders.Convolution.Vertex.join("")),o3gl.CreateShader(Shaders.Convolution.Fragment.join("")));
-		programBlend 		= o3gl.CreateProgram(o3gl.CreateShader(Shaders.BlendAdditive.Vertex.join("")),o3gl.CreateShader(Shaders.BlendAdditive.Fragment.join("")));
+		// GLSL Programs
+		programDraw 		= o3gl.sources(Shaders.Phong).CreateProgram();
+		programDefault 		= o3gl.sources(Shaders.Default).CreateProgram();
+		programConvolution 	= o3gl.sources(Shaders.Convolution).CreateProgram();
+		programBlend 		= o3gl.sources(Shaders.BlendAdditive).CreateProgram();
 	}
 	
 	function render() {
 		mat4.identity(matrixMV);
 		mat4.multiply(matrixM, matrixMV, matrixMV);
-		mat4.multiply(matrixV, matrixMV, matrixMV);
-		
-		/*
-		// o3gl default frame buffer settings
-		o3gl.defaultFrameBuffer().Bind().
-		DepthTest(true).DepthMask(true).
-		Viewport(viewport.x, viewport.y, viewport.width, viewport.height).
-		ClearColorBuffer(0.5, 0.0, 0.0, 1.0).
-		ClearDepthBuffer();
-		// Equal webgl native code:
-		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-		gl.enable(gl.DEPTH_TEST);
-		gl.depthMask(true);
-		gl.clearColor(0.5, 0.5, 0.5, 1.0);
-		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
-		gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-		*/
-		
+		mat4.multiply(matrixV, matrixMV, matrixMV);				
+		mat4.toInverseMat3(matrixMV, matrixN);
+		mat3.transpose(matrixN);
+
+				
 		// Draw the scene
-		fbScene.Clear();
-		o3gl.Program.FrameBuffer(fbScene);
+		//fbScene.Clear();
+		//o3gl.Program.FrameBuffer(fbScene);
+		
+		o3gl.Program.FrameBuffer(null).DepthTest(true);
 		
 		programDraw.
-			Set("uMatrixP", 	matrixP).
-			Set("uMatrixMV", 	matrixMV).
-			Set("uSampler0", 	textureDiffuse).		
-			Set("aPosition",	vbo.cube.positions).
-			Set("aTextureCoord",vbo.cube.textureCoords).
-			Elements(vbo.cube.indexes).
+			Set("uLightPosition", 		0.0, 100.0, 0.0).		
+			Set("uMaterialAmbient", 	0.0, 0.0, 0.0, 1.0).		
+			Set("uMatrixProjection", 	matrixP).
+			Set("uMatrixModelView", 	matrixMV).
+			Set("uMatrixNormal", 		matrixN).
+			Set("uSamplerDiffuse", 		textureDiffuse).		
+			Set("uSamplerNormal", 		textureNormal).		
+			Set("aPosition",			cubePositions).
+			Set("aNormal",				cubeNormals).
+			Set("aTangent",				cubeTangents).
+			Set("aTextureCoordinate",	cubeTextureCoordinates).
+			Elements(cubeIndexes).
 			DrawTriangles();
+				
+		return;
 				
 		// Set up framebuffer and geometry
 		o3gl.Program.FrameBuffer(fbConvolution);
 
 		programConvolution.		
 			Elements(null).
-			Set("aPosition",	vbo.plane.positions).
-			Set("aTextureCoord",vbo.plane.textureCoords);
+			Set("aPosition",			planePositions).
+			Set("aTextureCoordinate",	planeTextureCoordinates);
 		// Render in two passes
 		fbConvolution.Color(fbTexturePass1);
 		programConvolution.			
@@ -206,10 +196,10 @@ void main() {
 		o3gl.Program.FrameBuffer(fbBlend);
 		programBlend.
 			Elements(null).
-			Set("aPosition",	vbo.plane.positions).
-			Set("aTextureCoord",vbo.plane.textureCoords).
-			Set("uSampler0", fbTextureScene).		
-			Set("uSampler1", fbTexturePass2).
+			Set("aPosition",			planePositions).
+			Set("aTextureCoordinate",		planeTextureCoordinates).
+			Set("uSampler0", 			fbTextureScene).		
+			Set("uSampler1", 			fbTexturePass2).
 			DrawTriangles();
 			
 		return;

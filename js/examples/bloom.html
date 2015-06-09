@@ -25,14 +25,14 @@
 </style>
 <script id="vs" type="x-shader/x-vertex">
 attribute vec3 		aPosition;
-attribute vec2 		aTextureCoord;
+attribute vec2 		aTextureCoordinate;
 
 uniform mat4 		uMatrixMV;
 uniform mat4 		uMatrixP;
 
-varying vec2 		vTextureCoord;
+varying vec2 		vTextureCoordinate;
 void main() {
-	vTextureCoord	= vec2(aTextureCoord.x, aTextureCoord.y);
+	vTextureCoordinate	= vec2(aTextureCoordinate.x, aTextureCoordinate.y);
 	gl_Position 	= uMatrixP * uMatrixMV * vec4(aPosition, 1.0);
 }
 </script>
@@ -41,9 +41,9 @@ void main() {
 precision highp float;
 #endif
 uniform sampler2D 	uSampler0;
-varying vec2 	vTextureCoord;
+varying vec2 	vTextureCoordinate;
 void main() {
-	gl_FragColor = texture2D(uSampler0, vTextureCoord);
+	gl_FragColor = texture2D(uSampler0, vTextureCoordinate);
 }
 </script>
 

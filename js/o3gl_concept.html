@@ -267,27 +267,29 @@ program.
 	Set("uMatrixM", 		matrixM).
 	Set("uMatrixN", 		matrixN).
 	DrawTriangles();
-	
-// Builtin matrix
 
-program.mat4("uMatrixM").rotate()
-program.mat4("").identity().translate().
-
-program.mat4().rotate().translate().Set("")
-program.vec3().
-program.mat4("name").rotate().translate().Set("")
 	
-	
-program.mat4("uMatrixM").mat4("uMatrixV").multiply()
+program.Set("uMatrixMV", mvMatrix);
+program.SetInverseMat3("uMatrixMV", program.Get("uMatrixMV")).Transpose();
 
 // Stack
-program.mat4("uMatrixM").rotation().translation().invert().vec3(1,0,0).
 
-program.mat4("uMatrixM").rotation().translation().invert().vec3(1,0,0).
+program.SetFrustum("")
+o3gl.matrix.set
 
-
-program.matrix("uMatrixM").multiply("uMatrixV").toInverseMat3().transpose()
 	
+// Field
+program.SetTranslation("").SetRotation().SetScale().SetFrustum()
+program.SetIdentity("").SetRotation().SetScale().SetFrustum()
+program.Translate("").Rotate("").Scale("").Multiply("", rawData);
+
+
+
+// Default matrix:
+Program.Matrix(4,4).SetIdentity().SetTranslation()
+
+
+
 */
 
 /*TEXTURE TYPE CONCEPT*/
