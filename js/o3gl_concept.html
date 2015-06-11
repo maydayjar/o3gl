@@ -273,15 +273,114 @@ program.Set("uMatrixMV", mvMatrix);
 program.SetInverseMat3("uMatrixMV", program.Get("uMatrixMV")).Transpose();
 
 // Stack
+program.Matrix("name").Identity().Rotate().Translate;
 
-program.SetFrustum("")
-o3gl.matrix.set
+program.Matrix4x4().Identity().Scale().Rotate().Translate().SetMatrix("abc"); // ?
+program.Identity().Scale().Rotate().Translate().Push().SetMatrix("abc"); // BAD
+
+// MATRIX HELPER. 
+
+// MVP
+program.Matrix("uMVP"). 				// Select uniform as current global matrix storage
+Frustum().Perspective().Orthogonal().
+LookAt().								// View transformation
+Push().									// Save to the global stack
+Translate().Rotate().Invert()			// Model transformation
+
+// Default inner matrix
+o3gl.matrix4().frustum(...).push();
+
+o3gl.matrix4(). 							// Default inner matrix. Work with global matrix stack
+identity().translate().rotate().invert(); 	// VIEW
+
+o3gl.matrix4(). 							// Default inner matrix. Work with global matrix stack
+identity().translate().rotate().invert(); 	// VIEW
+
+
+o3gl.matrix4().push();
+
+// INSTANCES:
+var model = o3gl.matrix4();
+var view = o3gl.matrix4();
+var projection = o3gl.matrix4();
+
+// do operations
+var projection = o3gl.matrix4();
+o3gl.matrix4().set(projection).multiply(view).multiply(model);
+o3gl.matrix3().invert(modelView).transpose();
+o3gl.matrix3().invertTranspose(modelView); ??? 
+o3gl.matrix4().multiply(projection, view, model);
+
+
+
+program.set("uMVP", o3gl.matrix4().multiply(projection, view, model))
+
+program.set("uMVP", projection, view, model);
+program.set("uMVP", projection, view, model);
+
+
+
+o3gl.matrix3().invertTranspose(mv);
+
+for (...)									// Iterate over objects
+	o3gl.matrix4().top().					// Set matrix to the top of the stack
+	o3gl.matrix4().top().					// Set matrix to the top of the stack
+	
+
+
+
+
+o3gl.matrix4(). 							// Default inner matrix. Work with global matrix stack
+identity().translate().rotate().invert(); 	// VIEW
+
+
+o3gl.matrix3(). 							// Default inner matrix. Work with global matrix stack
+Identity().Translate().Rotate().Invert(); 	// Camera transformations
+
+
+// Adjust View
+program.Matrix("uModelView") 						// Select current matrix (matrix mode!)
+program.LookAt();									// Look at
+program.Identity().Translate().Rotate().Invert(); 	// Camera transformations
+
+// Adjust model transformation
+program.Push().Identity().Scale().Rotate().Translate().DrawTriangles().Pop().
+program.Matrix("uNormal").Invert("uModelView").Transpose();
+
+program.Matrix("mvc").Identity().Scale().Rotate().Translate().Push(); 
+
+
 
 	
 // Field
 program.SetTranslation("").SetRotation().SetScale().SetFrustum()
 program.SetIdentity("").SetRotation().SetScale().SetFrustum()
 program.Translate("").Rotate("").Scale("").Multiply("", rawData);
+
+
+// MVP
+p.SetProjection("mvp").
+// M
+p.Scale("mvp").Rotate("").Translate().LookAt().
+p.SetInvertTranspose("normals", p.Get("mv"))
+
+// View
+p.LookAt()
+
+// Gl modes concept. Does not create new instances
+o3gl.MatrixModelView().LookAt();
+o3gl.MatrixModelView().Push();
+program.Set("uMatrixMV", o3gl.MatrixModelView().Scale().Translate().Rotate());
+o3gl.MatrixModelView().Pop();
+
+
+// Matrix helper
+
+
+
+// MatrixColor().MatrixTexture();
+
+
 
 
 

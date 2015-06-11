@@ -10,7 +10,7 @@
 <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
 <script type="text/javascript" src="../o3gl.js"></script>
-<script type="text/javascript" src="../o3gl_utils.js"></script>
+<script type="text/javascript" src="../o3glsl.js"></script>
 <script type="text/javascript" src="../shaders/phong.js"></script>
 <script type="text/javascript" src="../utils/utils.js"></script>
 <script type="text/javascript" src="../utils/primitives.js"></script>
@@ -29,7 +29,6 @@
 	
 	// Referenced by the shader program variables
 	var viewport 			= {};
-	var matrixRotation 	= mat4.create();
 	var matrixM 		= mat4.create();
 	var matrixV 		= mat4.create();
 	var matrixMV 		= mat4.create();
@@ -205,17 +204,16 @@
 			}						
 		});
 
-		program = o3gl.utils.
+		program = o3gl.
 			// Retain only essential shader variables and related code
 			sources(Shaders.Phong.Vertex, Shaders.Phong.Fragment). //short: sources(Shaders.Phong)
 			CreateProgram(
 				"aPosition", 
-				"aTextureCoord", 
+				"aTextureCoordinate", 
 				"aNormal", 
-				"uMatrixV",
-				"uMatrixP",
-				"uMatrixM",
-				"uMatrixN",
+				"uMatrixModelView",
+				"uMatrixProjection",
+				"uMatrixNormal",
 				"uMaterialDiffuse",
 				"uMaterialSpecular",
 				"uMaterialAmbient",
@@ -229,7 +227,6 @@
 
 		// Initialize matrices
 		mat4.perspective(45, viewport.width / viewport.height, 0.1, 100.0, matrixP);
-		mat4.identity(matrixRotation);
 		mat4.identity(matrixV);
 		mat4.translate(matrixV, [0,0,-15]);
 		mat4.identity(matrixM);
@@ -238,9 +235,12 @@
 	}
 	
 	function render() {
+		/*
 		mat4.identity(matrixMV);
 		mat4.multiply(matrixM, matrixMV, matrixMV);
 		mat4.multiply(matrixV, matrixMV, matrixMV);				
+		*/
+		mat4.multiply(matrixV, matrixM, matrixMV);
 		mat4.toInverseMat3(matrixMV, matrixN);
 		mat3.transpose(matrixN);
 
@@ -249,12 +249,11 @@
 		o3gl.Program.FrameBuffer(frameBuffer).DepthTest(true);
 			
 		program.
-			Set("uMatrixV", matrixV).
-			Set("uMatrixP", matrixP).
-			Set("uMatrixM", matrixM).
-			Set("uMatrixN", matrixN).
+			Set("uMatrixProjection", matrixP).
+			Set("uMatrixModelView", matrixMV).
+			Set("uMatrixNormal", matrixN).
 			Set("uMaterialDiffuse", 0.0, 0.0, 0.0, 1.0).
-			//Set("uMaterialSpecular", 0.5, 0.5, 0.5, 1.0).
+			Set("uMaterialSpecular", 0.5, 0.5, 0.5, 1.0).
 			Set("uMaterialAmbient", 0.0, 0.0, 0.0, 1.0);
 		
 		program.Set("uLightPosition", 0.5, 0.5, 0.5);
@@ -268,7 +267,7 @@
 				var group = model["LOD0"];
 				if (group.vertexes) program.Set("aPosition", group.vertexes);
 				if (group.normals) program.Set("aNormal", group.normals);
-				if (group.textureCoords) program.Set("aTextureCoord", group.textureCoords);
+				if (group.textureCoords) program.Set("aTextureCoordinate", group.textureCoords);
 				if (model.diffuse) program.Set("uSamplerDiffuse", model.diffuse);
 				if (model.normal) program.Set("uSamplerNormal", model.normal);
 				program.DrawTriangles();
@@ -298,7 +297,6 @@
         var canvas = document.getElementById("canvas");
 		var gl = WebGLUtils.setupWebGL(canvas);
 		o3gl = O3GL(gl);
-		o3gl.utils = O3GL_UTILS(o3gl);
 		init();
         update();
 		

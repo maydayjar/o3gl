@@ -12,6 +12,16 @@ Shaders.Phong.attribute = [
 ];
 Shaders.Phong.uniform = [
 	"uniform vec3 uLightPosition;",
+
+	"uniform vec3 uPointLightColor;",
+	"uniform mat4 uPointLightTransform;",
+	"uniform samplerCube uPointLightShadowMap;",
+	
+	"uniform vec3 uDirectionalLightColor;",
+	"uniform mat4 uDirectionalLightTransform;",
+	"uniform sampler2D uDirectionalLightShadowMap;",
+
+	
 	"uniform samplerCube uSamplerCube;",
 	
 	"uniform mat4 uMatrixModelView;",
