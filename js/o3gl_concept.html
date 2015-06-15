@@ -251,8 +251,12 @@ pi.uMatrixM = matrix;
 */
 
 
+/**
+MATRICES
+*/
+
 /*
-// External matricies:
+// EXTERNAL MATRIX LIBRARY:
 mat4.identity(matrixM);
 mat4.translate(matrixM, [ (i - 1) * 3 , (j - 1) * 3 , 0]);
 mat4.multiply(matrixM,matrixRotation, matrixM);
@@ -268,11 +272,59 @@ program.
 	Set("uMatrixN", 		matrixN).
 	DrawTriangles();
 
-	
+// EMBEDDED MATRIX OPERATIONS
+program.mat4("uMatrixMV").Identity().LookAt().Translate().Rotate().Scale();
+program.mat3("uMatrixN").InvertTranspose(program.mat4("uMatrixMV"));
+program.vec3("uMatrixMV").Identity().LookAt().Translate().Rotate().Scale();
+program.vec3("uMatrixMV").Identity().LookAt().Translate().Rotate().Scale();
+
+
 program.Set("uMatrixMV", mvMatrix);
 program.SetInverseMat3("uMatrixMV", program.Get("uMatrixMV")).Transpose();
 
-// Stack
+// GLOBAL STACK
+o3gl.matrix4().projection().push(); 
+o3gl.matrix4().lookAt().push();
+o3gl.matrix4().lookAt().push();
+program.Pop("uMatrix")
+
+// ESSENTIAL TRANSFORMATIONS
+program.Perspective("uMatrixP", ....)
+program.LookAt("uMatrixModelView", ....).Translate("uMatrixModelView", ....).Scale("uMatrixModelView", ....)
+program.Identity("uMatrixModelView", ....).Translate("uMatrixModelView", ....).Invert("uMatrixModelView"). Translate("uMatrixModelView", ....).Scale("uMatrixModelView", ....)
+program.InvertTranspose("uMatrixNormal","uMatrixModelView");
+
+// TRANSFORMATION HELPER CLASSES
+program.Set("uPerspective", o3gl.perspective());
+program.Set("uModelView", o3gl.lookAt(), ); // Varargs mean multiplication
+
+// CHAINED METHODS NEW INSTANCE
+// TRANSFORMATIONS CAN BE LAZY (matrix is initialized only on using get method)
+var pv = o3gl.perspective().lookAt();
+var pvm = pv.translate().rotate();
+var pvm = pv.translate().rotate();
+
+var pv = o3gl.multiply(pv, )
+
+
+
+
+
+
+// INSTANCES:
+var model = o3gl.identity();
+var view = o3gl.identity();
+var projection = o3gl.matrix4(); projection = o3gl.perspective(); projection = o3gl.frustum();  projection = o3gl.frustum()
+
+// do operations
+var projection = o3gl.matrix4();
+o3gl.matrix4().set(projection).multiply(view).multiply(model);
+o3gl.matrix3().invert(modelView).transpose();
+o3gl.matrix3().invertTranspose(modelView); ??? 
+o3gl.matrix4().multiply(projection, view, model);
+
+
+
 program.Matrix("name").Identity().Rotate().Translate;
 
 program.Matrix4x4().Identity().Scale().Rotate().Translate().SetMatrix("abc"); // ?
@@ -289,9 +341,6 @@ Translate().Rotate().Invert()			// Model transformation
 
 // Default inner matrix
 o3gl.matrix4().frustum(...).push();
-
-o3gl.matrix4(). 							// Default inner matrix. Work with global matrix stack
-identity().translate().rotate().invert(); 	// VIEW
 
 o3gl.matrix4(). 							// Default inner matrix. Work with global matrix stack
 identity().translate().rotate().invert(); 	// VIEW
@@ -321,6 +370,9 @@ program.set("uMVP", projection, view, model);
 
 
 o3gl.matrix3().invertTranspose(mv);
+
+
+
 
 for (...)									// Iterate over objects
 	o3gl.matrix4().top().					// Set matrix to the top of the stack
@@ -424,20 +476,33 @@ o3gl.CreateTextureDepthComponent(o3gl.);
 */
 
 
-// MRT sources
-var o3glut = O3GL_UTILS(o3gl);
-
-var p1 = o3gl.sources(someShader).CreateProgram();
-var p2 = o3gl.sources(someShader).CreateProgram();
-
-o3glut.o3glut.fragData(0).sources(sh1).fragData(1).sources(sh2).
-
-o3glut.sources(someShader).CreateProgram();
 
 
 
+/* 
+TYPED ARRAY INHERITANCE
+*/
+
+function Matrix4 () {
+	var F = function() {}
+	F.prototype = 
+	var result = new Float32Array(16);
+	return result;
+}
+
+Matrix4.prototype = new Float32Array(16);
 
 
+ {
+	test : function() {
+		return "test";
+	}
+}
+
+
+var m4 = new Matrix4();
+console.log(m4.length);
+console.log(m4.test);
 
 
 </script>
