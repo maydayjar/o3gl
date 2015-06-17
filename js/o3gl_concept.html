@@ -273,11 +273,15 @@ program.
 	DrawTriangles();
 
 // EMBEDDED MATRIX OPERATIONS
-program.mat4("uMatrixMV").Identity().LookAt().Translate().Rotate().Scale();
-program.mat3("uMatrixN").InvertTranspose(program.mat4("uMatrixMV"));
-program.vec3("uMatrixMV").Identity().LookAt().Translate().Rotate().Scale();
-program.vec3("uMatrixMV").Identity().LookAt().Translate().Rotate().Scale();
-
+program.Matrix4("uMatrixMV").Identity().LookAt().Translate().Rotate().Scale();
+program.Matrix3("uMatrixN").InvertTranspose(program.mat4("uMatrixMV"));
+program.Vector3("uMatrixMV").Identity().LookAt().Translate().Rotate().Scale();
+program.Vector3("uMatrixMV").Identity().LookAt().Translate().Rotate().Scale();
+program.Integer("uSomeShit").Get().Set();
+program.Boolean("uSomeShit").Get().Set();
+program.Sampler2D("uSomeShit");				// Returns bound "sampler"
+program.Texture2D("uSomeShit"); 			// Returns bound 2D texture
+program.ArrayBuffer("aSomeShit").Get().Set();			// Returns currently bound array buffer pointer
 
 program.Set("uMatrixMV", mvMatrix);
 program.SetInverseMat3("uMatrixMV", program.Get("uMatrixMV")).Transpose();
@@ -294,6 +298,15 @@ program.LookAt("uMatrixModelView", ....).Translate("uMatrixModelView", ....).Sca
 program.Identity("uMatrixModelView", ....).Translate("uMatrixModelView", ....).Invert("uMatrixModelView"). Translate("uMatrixModelView", ....).Scale("uMatrixModelView", ....)
 program.InvertTranspose("uMatrixNormal","uMatrixModelView");
 
+program.SetLookAt("uMatrixModelView", ....);
+program.SetIdentity("uMatrixModelView", ....);
+program.Translate("uMatrixModelView", ....);
+program.Rotate("uMatrixModelView", ....);
+program.Scale("uMatrixModelView", ....);
+program.Multiply("uMatrixModelView", ....);
+program.Set("uMatrixNormal", program.Get("uModelView")).Invert("uMatrixNormal").Transpose("uMatrixNormal")
+
+
 // TRANSFORMATION HELPER CLASSES
 program.Set("uPerspective", o3gl.perspective());
 program.Set("uModelView", o3gl.lookAt(), ); // Varargs mean multiplication
@@ -304,24 +317,32 @@ var pv = o3gl.perspective().lookAt();
 var pvm = pv.translate().rotate();
 var pvm = pv.translate().rotate();
 
-var pv = o3gl.multiply(pv, )
+pvm.get();	// Build Float32Array
+pvm.get(float32Array);	// Set to existing
 
-
-
-
-
+var pv = o3gl.matrix4(o3gl.perspective(), o3gl.t().r().invert());
 
 // INSTANCES:
 var model = o3gl.identity();
-var view = o3gl.identity();
+var view = o3gl.identity(); // === o3gl.matrix4().identity(); o3gl.matrix4(float32Array); o3gl.matrix4(float32Array, offset);
 var projection = o3gl.matrix4(); projection = o3gl.perspective(); projection = o3gl.frustum();  projection = o3gl.frustum()
 
-// do operations
 var projection = o3gl.matrix4();
 o3gl.matrix4().set(projection).multiply(view).multiply(model);
 o3gl.matrix3().invert(modelView).transpose();
 o3gl.matrix3().invertTranspose(modelView); ??? 
 o3gl.matrix4().multiply(projection, view, model);
+
+
+// BUILDER STATIC METHODS
+var matrixMV;
+o3gl.matrix4(matrixMV, offset).rotate(); 
+
+
+
+
+
+
 
 
 
