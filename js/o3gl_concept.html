@@ -273,15 +273,18 @@ program.
 	DrawTriangles();
 
 // EMBEDDED MATRIX OPERATIONS
-program.Matrix4("uMatrixMV").Identity().LookAt().Translate().Rotate().Scale();
-program.Matrix3("uMatrixN").InvertTranspose(program.mat4("uMatrixMV"));
-program.Vector3("uMatrixMV").Identity().LookAt().Translate().Rotate().Scale();
-program.Vector3("uMatrixMV").Identity().LookAt().Translate().Rotate().Scale();
+program.Matrix4("uMatrixMV").Identity().LookAt().Translate().Rotate().Scale().Multiply([1,2,1,0]);
+program.Matrix3("uMatrixN").InvertTranspose(program.Matrix4("uMatrixMV"));
+program.Vector3("uMatrixMV").Set().Transform();
+program.Vector3("uMatrixMV").;
 program.Integer("uSomeShit").Get().Set();
 program.Boolean("uSomeShit").Get().Set();
-program.Sampler2D("uSomeShit");				// Returns bound "sampler"
+program.Sampler2D("uSampler2D");				// Returns bound "sampler"
+program.SamplerCube("uSamplerCube");				// Returns bound "sampler"
 program.Texture2D("uSomeShit"); 			// Returns bound 2D texture
-program.ArrayBuffer("aSomeShit").Get().Set();			// Returns currently bound array buffer pointer
+program.ArrayBuffer("aPosition").Get().Set();			// Returns currently bound array buffer pointer
+program.Vector3("aPosition").Get().Set();			// Returns currently bound array buffer pointer
+
 
 program.Set("uMatrixMV", mvMatrix);
 program.SetInverseMat3("uMatrixMV", program.Get("uMatrixMV")).Transpose();
@@ -320,9 +323,34 @@ var pvm = pv.translate().rotate();
 pvm.get();	// Build Float32Array
 pvm.get(float32Array);	// Set to existing
 
-var pv = o3gl.matrix4(o3gl.perspective(), o3gl.t().r().invert());
+var pv = o3gl.matrix4(o3gl.perspective(), o3gl.transform().rotate().invert());
 
 // INSTANCES:
+	// CONSTRUCTORS
+		var projection = o3gl.matrix4();
+		var projection = o3gl.perspective();
+		var projection = o3gl.orthogonal();
+		var projection = o3gl.frustum();
+		
+		var matrix = o3gl.matrix4();						// new Float32 array
+		var matrix = o3gl.matrix4(float32Array);			// existing Float32Array(16)
+		var matrix = o3gl.matrix4(float32Array, offset);	// existing Float32Array with offset
+		var matrix = o3gl.matrix4(arrayBufferView);			// Do we need this ? Use arrayBufferView.Data(matrix) instead
+		var matrix = o3gl.matrix4(program, "uMatrix");		// Do we need this ? 
+	
+	// OPERATIONS
+		// Set
+		matrix.set(mat4).identity().lookAt().perspective().translation().rotation().scaling().multiplication(mat4, mat4).inversion(mat4).transposition(mat4);
+		// Modify
+		matrix.multiply().rotate().translate().scale().invert().transpose();
+		// Transform
+		matrix.transform(vector4)
+		// Raw data
+		matrix.row(0) => Vector4
+		matrix.column(0) => Vector4
+		
+		
+	
 var model = o3gl.identity();
 var view = o3gl.identity(); // === o3gl.matrix4().identity(); o3gl.matrix4(float32Array); o3gl.matrix4(float32Array, offset);
 var projection = o3gl.matrix4(); projection = o3gl.perspective(); projection = o3gl.frustum();  projection = o3gl.frustum()
@@ -334,11 +362,19 @@ o3gl.matrix3().invertTranspose(modelView); ???
 o3gl.matrix4().multiply(projection, view, model);
 
 
+o3gl.matrix4(float32Array, offset).set(projection).multiply(view).multiply(model);
+
+
+arrayBuffer.view().offset().stride().typeFloat(16);
+
+
 // BUILDER STATIC METHODS
 var matrixMV;
 o3gl.matrix4(matrixMV, offset).rotate(); 
 
 
+// STATIC METHODS WITH NATIVE DATA
+aka glMatrix
 
 
 

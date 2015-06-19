@@ -70,6 +70,8 @@
 	
 	? ***Mask methods affect both framebuffer clear method and program output. Should they be global static methods of o3gl ?
 	
+	- Matrix and vector builder. Hides underlying data source details (data type / offset / location). Imposes transformation order (projection() is not chained!, matrix.transform(vector4)). Provides unified interface for o3gl users.
+	
 	- Client state tracking wrapper, profiling. _GetVertexAttributeArrayBufferCount is too slow on chrome
 	
 	- MRT sources preprocessing
@@ -179,8 +181,6 @@
 	- BlurStroke shader
 			
 	- Resources cleanup. Like disabling vertex arrays, unbinding textures from texture units etc
-	
-	- Embedded matrices builder module
 		
 	- Resource factories. To create preconfigured resources.
 	
