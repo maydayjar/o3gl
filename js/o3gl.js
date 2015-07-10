@@ -1949,43 +1949,40 @@ o3gl.Program.prototype = {
 		if (!first) {
 			first = 0;
 		}
-
-		var vertexArrayIndices;
-		var enabledVertexArrayIndices;
-
-		var defaultElementsCount;
-		var defaultInstancesCount;
 		
-		if (!count || !primcount) {
-			vertexArrayIndices = this.GetAttributeLocations();
-			enabledVertexArrayIndices = o3gl.VertexArray._GetEnabledVertexAttributeArrayIndices(vertexArrayIndices);
-		}
+		if (!count || primcount === null || primcount === undefined) {
+			var vertexArrayIndices = this.GetAttributeLocations();
+			var enabledVertexArrayIndices = o3gl.VertexArray._GetEnabledVertexAttributeArrayIndices(vertexArrayIndices);
 
-		if (enabledVertexArrayIndices) {
-			for (var i = 0; i < enabledVertexArrayIndices.length; ++i) {
-				var index = enabledVertexArrayIndices[i];
-				
-				var currentDivisor = o3gl.VertexArray._GetVertexAttributeArrayDivisor(index);
-				var currentCount = o3gl.VertexArray._GetVertexAttributeArrayBufferCount(index);
-				
-				if (currentDivisor) {
-					// This is per instance data
-					if (!defaultInstancesCount) 
-						defaultInstancesCount = currentDivisor * currentCount;
-					else if (defaultInstancesCount != currentDivisor * currentCount) 
-						throw new TypError("Instanced arrays yield different elements count");
-				} else {
-					if (!defaultElementsCount) 
-						defaultElementsCount = currentCount;
-					else if (defaultElementsCount != currentCount) {
-						throw new TypeError("Active vertex arrays have different elements count");
+			if (enabledVertexArrayIndices) {			
+				var defaultElementsCount;
+				var defaultInstancesCount;
+
+				for (var i = 0; i < enabledVertexArrayIndices.length; ++i) {
+					var index = enabledVertexArrayIndices[i];
+					
+					var currentDivisor = o3gl.VertexArray._GetVertexAttributeArrayDivisor(index);
+					var currentCount = o3gl.VertexArray._GetVertexAttributeArrayBufferCount(index);
+					
+					if (currentDivisor) {
+						// This is per instance data
+						if (!defaultInstancesCount) 
+							defaultInstancesCount = currentDivisor * currentCount;
+						else if (defaultInstancesCount != currentDivisor * currentCount) 
+							throw new TypError("Instanced arrays yield different elements count");
+					} else {
+						if (!defaultElementsCount) 
+							defaultElementsCount = currentCount;
+						else if (defaultElementsCount != currentCount) {
+							throw new TypeError("Active vertex arrays have different elements count");
+						}
 					}
 				}
-			}
+				
+				if (!count) count = defaultElementsCount;
+				if (!primcount) primcount = defaultInstancesCount;
+			}			
 		}
-		
-		if (!count) count = defaultElementsCount;
-		if (!primcount) primcount = defaultInstancesCount;
 		
 		if (primcount) {
 			var ext = gl.getExtension("ANGLE_instanced_arrays");
@@ -2010,7 +2007,7 @@ o3gl.Program.prototype = {
 		else						
 			elementsCount = o3gl.VertexArray._GetElementArrayBufferCount(); 	// Compute 
 		
-		if (!primcount) {
+		if (primcount === null || primcount === undefined) {
 			var defaultInstancesCount;			
 			vertexArrayIndices = this.GetAttributeLocations();
 			enabledVertexArrayIndices = o3gl.VertexArray._GetEnabledVertexAttributeArrayIndices(vertexArrayIndices);
@@ -2039,6 +2036,20 @@ o3gl.Program.prototype = {
 	,
 	_DrawPrimitives : function(glMode, first, count, primcount) {
 		this.Use(); // TODO: do we need it here??? assert current program
+		
+		if (arguments.length === 1) {
+			first = null;
+			count = null;
+			primcount = null;
+		}
+		if (arguments.length === 2) {
+			count = null;
+			primcount = null;
+		}
+		if (primcount === undefined) {
+			primcount = 0;
+		}
+
 		
 		var elementArrayBuffer = gl.getParameter(gl.ELEMENT_ARRAY_BUFFER_BINDING);
 		if (elementArrayBuffer) {

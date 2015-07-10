@@ -390,8 +390,10 @@ void main(void) {
 
 		gl.disable(gl.BLEND);
 		
-		fbOffscreen.Clear();
-		o3gl.Program.FrameBuffer(fbOffscreen);
+		//fbOffscreen.Clear();
+		//o3gl.Program.FrameBuffer(fbOffscreen);
+
+		o3gl.Program.FrameBuffer(null).DepthTest(true);
 		
 		// Set up geometry, light and camera matrices
 		program.
@@ -433,7 +435,7 @@ void main(void) {
 						Set("uMatrixM", 	position).
 						Set("uMatrixN", 	matrixN).
 						Set("uMaterialDiffuse", 	lerp(colorMin, colorMax, k / (maxHeight))).
-						DrawTriangles();
+						DrawTriangles(0,36);
 				}
 			}
 		}
@@ -467,13 +469,13 @@ void main(void) {
 					program.
 						Set("uMatrixM", 	position).
 						Set("uMatrixN", 	matrixN).
-						DrawTriangles();
+						DrawTriangles(0,36);
 				}
 			}
 		}
 		
-		o3gl.Program.FrameBuffer(null).DepthTest(false);
-		o3gl.utils.Postprocess(Shaders.Copy, {uSampler0 : fbOffscreenTexture});
+//		o3gl.Program.FrameBuffer(null).DepthTest(false);
+//		o3gl.utils.Postprocess(Shaders.Copy, {uSampler0 : fbOffscreenTexture});
     }
     
     function update() {
@@ -497,7 +499,6 @@ void main(void) {
 		gl = WebGLUtils.setupWebGL(canvas);
 		
 		o3gl = O3GL(gl);		
-		o3gl.utils = O3GL_UTILS(o3gl);
 		
 		init();
         update();
